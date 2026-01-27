@@ -135,7 +135,7 @@ function Login() {
                 </form>
 
                 <div style={{ marginTop: 'auto', paddingTop: '40px', color: '#999', fontSize: '0.9rem' }}>
-                    &copy; 2024 Airport HR Management System
+                    &copy; 2024 HRM Cảng Hàng Không
                 </div>
             </div>
 

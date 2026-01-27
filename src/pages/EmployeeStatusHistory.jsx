@@ -194,7 +194,7 @@ function EmployeeStatusHistory() {
                       <td>{log.employeeName || ''}</td>
                       <td>{log.newStatus || ''}</td>
                       <td>{log.effectiveDate ? new Date(log.effectiveDate).toLocaleDateString('vi-VN') : ''}</td>
-                      <td>{log.actor || 'HR'}</td>
+                      <td>{log.actor || 'Nhân sự'}</td>
                       <td>{log.note || ''}</td>
                     </tr>
                   ))

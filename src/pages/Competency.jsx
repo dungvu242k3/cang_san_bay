@@ -566,7 +566,7 @@ function Competency() {
   const downloadTrainingTemplate = () => {
     const data = [
       ['Mã chương trình', 'Tên chương trình', 'Hình thức', 'Đơn vị đào tạo', 'Thời gian bắt đầu (YYYY-MM-DD)', 'Thời gian kết thúc (YYYY-MM-DD)', 'Mục tiêu', 'Trạng thái'],
-      ['CT001', 'Đào tạo kỹ năng giao tiếp', 'Nội bộ', 'Phòng HR', '2024-11-01', '2024-11-05', 'Nâng cao kỹ năng thuyết phục', 'Sắp diễn ra'],
+      ['CT001', 'Đào tạo kỹ năng giao tiếp', 'Nội bộ', 'Phòng Nhận sự', '2024-11-01', '2024-11-05', 'Nâng cao kỹ năng thuyết phục', 'Sắp diễn ra'],
       ['CT002', 'Kỹ thuật bán hàng nâng cao', 'External', 'PwC', '2024-12-01', '2024-12-10', 'Tăng tỷ lệ chốt đơn', 'Sắp diễn ra']
     ]
     const ws = XLSX.utils.aoa_to_sheet(data)

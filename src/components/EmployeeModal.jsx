@@ -24,7 +24,45 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
     tinh_trang_hon_nhan: '',
     avatarDataUrl: '',
     images: [],
-    files: []
+    files: [],
+    // New Profile Fields
+    nationality: 'Việt Nam',
+    place_of_birth: '',
+    ethnicity: 'Kinh',
+    religion: 'Không',
+    education_level: '12/12',
+    training_form: 'Phổ Thông',
+    academic_level_code: 'DH',
+    marital_status_code: 1, // Default 'Độc thân'
+    card_number: '',
+    // 1.2 Contact Info (match DB schema)
+    permanent_address: '',
+    temporary_address: '',
+    hometown: '',
+    phone: '',
+    email_acv: '',
+    email_personal: '',
+    relative_phone: '',
+    relative_relation: 'Khác',
+    // 1.3 Work Info
+    decision_number: '',
+    join_date: '',
+    official_date: '',
+    job_position: '',
+    department: '',
+    team: '',
+    group_name: '',
+    employee_type: 'MB NVCT',
+    labor_type: '',
+    job_title: '',
+    date_received_job_title: '',
+    current_position: 'Khác',
+    appointment_date: '',
+    concurrent_position: '',
+    concurrent_job_title: '',
+    concurrent_start_date: '',
+    concurrent_end_date: '',
+    leave_calculation_type: 'Có cộng dồn'
   })
   const [avatarPreview, setAvatarPreview] = useState('')
   const [imagesPreview, setImagesPreview] = useState([])
@@ -72,6 +110,60 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
 
       setImagesPreview(employee.images || [])
       setFilesPreview(employee.files || [])
+
+      // Fetch extended profile
+      if (employee.employeeId) {
+        supabase
+          .from('employee_profiles')
+          .select('*')
+          .eq('employee_code', employee.employeeId)
+          .single()
+          .then(({ data, error }) => {
+            if (data && !error) {
+              setFormData(prev => ({
+                ...prev,
+                nationality: data.nationality || 'Việt Nam',
+                place_of_birth: data.place_of_birth || '',
+                ethnicity: data.ethnicity || 'Kinh',
+                religion: data.religion || 'Không',
+                education_level: data.education_level || '12/12',
+                training_form: data.training_form || 'Phổ Thông',
+                academic_level_code: data.academic_level_code || 'DH',
+                marital_status_code: data.marital_status_code || 1,
+                card_number: data.card_number || '',
+                permanent_address: data.permanent_address || '',
+                temporary_address: data.temporary_address || '',
+                hometown: data.hometown || '',
+                phone: data.phone || '',
+                email_acv: data.email_acv || '',
+                email_personal: data.email_personal || '',
+                relative_phone: data.relative_phone || '',
+                relative_relation: data.relative_relation || 'Khác',
+                // 1.3 Work
+                decision_number: data.decision_number || '',
+                join_date: data.join_date || '',
+                official_date: data.official_date || '',
+                job_position: data.job_position || '',
+                department: data.department || '',
+                team: data.team || '',
+                group_name: data.group_name || '',
+                employee_type: data.employee_type || 'MB NVCT',
+                labor_type: data.labor_type || '',
+                job_title: data.job_title || '',
+                date_received_job_title: data.date_received_job_title || '',
+                current_position: data.current_position || 'Khác',
+                appointment_date: data.appointment_date || '',
+                concurrent_position: data.concurrent_position || '',
+                concurrent_job_title: data.concurrent_job_title || '',
+                concurrent_start_date: data.concurrent_start_date || '',
+                concurrent_end_date: data.concurrent_end_date || '',
+                leave_calculation_type: data.leave_calculation_type || 'Có cộng dồn'
+                // Note: Some fields like avatar, name allow logic to sync or keep separate. 
+                // Here we keep the main user table as source for common fields.
+              }))
+            }
+          })
+      }
     } else {
       resetForm()
     }
@@ -290,6 +382,64 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
 
         if (error) throw error
       }
+
+      // Save to employee_profiles (common for both Create and Update)
+      // Note: We use Upsert based on employee_code
+      if (formData.employeeId) {
+        const profilePayload = {
+          employee_code: formData.employeeId,
+          last_name: formData.ho_va_ten,
+          first_name: '',
+          card_number: formData.card_number,
+          nationality: formData.nationality,
+          place_of_birth: formData.place_of_birth,
+          ethnicity: formData.ethnicity,
+          religion: formData.religion,
+          education_level: formData.education_level,
+          training_form: formData.training_form,
+          academic_level_code: formData.academic_level_code,
+          marital_status_code: parseInt(formData.marital_status_code) || 1,
+          // 1.2 Contact
+          permanent_address: formData.permanent_address,
+          temporary_address: formData.temporary_address,
+          hometown: formData.hometown,
+          phone: formData.phone,
+          email_acv: formData.email_acv,
+          email_personal: formData.email_personal,
+          relative_phone: formData.relative_phone,
+          relative_relation: formData.relative_relation,
+          // 1.3 Work
+          decision_number: formData.decision_number,
+          join_date: formData.join_date,
+          official_date: formData.official_date,
+          job_position: formData.job_position,
+          department: formData.department,
+          team: formData.team,
+          group_name: formData.group_name,
+          employee_type: formData.employee_type,
+          labor_type: formData.labor_type,
+          job_title: formData.job_title,
+          date_received_job_title: formData.date_received_job_title,
+          current_position: formData.current_position,
+          appointment_date: formData.appointment_date,
+          concurrent_position: formData.concurrent_position,
+          concurrent_job_title: formData.concurrent_job_title,
+          concurrent_start_date: formData.concurrent_start_date,
+          concurrent_end_date: formData.concurrent_end_date,
+          leave_calculation_type: formData.leave_calculation_type,
+          updated_at: new Date().toISOString()
+        }
+
+        const { error: profileError } = await supabase
+          .from('employee_profiles')
+          .upsert(profilePayload, { onConflict: 'employee_code' })
+
+        if (profileError) {
+          console.error("Error saving profile:", profileError)
+          // We don't block the UI but log the error
+        }
+      }
+
       onSave()
       onClose()
       resetForm()
@@ -345,26 +495,27 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
                 />
               </div>
               <div className="form-group">
-                <label>Email</label>
+                <label>Email (Xem mục 1.2)</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  disabled={readOnly}
+                  disabled={true}
                 />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>SĐT</label>
+                <label>SĐT (Xem mục 1.2)</label>
                 <input
                   type="text"
                   name="sđt"
                   value={formData.sđt}
                   onChange={handleChange}
-                  disabled={readOnly}
+                  disabled={true} // Moved to 1.2
+                  className="bg-gray-100" // Optional styling
                 />
               </div>
               <div className="form-group">
@@ -481,18 +632,169 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
               </div>
             </div>
 
+            {/* Moved to 1.2 */}
+
+            {/* 1.1: Lý lịch cá nhân */}
+            <div className="form-section-header" style={{ marginTop: '20px', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+              <h4 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>1.1: Lý lịch cá nhân</h4>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
-                <label>Nơi cấp</label>
+                <label>Số thẻ</label>
                 <input
                   type="text"
-                  name="noi_cap"
-                  value={formData.noi_cap}
+                  name="card_number"
+                  value={formData.card_number}
                   onChange={handleChange}
-                  placeholder="Nơi cấp CCCD/CMND"
                   disabled={readOnly}
                 />
               </div>
+              <div className="form-group">
+                <label>Quốc tịch</label>
+                <input
+                  type="text"
+                  name="nationality"
+                  value={formData.nationality}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Nơi sinh</label>
+                <input
+                  type="text"
+                  name="place_of_birth"
+                  value={formData.place_of_birth}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Dân tộc</label>
+                <input
+                  type="text"
+                  name="ethnicity"
+                  value={formData.ethnicity}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Tôn giáo</label>
+                <input
+                  type="text"
+                  name="religion"
+                  value={formData.religion}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Trình độ văn hoá</label>
+                <select
+                  name="education_level"
+                  value={formData.education_level}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="12/12">12/12</option>
+                  <option value="10/12">10/12</option>
+                  <option value="11/12">11/12</option>
+                  <option value="8/10">8/10</option>
+                  <option value="9/10">9/10</option>
+                  <option value="10/10">10/10</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Hình thức đào tạo</label>
+                <select
+                  name="training_form"
+                  value={formData.training_form}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="Phổ Thông">Phổ Thông</option>
+                  <option value="Bổ túc">Bổ túc</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Tình trạng hôn nhân (Mã)</label>
+                <select
+                  name="marital_status_code"
+                  value={formData.marital_status_code}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value={1}>Độc thân (Mã 1)</option>
+                  <option value={2}>Đã kết hôn (Mã 2)</option>
+                  <option value={3}>Đã ly hôn (Mã 3)</option>
+                  <option value={4}>Khác (Mã 4)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Trình độ học vấn</label>
+                <select
+                  name="academic_level_code"
+                  value={formData.academic_level_code}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="DH">Đại học (Mã DH)</option>
+                  <option value="CD">Cao đẳng (Mã CD)</option>
+                  <option value="TS">Thạc sĩ (Mã TS)</option>
+                  <option value="TC">Trung cấp (Mã TC)</option>
+                  <option value="12">Lớp 12 (Mã 12)</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 1.2: Thông tin liên hệ */}
+            <div className="form-section-header" style={{ marginTop: '20px', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+              <h4 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>1.2: Thông tin liên hệ</h4>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Địa chỉ thường trú</label>
+                <input
+                  type="text"
+                  name="permanent_address"
+                  value={formData.permanent_address}
+                  onChange={handleChange}
+                  placeholder="Địa chỉ thường trú"
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Nơi đăng ký tạm trú</label>
+                <input
+                  type="text"
+                  name="temporary_address"
+                  value={formData.temporary_address}
+                  onChange={handleChange}
+                  placeholder="Nơi đăng ký tạm trú"
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label>Quê quán</label>
                 <input
@@ -504,19 +806,351 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
                   disabled={readOnly}
                 />
               </div>
+              <div className="form-group">
+                <label>Điện thoại</label>
+                <input
+                  type="text"
+                  name="sđt"
+                  value={formData.sđt}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>Địa chỉ thường trú</label>
+                <label>Email ACV</label>
                 <input
-                  type="text"
-                  name="dia_chi_thuong_tru"
-                  value={formData.dia_chi_thuong_tru}
+                  type="email"
+                  name="email_acv"
+                  value={formData.email_acv}
                   onChange={handleChange}
-                  placeholder="Địa chỉ thường trú"
+                  placeholder="example@acv.vn"
                   disabled={readOnly}
                 />
+              </div>
+              <div className="form-group">
+                <label>Email cá nhân</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Số điện thoại người thân</label>
+                <input
+                  type="text"
+                  name="relative_phone"
+                  value={formData.relative_phone}
+                  onChange={handleChange}
+                  placeholder="SĐT người thân"
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Quan hệ</label>
+                <select
+                  name="relative_relation"
+                  value={formData.relative_relation}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="Vợ-chồng">Vợ-chồng</option>
+                  <option value="Bố-Mẹ">Bố-Mẹ</option>
+                  <option value="Anh-em">Anh-em</option>
+                  <option value="Con-Cháu">Con-Cháu</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 1.3: Thông tin công việc */}
+            <div className="form-section-header" style={{ marginTop: '20px', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
+              <h4 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>1.3: Thông tin công việc</h4>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Số QĐ</label>
+                <input
+                  type="text"
+                  name="decision_number"
+                  value={formData.decision_number}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Ngày vào làm</label>
+                <input
+                  type="date"
+                  name="join_date"
+                  value={formData.join_date}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Ngày thành NVCT</label>
+                <input
+                  type="date"
+                  name="official_date"
+                  value={formData.official_date}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Vị trí công việc</label>
+                <input
+                  type="text"
+                  name="job_position"
+                  value={formData.job_position}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Phòng</label>
+                <input
+                  type="text"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Tổ/Đội</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <input
+                    type="text"
+                    name="team"
+                    value={formData.team}
+                    onChange={handleChange}
+                    placeholder="Đội"
+                    disabled={readOnly}
+                  />
+                  <input
+                    type="text"
+                    name="group_name"
+                    value={formData.group_name}
+                    onChange={handleChange}
+                    placeholder="Tổ"
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Loại nhân viên</label>
+                <select
+                  name="employee_type"
+                  value={formData.employee_type}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="MB NVCT">Nhân viên chính thức (MB NVCT)</option>
+                  <option value="NVGT">Nhân viên gián tiếp (NVGT)</option>
+                  <option value="NVTV">Nhân viên thời vụ (NVTV)</option>
+                  <option value="NVTT">Nhân viên trực tiếp (NVTT)</option>
+                  <option value="CBQL">Cán bộ quản lý (CBQL)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Loại lao động</label>
+                <input
+                  type="text"
+                  name="labor_type"
+                  value={formData.labor_type}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Chức danh công việc</label>
+                <input
+                  type="text"
+                  name="job_title"
+                  value={formData.job_title}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Ngày nhận chức danh</label>
+                <input
+                  type="date"
+                  name="date_received_job_title"
+                  value={formData.date_received_job_title}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Chức vụ hiện tại</label>
+                <select
+                  name="current_position"
+                  value={formData.current_position}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="Giám đốc">Giám đốc</option>
+                  <option value="Phó giám đốc">Phó giám đốc</option>
+                  <option value="Trưởng phòng">Trưởng phòng</option>
+                  <option value="Phó trưởng phòng">Phó trưởng phòng</option>
+                  <option value="Đội trưởng">Đội trưởng</option>
+                  <option value="Đội phó">Đội phó</option>
+                  <option value="Chủ đội">Chủ đội</option>
+                  <option value="Tổ trưởng">Tổ trưởng</option>
+                  <option value="Tổ phó">Tổ phó</option>
+                  <option value="Chủ tổ">Chủ tổ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Ngày bổ nhiệm</label>
+                <input
+                  type="date"
+                  name="appointment_date"
+                  value={formData.appointment_date}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Chức vụ kiêm nhiệm</label>
+                <input
+                  type="text"
+                  name="concurrent_position"
+                  value={formData.concurrent_position}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Chức danh kiêm nhiệm</label>
+                <input
+                  type="text"
+                  name="concurrent_job_title"
+                  value={formData.concurrent_job_title}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Thời gian kiêm nhiệm từ ngày</label>
+                <input
+                  type="date"
+                  name="concurrent_start_date"
+                  value={formData.concurrent_start_date}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Đến ngày</label>
+                <input
+                  type="date"
+                  name="concurrent_end_date"
+                  value={formData.concurrent_end_date}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Đối tượng tính phép</label>
+                <select
+                  name="leave_calculation_type"
+                  value={formData.leave_calculation_type}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="Có cộng dồn">Có cộng dồn</option>
+                  <option value="Không cộng dồn">Không cộng dồn</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Email ACV</label>
+                <input
+                  type="email"
+                  name="email_acv"
+                  value={formData.email_acv}
+                  onChange={handleChange}
+                  placeholder="example@acv.vn"
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Email cá nhân</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>SĐT Người thân</label>
+                <input
+                  type="text"
+                  name="relative_phone"
+                  value={formData.relative_phone}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                />
+              </div>
+              <div className="form-group">
+                <label>Quan hệ</label>
+                <select
+                  name="relative_relation"
+                  value={formData.relative_relation}
+                  onChange={handleChange}
+                  disabled={readOnly}
+                >
+                  <option value="Vợ-chồng">Vợ-chồng</option>
+                  <option value="Bố-Mẹ">Bố-Mẹ</option>
+                  <option value="Anh-em">Anh-em</option>
+                  <option value="Con-Cháu">Con-Cháu</option>
+                  <option value="Khác">Khác</option>
+                </select>
               </div>
             </div>
 

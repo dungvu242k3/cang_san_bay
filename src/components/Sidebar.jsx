@@ -5,7 +5,7 @@ function Sidebar() {
 
   const menuItems = [
     { path: '/dashboard', icon: 'fas fa-home', label: 'Tổng quan' },
-    { path: '/employees', icon: 'fas fa-users', label: 'Hồ sơ nhân sự' },
+    { path: '/employees', icon: 'fas fa-users', label: 'Lý lịch cá nhân' },
     { path: '/recruitment', icon: 'fas fa-user-plus', label: 'Tuyển dụng' },
     { path: '/salary', icon: 'fas fa-money-bill-wave', label: 'Lương & Phúc lợi' },
     { path: '/competency', icon: 'fas fa-chart-line', label: 'Khung năng lực' },
@@ -19,7 +19,7 @@ function Sidebar() {
     <aside className="sidebar">
       <div className="brand">
         <i className="fas fa-layer-group"></i>
-        <span>HR Manager</span>
+        <span>HRM Cảng Hàng Không</span>
       </div>
 
       {menuItems.map(item => {

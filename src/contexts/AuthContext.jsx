@@ -16,6 +16,16 @@ export function AuthProvider({ children }) {
                 console.error('Failed to parse user from local storage', e)
                 localStorage.removeItem('hr_user')
             }
+        } else {
+            // Auto-login with default admin user
+            const defaultUser = {
+                id: 1,
+                username: 'admin',
+                ho_va_ten: 'Quản trị viên',
+                role: 'admin'
+            }
+            setUser(defaultUser)
+            localStorage.setItem('hr_user', JSON.stringify(defaultUser))
         }
         setLoading(false)
     }, [])

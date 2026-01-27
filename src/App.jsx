@@ -14,7 +14,6 @@ const Recruitment = lazy(() => import('./pages/Recruitment'))
 const Salary = lazy(() => import('./pages/Salary'))
 const Tasks = lazy(() => import('./pages/Tasks'))
 const GradingPage = lazy(() => import('./pages/GradingPage'))
-const Login = lazy(() => import('./pages/Login'))
 
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
@@ -25,8 +24,6 @@ function App() {
       <AuthProvider>
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
-            <Route path="/login" element={<Login />} />
-
             <Route path="/*" element={
               <ProtectedRoute>
                 <Layout>

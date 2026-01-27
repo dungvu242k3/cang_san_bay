@@ -1,4 +1,4 @@
-# LUMI GLOBAL - Quản Lý Nhân Sự (React)
+# HRM Cảng Hàng Không - Quản Lý Nhân Sự (React)
 
 Ứng dụng quản lý nhân sự được xây dựng với React và Vite.
 
