@@ -1,7 +1,57 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 
 import './EmployeeDetail.css'
+
+const CRITERIA = [
+    {
+        section: 'A',
+        title: 'KHUNG ĐIỂM TRỪ [A = 20 - 1.1 - 1.2 - 1.3]',
+        maxScore: 20,
+        isDeduction: true,
+        items: [
+            { id: '1', title: 'Chấp hành Nội quy lao động', maxScore: 20, isHeader: true },
+            { id: '1.1', title: 'Nhóm hành vi Điều 23 - Nội quy lao động', range: '1 - 9' },
+            { id: '1.2', title: 'Nhóm hành vi Điều 24 - Nội quy lao động', range: '10 - 15' },
+            { id: '1.3', title: 'Nhóm hành vi Điều 25, Điều 26 - Nội quy lao động', range: '16 - 20' },
+        ]
+    },
+    {
+        section: 'B',
+        title: 'KHUNG ĐIỂM ĐẠT',
+        maxScore: 80,
+        items: [
+            { id: '2', title: 'Hiệu quả công việc', maxScore: 45, isHeader: true },
+            { id: '2.1', title: 'Khối lượng công việc', range: '1 - 10' },
+            { id: '2.2', title: 'Thời gian thực hiện, tiến độ hoàn thành', range: '1 - 10' },
+            { id: '2.3', title: 'Chất lượng công việc', maxScore: 15, isHeader: true },
+            { id: '2.3.1', title: 'Tính chính xác so với mục tiêu, yêu cầu đề ra (hiệu quả)', range: '1 - 5' },
+            { id: '2.3.2', title: 'Đúng phương pháp, quy trình, hướng dẫn (hiệu suất)', range: '1 - 5' },
+            { id: '2.3.3', title: 'Mức độ khả thi, có thể áp dụng (thực tiễn)', range: '1 - 5' },
+            { id: '2.4', title: 'Sắp xếp, quản lý công việc và ý thức tiết kiệm', maxScore: 10, isHeader: true },
+            { id: '2.4.1', title: 'Tính khoa học, hợp lý trong quản lý công việc', range: '1 - 5' },
+            { id: '2.4.2', title: 'Ý thức tiết kiệm (thời gian làm việc, nguồn lực, tài nguyên)', range: '1 - 5' },
+            { id: '3', title: 'Tinh thần trách nhiệm, ý thức hợp tác, linh hoạt và thích ứng', maxScore: 15, isHeader: true },
+            { id: '3.1', title: 'Tinh thần trách nhiệm', range: '1 - 5' },
+            { id: '3.2', title: 'Ý thức hợp tác và giải quyết vấn đề', range: '1 - 5' },
+            { id: '3.3', title: 'Khả năng chủ động thay đổi, thích ứng linh hoạt, kịp thời xử lý', range: '1 - 5' },
+            { id: '4', title: 'Hiệu quả quản lý, điều hành, chỉ đạo', maxScore: 20, isHeader: true },
+            { id: '4.1', title: 'Hiệu quả quản lý, chỉ đạo, điều hành công việc', range: '1 - 5' },
+            { id: '4.2', title: 'Thực hiện chế độ họp, hội nghị, đào tạo - huấn luyện', range: '1 - 5' },
+            { id: '4.3', title: 'Trách nhiệm thực hiện chế độ báo cáo, thông tin phản hồi với lãnh đạo', range: '1 - 5' },
+            { id: '4.4', title: 'Hiệu quả hoạt động của cơ quan đơn vị', range: '1 - 5' },
+        ]
+    },
+    {
+        section: 'C',
+        title: 'KHUNG ĐIỂM CỘNG',
+        maxScore: 15,
+        items: [
+            { id: '5', title: 'Điểm cộng động viên, khuyến khích (04 tiêu chí)', range: '1 - 15' }
+        ]
+    }
+]
 
 const DEFAULT_FORM_DATA = {
     ho_va_ten: '',
@@ -94,14 +144,23 @@ const DEFAULT_FORM_DATA = {
 }
 
 function EmployeeDetail({ employee, onSave, onCancel }) {
+    const { user: authUser } = useAuth()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
-    const [activeSection, setActiveSection] = useState('ly_lich') // ly_lich, lien_he, cong_viec, than_nhan, ...
+    const [activeSection, setActiveSection] = useState('ly_lich') // ly_lich, lien_he, cong_viec, grading, ...
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
 
     // Sub-data states
     const [familyMembers, setFamilyMembers] = useState([])
-    // Removed separate states for party/unions as they are now in formData
+
+    // Grading States
+    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
+    const [gradingReviewId, setGradingReviewId] = useState(null)
+    const [gradingStatus, setGradingStatus] = useState('draft')
+    const [selfAssessment, setSelfAssessment] = useState({})
+    const [supervisorAssessment, setSupervisorAssessment] = useState({})
+    const [selfComment, setSelfComment] = useState('')
+    const [supervisorComment, setSupervisorComment] = useState('')
 
     // Initialize data when employee changes
     useEffect(() => {
@@ -109,12 +168,117 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
             // Edit Mode or View Mode for existing employee
             loadEmployeeData(employee)
             setIsEditing(false)
+            // Load grading if active section is grading
+            if (activeSection === 'grading') loadGradingData()
         } else {
             // Create Mode (empty form)
             setFormData(DEFAULT_FORM_DATA)
             setIsEditing(true)
         }
     }, [employee])
+
+    useEffect(() => {
+        if (activeSection === 'grading' && employee) {
+            loadGradingData()
+        }
+    }, [activeSection, month, employee])
+
+    const calculateTotals = (data) => {
+        let scoreA = 20
+        const sectionA = CRITERIA.find(c => c.section === 'A')
+        sectionA.items.forEach(item => {
+            if (!item.isHeader) scoreA -= Number(data[item.id] || 0)
+        })
+        scoreA = Math.max(0, scoreA)
+
+        let scoreB = 0
+        const sectionB = CRITERIA.find(c => c.section === 'B')
+        sectionB.items.forEach(item => {
+            if (!item.isHeader) scoreB += Number(data[item.id] || 0)
+        })
+        scoreB = Math.min(80, scoreB)
+
+        let scoreC = 0
+        const sectionC = CRITERIA.find(c => c.section === 'C')
+        sectionC.items.forEach(item => {
+            scoreC += Number(data[item.id] || 0)
+        })
+        scoreC = Math.min(15, scoreC)
+
+        return { scoreA, scoreB, scoreC, total: scoreA + scoreB + scoreC }
+    }
+
+    const getGrade = (total) => {
+        if (total >= 101) return 'A1'
+        if (total >= 91) return 'A'
+        if (total >= 76) return 'B'
+        if (total >= 66) return 'C'
+        return 'D'
+    }
+
+    const loadGradingData = async () => {
+        if (!employee || !employee.employeeId) return
+
+        try {
+            const { data, error } = await supabase
+                .from('performance_reviews')
+                .select('*')
+                .eq('employee_code', employee.employeeId)
+                .eq('month', month)
+                .maybeSingle()
+
+            if (data) {
+                setGradingReviewId(data.id)
+                setGradingStatus(data.status || 'draft')
+                setSelfAssessment(data.self_assessment || {})
+                setSupervisorAssessment(data.supervisor_assessment || {})
+                setSelfComment(data.self_comment || '')
+                setSupervisorComment(data.supervisor_comment || '')
+            } else {
+                setGradingReviewId(null)
+                setGradingStatus('draft')
+                setSelfAssessment({})
+                setSupervisorAssessment({})
+                setSelfComment('')
+                setSupervisorComment('')
+            }
+        } catch (err) {
+            console.error("Error loading grading:", err)
+        }
+    }
+
+    const handleGradingSave = async (newStatus = 'draft') => {
+        if (!employee || !employee.employeeId) return
+
+        const selfTotals = calculateTotals(selfAssessment)
+        const supervisorTotals = calculateTotals(supervisorAssessment)
+
+        const payload = {
+            employee_code: employee.employeeId,
+            month,
+            self_assessment: selfAssessment,
+            supervisor_assessment: supervisorAssessment,
+            self_comment: selfComment,
+            supervisor_comment: supervisorComment,
+            self_total_score: selfTotals.total,
+            self_grade: getGrade(selfTotals.total),
+            supervisor_total_score: supervisorTotals.total,
+            supervisor_grade: getGrade(supervisorTotals.total),
+            status: newStatus
+        }
+
+        try {
+            if (gradingReviewId) {
+                await supabase.from('performance_reviews').update(payload).eq('id', gradingReviewId)
+            } else {
+                await supabase.from('performance_reviews').insert([payload])
+            }
+            alert('Đã lưu đánh giá!')
+            loadGradingData()
+        } catch (e) {
+            alert('Lỗi khi lưu: ' + e.message)
+        }
+    }
 
     const loadEmployeeData = (emp) => {
         setFormData(prev => ({
@@ -279,6 +443,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                         <li className={activeSection === 'ho_so_dang' ? 'active' : ''} onClick={() => setActiveSection('ho_so_dang')}>Hồ sơ Đảng</li>
                         <li className={activeSection === 'doan_thanh_nien' ? 'active' : ''} onClick={() => setActiveSection('doan_thanh_nien')}>Đoàn thanh niên</li>
                         <li className={activeSection === 'cong_doan' ? 'active' : ''} onClick={() => setActiveSection('cong_doan')}>Công đoàn</li>
+                        <li className={activeSection === 'grading' ? 'active' : ''} onClick={() => setActiveSection('grading')}>Đánh giá KPI</li>
                         <li className={activeSection === 'khac' ? 'active' : ''} onClick={() => setActiveSection('khac')}>Khác</li>
                     </ul>
                 </div>
@@ -914,6 +1079,224 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
         </div>
     )
 
+    const renderGrading = () => {
+        // Derived state for calculations
+        const selfTotals = calculateTotals(selfAssessment)
+        const supervisorTotals = calculateTotals(supervisorAssessment)
+        const selfGrade = getGrade(selfTotals.total)
+        const supervisorGrade = getGrade(supervisorTotals.total)
+
+        return (
+            <div className="section-content">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h3>Đánh giá KPI - Tháng {month}</h3>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                            type="month"
+                            value={month}
+                            onChange={(e) => setMonth(e.target.value)}
+                            className="form-control"
+                            style={{ width: 'auto' }}
+                        />
+                        <span className={`badge badge-${gradingStatus === 'submitted' ? 'warning' : gradingStatus === 'approved' ? 'success' : 'secondary'}`}>
+                            {gradingStatus === 'draft' ? 'Nháp' : gradingStatus === 'submitted' ? 'Đã nộp' : gradingStatus === 'approved' ? 'Đã duyệt' : gradingStatus}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Detail Table */}
+                <div className="table-wrapper">
+                    <table className="table table-bordered table-hover">
+                        <thead className="thead-light">
+                            <tr>
+                                <th style={{ width: '50%' }}>Tiêu chí đánh giá</th>
+                                <th style={{ width: '10%', textAlign: 'center' }}>Max</th>
+                                <th style={{ width: '15%', textAlign: 'center' }}>Tự ĐG</th>
+                                <th style={{ width: '15%', textAlign: 'center' }}>QL ĐG</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* Section A */}
+                            <tr style={{ background: '#fff3cd' }}>
+                                <td style={{ fontWeight: 'bold' }}>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
+                                <td className="text-center">20</td>
+                                <td className="text-center text-danger font-weight-bold">{selfTotals.scoreA}</td>
+                                <td className="text-center text-danger font-weight-bold">{supervisorTotals.scoreA}</td>
+                            </tr>
+                            {CRITERIA.find(c => c.section === 'A').items.map(item => (
+                                <tr key={item.id}>
+                                    <td style={{ paddingLeft: item.isHeader ? '10px' : '30px', fontWeight: item.isHeader ? 'bold' : 'normal' }}>
+                                        {item.id} {item.title}
+                                    </td>
+                                    <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
+                                    <td className="text-center">
+                                        {!item.isHeader && (
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm text-center"
+                                                value={selfAssessment[item.id] || ''}
+                                                onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                style={{ width: '80px', margin: '0 auto' }}
+                                            />
+                                        )}
+                                    </td>
+                                    <td className="text-center">
+                                        {!item.isHeader && (
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm text-center"
+                                                value={supervisorAssessment[item.id] || ''}
+                                                onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                style={{ width: '80px', margin: '0 auto' }}
+                                            />
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+
+                            {/* Section B */}
+                            <tr style={{ background: '#d4edda' }}>
+                                <td style={{ fontWeight: 'bold' }}>B. KHUNG ĐIỂM ĐẠT</td>
+                                <td className="text-center">80</td>
+                                <td className="text-center text-success font-weight-bold">{selfTotals.scoreB}</td>
+                                <td className="text-center text-success font-weight-bold">{supervisorTotals.scoreB}</td>
+                            </tr>
+                            {CRITERIA.find(c => c.section === 'B').items.map(item => (
+                                <tr key={item.id}>
+                                    <td style={{ paddingLeft: item.isHeader ? '10px' : '30px', fontWeight: item.isHeader ? 'bold' : 'normal' }}>
+                                        {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
+                                    </td>
+                                    <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
+                                    <td className="text-center">
+                                        {!item.isHeader && (
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm text-center"
+                                                value={selfAssessment[item.id] || ''}
+                                                onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                min="0" max="10"
+                                                style={{ width: '80px', margin: '0 auto' }}
+                                            />
+                                        )}
+                                    </td>
+                                    <td className="text-center">
+                                        {!item.isHeader && (
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm text-center"
+                                                value={supervisorAssessment[item.id] || ''}
+                                                onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                min="0" max="10"
+                                                style={{ width: '80px', margin: '0 auto' }}
+                                            />
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+
+                            {/* Section C */}
+                            <tr style={{ background: '#cce5ff' }}>
+                                <td style={{ fontWeight: 'bold' }}>C. KHUNG ĐIỂM CỘNG</td>
+                                <td className="text-center">15</td>
+                                <td className="text-center text-primary font-weight-bold">{selfTotals.scoreC}</td>
+                                <td className="text-center text-primary font-weight-bold">{supervisorTotals.scoreC}</td>
+                            </tr>
+                            {CRITERIA.find(c => c.section === 'C').items.map(item => (
+                                <tr key={item.id}>
+                                    <td style={{ paddingLeft: '10px' }}>{item.id} {item.title}</td>
+                                    <td className="text-center">{item.range}</td>
+                                    <td className="text-center">
+                                        <input
+                                            type="number"
+                                            className="form-control form-control-sm text-center"
+                                            value={selfAssessment[item.id] || ''}
+                                            onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                            min="0" max="15"
+                                            style={{ width: '80px', margin: '0 auto' }}
+                                        />
+                                    </td>
+                                    <td className="text-center">
+                                        <input
+                                            type="number"
+                                            className="form-control form-control-sm text-center"
+                                            value={supervisorAssessment[item.id] || ''}
+                                            onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                            min="0" max="15"
+                                            style={{ width: '80px', margin: '0 auto' }}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Summary Table */}
+                <table className="table table-bordered mb-4" style={{ marginBottom: '20px' }}>
+                    <thead className="thead-light">
+                        <tr>
+                            <th>Tiêu chí tổng hợp</th>
+                            <th className="text-center">Tự ĐG</th>
+                            <th className="text-center">Quản lý ĐG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Tổng điểm</td>
+                            <td className="text-center" style={{ fontWeight: 'bold', color: '#007bff' }}>{selfTotals.total}</td>
+                            <td className="text-center" style={{ fontWeight: 'bold', color: '#007bff' }}>{supervisorTotals.total}</td>
+                        </tr>
+                        <tr>
+                            <td>Xếp loại</td>
+                            <td className="text-center">
+                                <span className={`badge badge-${['A', 'A1'].includes(selfGrade) ? 'success' : selfGrade === 'B' ? 'primary' : 'warning'}`}>{selfGrade}</span>
+                            </td>
+                            <td className="text-center">
+                                <span className={`badge badge-${['A', 'A1'].includes(supervisorGrade) ? 'success' : supervisorGrade === 'B' ? 'primary' : 'warning'}`}>{supervisorGrade}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div className="row mt-3">
+                    <div className="col-md-6">
+                        <div className="form-group">
+                            <label>Giải trình / Ý kiến nhân viên:</label>
+                            <textarea
+                                className="form-control"
+                                rows={3}
+                                value={selfComment}
+                                onChange={e => setSelfComment(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="form-group">
+                            <label>Ý kiến quản lý:</label>
+                            <textarea
+                                className="form-control"
+                                rows={3}
+                                value={supervisorComment}
+                                onChange={e => setSupervisorComment(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-4 text-right" style={{ textAlign: 'right' }}>
+                    <button className="btn btn-primary" onClick={() => handleGradingSave('submitted')}>
+                        <i className="fas fa-save"></i> Lưu kết quả đánh giá
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+
+    // End of renderGrading
+
     return (
         <div className="employee-detail-container">
             <div className="detail-sidebar">
@@ -949,6 +1332,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     {activeSection === 'ho_so_dang' && renderDang()}
                     {activeSection === 'doan_thanh_nien' && renderDoan()}
                     {activeSection === 'cong_doan' && renderCongDoan()}
+                    {activeSection === 'grading' && renderGrading()}
                 </div>
             </div>
 
