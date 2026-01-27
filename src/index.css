@@ -1,0 +1,660 @@
+:root {
+  --primary: #003366;
+  /* Deep Navy (Uniforms/Night Sky) */
+  --primary-dark: #002244;
+  /* Darker Navy */
+  --secondary: #00a0e9;
+  /* Sky Blue (Flight) */
+  --accent: #ffcc00;
+  /* Safety Yellow (Runway markings) */
+  --bg: #eceff1;
+  /* Concrete/Cloud Grey */
+  --card: #ffffff;
+  --text: #263238;
+  /* Slate Dark (Signage) */
+  --text-light: #546e7a;
+  /* Slate Grey */
+  --border: #b0bec5;
+  /* Metal/Aluminium Grey */
+  --danger: #d32f2f;
+  /* Alert Red */
+  --success: #2e7d32;
+  /* Safe Green */
+  --warning: #fbc02d;
+  /* Caution Yellow */
+  --info: #0288d1;
+  /* Info Blue */
+  --shadow: 0 4px 12px rgba(55, 71, 79, 0.1);
+  --radius: 4px;
+  /* Sharper corners for industrial/signage look */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  /* Signage fonts */
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  letter-spacing: 0.3px;
+  /* Slightly clearer text */
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #003366 0%, #00509e 100%);
+  /* Navy Gradient */
+  color: #fff;
+  padding: 15px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  border-bottom: 3px solid var(--accent);
+  /* Runway stripe accent */
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo img {
+  height: 60px;
+  width: 60px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 5px;
+  object-fit: contain;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.logo h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.logo span {
+  color: var(--accent);
+  /* Safety Yellow text accent */
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+/* Container */
+.container {
+  display: flex;
+  min-height: calc(100vh - 80px);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  position: sticky;
+  top: 80px;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 25px;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: var(--text);
+  border-left: 3px solid transparent;
+  text-decoration: none;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background: rgba(0, 160, 233, 0.1);
+  /* Sky blue tint */
+  color: var(--secondary);
+  border-left-color: var(--secondary);
+}
+
+.nav-item i {
+  width: 25px;
+  margin-right: 12px;
+  font-size: 1.1rem;
+}
+
+/* Main Content */
+.main {
+  flex: 1;
+  padding: 25px;
+  overflow-y: auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-title i {
+  color: var(--primary);
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-info {
+  background: var(--info);
+  color: #fff;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 15px;
+}
+
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.stat-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: var(--shadow);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.stat-icon.green {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.stat-icon.orange {
+  background: linear-gradient(135deg, var(--secondary), #e5651d);
+}
+
+.stat-icon.blue {
+  background: linear-gradient(135deg, var(--accent), #1557b0);
+}
+
+.stat-icon.red {
+  background: linear-gradient(135deg, var(--danger), #b02a37);
+}
+
+.stat-info h3 {
+  font-size: 1.8rem;
+  color: var(--text);
+}
+
+.stat-info p {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+tr:hover {
+  background: var(--bg);
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+/* Modals */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--card);
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-light);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--card);
+  padding: 15px 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 2000;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.error {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Loading */
+.loadingState {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-light);
+}
+
+/* Badges */
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: var(--success);
+  color: #fff;
+}
+
+.badge-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.badge-warning {
+  background: var(--warning);
+  color: #000;
+}
+
+.badge-sg {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.badge-hn {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Search Box */
+.search-box {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-box input,
+.search-box select {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 10px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.3s;
+}
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.actions button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.actions .view {
+  background: var(--info);
+  color: #fff;
+}
+
+.actions .edit {
+  background: var(--warning);
+  color: #000;
+}
+
+.actions .delete {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Print Styles */
+/* Print Styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+    /* Setting margin to 0 hides default browser headers/footers */
+  }
+
+  /* 1. Hide ALL main layout elements effectively removing them from flow */
+  .header,
+  .sidebar,
+  .page-header,
+  .tabs,
+  .card,
+  /* Hides the table container */
+  .search-box,
+  .actions,
+  .loadingState,
+  .emptyState,
+  .modal:not(.show) {
+    /* Hide closed modals */
+    display: none !important;
+  }
+
+  /* 2. Reset Layout Containers to be invisible wrappers */
+  .container,
+  .main,
+  #root,
+  body,
+  html {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    position: static !important;
+    /* Let flow naturally */
+  }
+
+  /* 3. Style the specific Payslip Modal */
+  .modal.show {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 1.5cm !important;
+    /* Add internal padding since page margin is 0 */
+    background: white !important;
+    display: block !important;
+    visibility: visible !important;
+    z-index: 9999 !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal.show .modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+
+  /* Compact content specific for Payslip */
+  .modal-header {
+    padding: 10px 0 !important;
+    border-bottom: 2px solid #000 !important;
+    /* Black for better print contrast */
+    margin-bottom: 15px !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+  }
+
+  h3 {
+    font-size: 16pt !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  h4 {
+    font-size: 12pt !important;
+    margin: 10pt 0 5pt 0 !important;
+    border-bottom-color: #000 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  td,
+  th {
+    padding: 4pt 0 !important;
+    font-size: 10pt !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  th {
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+
+  /* Hide print-irrelevant elements in Modal */
+  .modal-close,
+  .modal-footer,
+  button,
+  .btn,
+  i.fas {
+    display: none !important;
+  }
+
+  /* Force single page if possible */
+  .modal-content {
+    page-break-inside: avoid !important;
+  }
+}
