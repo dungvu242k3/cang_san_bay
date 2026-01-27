@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import * as XLSX from 'xlsx'
-import EmployeeModal from '../components/EmployeeModal'
-import StatusHistoryView from '../components/StatusHistoryView'
+import EmployeeDetail from '../components/EmployeeDetail'
 import { supabase } from '../services/supabase'
-import { formatDateDisplay, mapAppToUser } from '../utils/helpers'
+import './Employees.css'
 
 function Employees() {
     const [employees, setEmployees] = useState([])
@@ -12,19 +10,11 @@ function Employees() {
     const [searchTerm, setSearchTerm] = useState('')
     const [filterBranch, setFilterBranch] = useState('')
     const [filterDept, setFilterDept] = useState('')
-    const [filterStatus, setFilterStatus] = useState('')
-    const [filterBirthMonth, setFilterBirthMonth] = useState('')
-    const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState(null)
-    const [isReadOnly, setIsReadOnly] = useState(false)
     const fileInputRef = useRef(null)
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
-    // Tab State
-    const [activeTab, setActiveTab] = useState('list') // 'list' or 'history'
-    const [profileTab, setProfileTab] = useState('personal') // 'personal', 'contact', 'work', 'family', 'party', 'youth', 'union'
-    const [profilesData, setProfilesData] = useState({}) // Store profile data by employee_code
-    const [familyData, setFamilyData] = useState({}) // Store family members by employee_code
+    // Scroll ref to top on selection
+    const detailRef = useRef(null)
 
     useEffect(() => {
         loadEmployees()
@@ -32,12 +22,17 @@ function Employees() {
 
     useEffect(() => {
         filterEmployees()
-    }, [employees, searchTerm, filterBranch, filterDept, filterStatus, filterBirthMonth])
+    }, [employees, searchTerm, filterBranch, filterDept])
+
+    useEffect(() => {
+        if (selectedEmployee && detailRef.current) {
+            detailRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [selectedEmployee])
 
     const loadEmployees = async () => {
         try {
             setLoading(true)
-            // Load from employee_profiles table
             const { data, error } = await supabase
                 .from('employee_profiles')
                 .select('*')
@@ -45,36 +40,30 @@ function Employees() {
 
             if (error) throw error
 
-            // Map employee_profiles to app format
             const mappedData = (data || []).map(profile => ({
                 id: profile.id,
                 employeeId: profile.employee_code || '',
-                ma_nhan_vien: profile.employee_code || '',
                 ho_va_ten: (profile.last_name || '') + ' ' + (profile.first_name || ''),
-                name: (profile.last_name || '') + ' ' + (profile.first_name || ''),
                 email: profile.email_acv || '',
                 sđt: profile.phone || '',
                 bo_phan: profile.department || '',
                 vi_tri: profile.job_position || profile.current_position || '',
-                trang_thai: 'Đang làm việc',
+                trang_thai: 'Đang làm việc', // Default logic could be improved
                 ngay_vao_lam: profile.join_date || '',
                 ngay_sinh: profile.date_of_birth || '',
                 gioi_tinh: profile.gender || '',
                 so_the: profile.card_number || '',
                 dia_chi_thuong_tru: profile.permanent_address || '',
                 que_quan: profile.hometown || '',
+                // Pass raw profile usage
+                ...profile
             }))
             setEmployees(mappedData)
 
-            // Store profiles for detailed views
-            const profilesMap = {}
-                ; (data || []).forEach(profile => {
-                    profilesMap[profile.employee_code] = profile
-                })
-            setProfilesData(profilesMap)
-
-            // Also load family members
-            await loadFamilyMembers()
+            // Auto-select first employee if none selected
+            if (!selectedEmployee && mappedData.length > 0) {
+                setSelectedEmployee(mappedData[0])
+            }
 
             setLoading(false)
         } catch (err) {
@@ -84,1342 +73,113 @@ function Employees() {
         }
     }
 
-    const loadProfiles = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('employee_profiles')
-                .select('*')
-
-            if (error) {
-                console.error("Error loading profiles:", error)
-                return
-            }
-
-            // Convert array to object keyed by employee_code for quick lookup
-            const profilesMap = {}
-                ; (data || []).forEach(profile => {
-                    profilesMap[profile.employee_code] = profile
-                })
-            setProfilesData(profilesMap)
-
-            // Also load family members
-            await loadFamilyMembers()
-        } catch (err) {
-            console.error("Error loading profiles:", err)
-        }
-    }
-
-    const loadFamilyMembers = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('family_members')
-                .select('*')
-                .order('created_at', { ascending: true })
-
-            if (error) {
-                console.error("Error loading family members:", error)
-                return
-            }
-
-            // Group family members by employee_code
-            const familyMap = {}
-                ; (data || []).forEach(member => {
-                    if (!familyMap[member.employee_code]) {
-                        familyMap[member.employee_code] = []
-                    }
-                    familyMap[member.employee_code].push(member)
-                })
-            setFamilyData(familyMap)
-        } catch (err) {
-            console.error("Error loading family members:", err)
-        }
-    }
-
     const filterEmployees = () => {
         let filtered = employees.filter(item => {
             if (!item) return false
-
-            const nameField = item.ho_va_ten || item.name || item.Tên || ""
+            const nameField = item.ho_va_ten || ''
             const matchSearch = !searchTerm ||
                 nameField.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (item.email && item.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (item.sđt && String(item.sđt || '').includes(searchTerm)) ||
-                (item.sdt && String(item.sdt || '').includes(searchTerm))
+                (item.employeeId && item.employeeId.toLowerCase().includes(searchTerm.toLowerCase()))
 
-            const matchBranch = !filterBranch || item.chi_nhanh === filterBranch
+            const matchBranch = !filterBranch || item.chi_nhanh === filterBranch // Note: chi_nhanh not always in profile
             const matchDept = !filterDept || item.bo_phan === filterDept
-            const matchStatus = !filterStatus || item.trang_thai === filterStatus || item.status === filterStatus
-
-            // Filter Birth Month
-            let matchMonth = true
-            if (filterBirthMonth) {
-                const dob = item.ngay_sinh || item.dob || ''
-                if (!dob) {
-                    matchMonth = false
-                } else {
-                    let month = -1
-                    // Handle YYYY-MM-DD
-                    if (dob.includes('-')) {
-                        const parts = dob.split('-')
-                        if (parts.length === 3) {
-                            // usually YYYY-MM-DD, month is parts[1]
-                            month = parseInt(parts[1], 10)
-                        }
-                    }
-                    // Handle DD/MM/YYYY
-                    else if (dob.includes('/')) {
-                        const parts = dob.split('/')
-                        if (parts.length === 3) {
-                            // usually DD/MM/YYYY, month is parts[1]
-                            month = parseInt(parts[1], 10)
-                        }
-                    }
-
-                    matchMonth = month === parseInt(filterBirthMonth, 10)
-                }
-            }
-
-            return matchSearch && matchBranch && matchDept && matchStatus && matchMonth
+            return matchSearch && matchBranch && matchDept
         })
-
         setFilteredEmployees(filtered)
     }
 
-    const handleDelete = async (id, name) => {
-        if (!confirm(`Bạn có chắc muốn xóa nhân viên "${name}"?\n\nHành động này không thể hoàn tác!`)) {
-            return
-        }
-
-        try {
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', id)
-
-            if (error) throw error
-
-            setEmployees(prev => prev.filter(item => item.id !== id))
-            alert(`Đã xóa nhân viên "${name}"`)
-        } catch (error) {
-            alert(`Lỗi: ${error.message}`)
-        }
+    const handleSaveEmployee = async (formData, id) => {
+        // Here we would implement the save logic similar to EmployeeModal
+        // For now, reload data
+        console.log("Saving employee...", formData)
+        // Assume save was successful
+        await loadEmployees()
     }
 
-    const downloadTemplate = () => {
-        const headers = [
-            'Mã nhân viên',
-            'Họ và tên',
-            'Email',
-            'SĐT',
-            'Chi nhánh',
-            'Bộ phận',
-            'Vị trí',
-            'Trạng thái',
-            'Ngày sinh',
-            'Ngày vào làm',
-            'Ngày lên chính thức',
-            'Ca làm việc',
-            'CCCD',
-            'Ngày cấp',
-            'Nơi cấp',
-            'Địa chỉ thường trú',
-            'Quê quán',
-            'Giới tính',
-            'Tình trạng hôn nhân',
-            'Link ảnh'
-        ]
-
-        const sampleData = [
-            [
-                'NV001',
-                'Nguyễn Văn A',
-                'nguyenvana@example.com',
-                '0901234567',
-                'HCM',
-                'Kinh doanh',
-                'Nhân viên',
-                'Chính thức',
-                '1995-01-01',
-                '2024-01-15',
-                '2024-03-15',
-                'Ca full',
-                '001234567890',
-                '2020-01-01',
-                'CA TP.HCM',
-                'TP.HCM',
-                '123 Đường ABC, Q.1, TP.HCM',
-                'Nam',
-                'Độc thân',
-                'https://drive.google.com/file/d/YOUR_FILE_ID/view'
-            ],
-            [
-                'NV002',
-                'Trần Thị B',
-                'tranthib@example.com',
-                '0912345678',
-                'Hà Nội',
-                'Marketing',
-                'Trưởng phòng',
-                'Chính thức',
-                '1990-05-15',
-                '2023-06-01',
-                '2023-08-01',
-                'Ca sáng',
-                '001234567891',
-                '2019-05-15',
-                'CA Hà Nội',
-                'Hà Nội',
-                '456 Phố XYZ, Hà Nội',
-                'Nữ',
-                'Đã kết hôn',
-                'https://i.imgur.com/example.jpg'
-            ]
-        ]
-
-        const escapeCell = (val) => {
-            return String(val || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-        }
-
-        const headerHtml = headers.map(h => `<th>${escapeCell(h)}</th>`).join('')
-        const rowsHtml = sampleData.map(row => {
-            const tds = row.map(cell => `<td>${escapeCell(cell)}</td>`).join('')
-            return `<tr>${tds}</tr>`
-        }).join('')
-
-        const tableHtml = `<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`
-
-        const htmlContent = `
-      <html xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head><meta charset="UTF-8"></head>
-        <body>${tableHtml}</body>
-      </html>
-    `
-
-        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' })
-        const link = document.createElement('a')
-        const url = URL.createObjectURL(blob)
-        link.href = url
-        link.download = 'Mau_import_nhan_su.xls'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-    }
-
-    const exportToExcel = () => {
-        if (filteredEmployees.length === 0) {
-            alert('Không có dữ liệu để xuất!')
-            return
-        }
-
-        const headers = [
-            'STT',
-            'Họ và tên',
-            'Email',
-            'SĐT',
-            'Chi nhánh',
-            'Bộ phận',
-            'Vị trí',
-            'Trạng thái',
-            'Ngày vào làm',
-            'CCCD',
-            'Ngày cấp',
-            'Nơi cấp',
-            'Quê quán',
-            'Giới tính',
-            'Tình trạng hôn nhân'
-        ]
-
-        const escapeCell = (val) => {
-            return String(val || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-        }
-
-        const rowsHtml = filteredEmployees.map((emp, idx) => {
-            const cells = [
-                idx + 1,
-                emp.ho_va_ten || emp.name || emp.Tên || '',
-                emp.email || '',
-                emp.sđt || emp.sdt || '',
-                emp.chi_nhanh || '',
-                emp.bo_phan || '',
-                emp.vi_tri || '',
-                emp.trang_thai || emp.status || '',
-                emp.ngay_vao_lam || '',
-                emp.cccd || '',
-                emp.ngay_cap || '',
-                emp.noi_cap || '',
-                emp.que_quan || '',
-                emp.gioi_tinh || '',
-                emp.tinh_trang_hon_nhan || ''
-            ]
-            const tds = cells.map(cell => `<td>${escapeCell(cell)}</td>`).join('')
-            return `<tr>${tds}</tr>`
-        }).join('')
-
-        const headerHtml = headers.map(h => `<th>${escapeCell(h)}</th>`).join('')
-        const tableHtml = `<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>`
-
-        // Bọc trong HTML để Excel mở định dạng bảng
-        const htmlContent = `
-      <html xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head><meta charset="UTF-8"></head>
-        <body>${tableHtml}</body>
-      </html>
-    `
-
-        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' })
-        const link = document.createElement('a')
-        const url = URL.createObjectURL(blob)
-        const date = new Date()
-        const dateStr = date.toISOString().split('T')[0]
-        link.href = url
-        link.download = `Danh_sach_nhan_su_${dateStr}.xls`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-    }
-
-    // Convert Google Drive link to direct image URL
-    const convertDriveLink = (url) => {
-        if (!url) return ''
-        const urlStr = String(url).trim()
-
-        // Check if it's a Google Drive link
-        if (urlStr.includes('drive.google.com')) {
-            // Extract file ID from various Drive URL formats
-            let fileId = ''
-
-            // Format: https://drive.google.com/file/d/FILE_ID/view
-            const match1 = urlStr.match(/\/file\/d\/([^\/]+)/)
-            if (match1) {
-                fileId = match1[1]
-            }
-
-            // Format: https://drive.google.com/open?id=FILE_ID
-            const match2 = urlStr.match(/[?\&]id=([^\&]+)/)
-            if (match2) {
-                fileId = match2[1]
-            }
-
-            // Format: https://drive.google.com/uc?id=FILE_ID
-            const match3 = urlStr.match(/\/uc\?.*id=([^\&]+)/)
-            if (match3) {
-                fileId = match3[1]
-            }
-
-            if (fileId) {
-                // Use thumbnail endpoint - works better with CORS
-                const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`
-                console.log('🔄 Converted Drive link:', urlStr, '→', directUrl)
-                console.log('   ℹ️ Alternative format: https://drive.google.com/uc?export=view&id=' + fileId)
-                return directUrl
-            } else {
-                console.warn('⚠️ Could not extract file ID from Drive link:', urlStr)
-            }
-        }
-
-        // If it's already a direct image URL (imgur, etc), return as is
-        if (urlStr) {
-            console.log('✅ Using direct URL:', urlStr)
-        }
-        return urlStr
-    }
-
-    const handleImportExcel = async (event) => {
-        const file = event.target.files?.[0]
-        if (!file) return
-
-        try {
-            setLoading(true)
-            const buffer = await file.arrayBuffer()
-            const workbook = XLSX.read(buffer, { type: 'array' })
-            const sheetName = workbook.SheetNames[0]
-            const sheet = workbook.Sheets[sheetName]
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
-
-            if (!rows || rows.length < 2) {
-                alert('File không có dữ liệu.')
-                setLoading(false)
-                return
-            }
-
-            // Normalize header: remove accents, spaces, special chars
-            const normalizeHeader = (str) => {
-                return String(str || '')
-                    .toLowerCase()
-                    .trim()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-                    .replace(/đ/g, 'd')
-                    .replace(/[^a-z0-9]/g, '_') // Replace non-alphanumeric with underscore
-                    .replace(/_+/g, '_') // Replace multiple underscores with single
-                    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
-            }
-
-            const headers = rows[0].map(h => normalizeHeader(h))
-            const dataRows = rows.slice(1).filter(r => r.some(cell => String(cell || '').trim() !== ''))
-
-            console.log('📋 Headers detected:', headers)
-            console.log('📊 Total data rows:', dataRows.length)
-
-            let imported = 0
-            let skipped = 0
-
-            for (const row of dataRows) {
-                const rowObj = {}
-                headers.forEach((h, idx) => {
-                    rowObj[h] = row[idx] || ''
-                })
-
-                const payload = {
-                    // id: rowObj['ma_nhan_vien'] || rowObj['ma_nv'] || rowObj['employee_id'] || rowObj['code'] || '', // Supabase typically auto-generates ID, or use it if UUID
-                    ho_va_ten: rowObj['ho_va_ten'] || rowObj['ho_ten'] || rowObj['ten'] || rowObj['ho_va_ten'] || rowObj['name'] || '',
-                    email: rowObj['email'] || '',
-                    sđt: rowObj['sdt'] || rowObj['so_dien_thoai'] || rowObj['dien_thoai'] || rowObj['phone'] || '',
-                    chi_nhanh: rowObj['chi_nhanh'] || rowObj['branch'] || '',
-                    bo_phan: rowObj['bo_phan'] || rowObj['phong_ban'] || rowObj['department'] || '',
-                    vi_tri: rowObj['vi_tri'] || rowObj['chuc_vu'] || rowObj['position'] || '',
-                    trang_thai: rowObj['trang_thai'] || rowObj['status'] || '',
-                    ngay_sinh: rowObj['ngay_sinh'] || rowObj['dob'] || rowObj['birth_date'] || '',
-                    ngay_vao_lam: rowObj['ngay_vao_lam'] || rowObj['ngay_bat_dau'] || '',
-                    ngay_lam_chinh_thuc: rowObj['ngay_len_chinh_thuc'] || rowObj['ngay_chinh_thuc'] || rowObj['ngay_lam_chinh_thuc'] || '',
-                    ca_lam_viec: rowObj['ca_lam_viec'] || rowObj['ca'] || rowObj['shift'] || '',
-                    cccd: rowObj['cccd'] || rowObj['cmnd'] || '',
-                    ngay_cap: rowObj['ngay_cap'] || '',
-                    noi_cap: rowObj['noi_cap'] || '',
-                    dia_chi_thuong_tru: rowObj['dia_chi_thuong_tru'] || rowObj['thuong_tru'] || rowObj['dia_chi'] || rowObj['address'] || '',
-                    que_quan: rowObj['que_quan'] || '',
-                    gioi_tinh: rowObj['gioi_tinh'] || rowObj['gender'] || '',
-                    tinh_trang_hon_nhan: rowObj['tinh_trang_hon_nhan'] || rowObj['hon_nhan'] || '',
-                    avatarUrl: convertDriveLink(rowObj['link_anh'] || rowObj['avatar'] || rowObj['anh'] || rowObj['hinh_anh'] || rowObj['image'] || '')
-                }
-
-
-                if (!payload.ho_va_ten) {
-                    console.log('⚠️ Skipped row (no name):', rowObj)
-                    skipped++
-                    continue
-                }
-
-                console.log('✅ Importing:', payload.ho_va_ten)
-
-                const dbPayload = mapAppToUser(payload)
-                dbPayload.password = dbPayload.password || '123456'
-
-                const { error } = await supabase.from('users').insert([dbPayload])
-
-                if (error) {
-                    console.error('❌ Insert error for:', payload.ho_va_ten, error)
-                    skipped++ // Count as skipped/failed
-                } else {
-                    imported++
-                }
-            }
-
-            await loadEmployees()
-            console.log(`📊 Import summary: ${imported} imported, ${skipped} skipped`)
-            alert(`Đã import ${imported} dòng.${skipped > 0 ? ` Bỏ qua/Lỗi ${skipped} dòng.` : ''}`)
-        } catch (error) {
-            console.error('❌ Import error:', error)
-            alert('Lỗi import: ' + error.message)
-        } finally {
-            setLoading(false)
-            if (fileInputRef.current) fileInputRef.current.value = ''
-        }
-    }
-
-    const handleSyncFirebase = async () => {
-        if (!confirm('Bạn có chắc muốn đồng bộ dữ liệu từ Firebase?\n\n- Nhân viên có sẵn (trùng Email hoặc Mã NV) sẽ được CẬP NHẬT.\n- Nhân viên mới sẽ được THÊM MỚI.\n')) {
-            return
-        }
-
-        setLoading(true)
-        try {
-            console.log("🔄 Fetching from Firebase...")
-            const response = await fetch('https://lumi-6dff7-default-rtdb.asia-southeast1.firebasedatabase.app/employees.json')
-            const data = await response.json()
-
-            if (!data) throw new Error('Không lấy được dữ liệu từ Firebase')
-
-            const users = Object.values(data)
-            console.log(`✅ Found ${users.length} users in Firebase. identifying duplicates...`)
-
-            let updated = 0
-            let inserted = 0
-            let errors = 0
-
-            for (const fbUser of users) {
-                try {
-                    // Firebase object keys match App State keys, so we can map directly
-                    const dbPayload = mapAppToUser(fbUser)
-
-                    if (!dbPayload.name) continue
-
-                    // Identity Check: Email or Employee Code
-                    let existingId = null
-
-                    if (dbPayload.email) {
-                        const { data: found } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('email', dbPayload.email)
-                            .maybeSingle()
-                        if (found) existingId = found.id
-                    }
-
-                    if (!existingId && dbPayload.employee_id) {
-                        const { data: found } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('employee_id', dbPayload.employee_id)
-                            .maybeSingle()
-                        if (found) existingId = found.id
-                    }
-
-                    if (existingId) {
-                        // Update
-                        const { error } = await supabase
-                            .from('users')
-                            .update(dbPayload)
-                            .eq('id', existingId)
-
-                        if (error) throw error
-                        updated++
-                    } else {
-                        // Insert
-                        dbPayload.password = '123456' // Default password
-                        const { error } = await supabase
-                            .from('users')
-                            .insert([dbPayload])
-
-                        if (error) throw error
-                        inserted++
-                    }
-
-                } catch (err) {
-                    console.error("❌ Sync error for user:", fbUser.ho_va_ten, err)
-                    errors++
-                }
-            }
-
-            await loadEmployees()
-            alert(`Đồng bộ hoàn tất!\n\n- Thay đổi/Cập nhật: ${updated}\n- Thêm mới: ${inserted}\n- Lỗi: ${errors}`)
-
-        } catch (err) {
-            console.error("Firebase sync error:", err)
-            alert('Lỗi đồng bộ: ' + err.message)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    // Get unique departments
     const departments = [...new Set(employees.map(e => e.bo_phan).filter(Boolean))].sort()
 
-    if (loading) {
-        return <div className="loadingState">Đang tải dữ liệu...</div>
-    }
-
     return (
-        <div>
-            <div className="page-header" style={{ marginBottom: '10px' }}>
-                <h1 className="page-title">
-                    <i className="fas fa-users"></i>
-                    Lý lịch cá nhân
-                </h1>
-                {activeTab === 'list' && (
-                    <div>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                                setSelectedEmployee(null)
-                                setIsModalOpen(true)
-                            }}
-                            style={{ marginRight: '10px' }}
-                        >
-                            <i className="fas fa-plus"></i>
-                            Tạo mới NV
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setIsImportModalOpen(true)}
-                            style={{ marginRight: '10px' }}
-                        >
-                            <i className="fas fa-file-upload"></i>
-                            Upload Excel
-                        </button>
-                        <button
-                            className="btn btn-warning"
-                            onClick={handleSyncFirebase}
-                            style={{ marginRight: '10px', color: '#fff', background: '#ff9800', borderColor: '#ff9800' }}
-                            title="Đồng bộ từ Firebase (Cập nhật nếu trùng)"
-                        >
-                            <i className="fas fa-sync-alt"></i>
-                            Đồng bộ Firebase
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={async () => {
-                                if (confirm('CẢNH BÁO: Hành động này sẽ XÓA TOÀN BỘ dữ liệu nhân viên và lịch sử trạng thái hiện tại.\n\nBạn có chắc muốn làm sạch hệ thống để nhập liệu thật không?')) {
-                                    try {
-                                        setLoading(true)
-                                        const { error } = await supabase.from('users').delete().neq('id', 0)
-                                        if (error) throw error
-                                        setEmployees([])
-                                        alert('Đã xóa sạch dữ liệu hệ thống!')
-                                        loadEmployees()
-                                    } catch (e) {
-                                        alert('Lỗi: ' + e.message)
-                                        setLoading(false)
-                                    }
-                                }
-                            }}
-                            style={{ marginRight: '10px', background: '#d32f2f', borderColor: '#d32f2f', color: '#fff' }}
-                            title="Xóa toàn bộ dữ liệu mẫu"
-                        >
-                            <i className="fas fa-trash-alt"></i>
-                            Làm sạch dữ liệu
-                        </button>
-                        <button
-                            className="btn btn-info"
-                            onClick={downloadTemplate}
-                            style={{
-                                marginRight: '10px',
-                                color: '#fff',
-                                background: '#17a2b8',
-                                borderColor: '#17a2b8'
-                            }}
-                        >
-                            <i className="fas fa-download"></i>
-                            Tải file mẫu
-                        </button>
-                        <button
-                            className="btn btn-success"
-                            onClick={exportToExcel}
-                            style={{
-                                marginRight: '10px',
-                                background: '#28a745',
-                                borderColor: '#28a745',
-                                color: '#fff'
-                            }}
-                        >
-                            <i className="fas fa-file-excel"></i>
-                            Xuất Excel
-                        </button>
-                        <button className="btn btn-primary" onClick={loadEmployees}>
-                            <i className="fas fa-sync"></i>
-                            Làm mới
+        <div className="employees-page">
+            {/* TOP PANEL: DETAIL VIEW */}
+            <div className="detail-panel" ref={detailRef}>
+                <div className="panel-header">
+                    <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
+                    <div className="panel-actions">
+                        <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
+                            <i className="fas fa-plus"></i> Thêm mới
                         </button>
                     </div>
-                )}
-            </div>
-
-            {/* Profile Section Tabs */}
-            {activeTab === 'list' && (
-                <div style={{
-                    marginBottom: '20px',
-                    borderBottom: '2px solid #e0e0e0',
-                    display: 'flex',
-                    gap: '5px',
-                    flexWrap: 'wrap'
-                }}>
-                    <button
-                        onClick={() => setProfileTab('personal')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'personal' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'personal' ? 'bold' : 'normal',
-                            color: profileTab === 'personal' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-id-card"></i> Lý lịch cá nhân
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('contact')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'contact' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'contact' ? 'bold' : 'normal',
-                            color: profileTab === 'contact' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-address-book"></i> Thông tin liên hệ
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('work')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'work' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'work' ? 'bold' : 'normal',
-                            color: profileTab === 'work' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-briefcase"></i> Thông tin công việc
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('family')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'family' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'family' ? 'bold' : 'normal',
-                            color: profileTab === 'family' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-users"></i> Thân nhân
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('party')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'party' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'party' ? 'bold' : 'normal',
-                            color: profileTab === 'party' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-flag"></i> Hồ sơ Đảng
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('youth')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'youth' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'youth' ? 'bold' : 'normal',
-                            color: profileTab === 'youth' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-handshake"></i> Đoàn thanh niên
-                    </button>
-                    <button
-                        onClick={() => setProfileTab('union')}
-                        style={{
-                            padding: '10px 20px',
-                            border: 'none',
-                            borderBottom: profileTab === 'union' ? '3px solid #1976d2' : '3px solid transparent',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: profileTab === 'union' ? 'bold' : 'normal',
-                            color: profileTab === 'union' ? '#1976d2' : '#666'
-                        }}>
-                        <i className="fas fa-hands-helping"></i> Công đoàn
-                    </button>
                 </div>
-            )}
-
-            <div className="main-tabs" style={{
-                borderBottom: '1px solid #ddd',
-                marginBottom: '20px',
-                display: 'flex',
-                gap: '5px'
-            }}>
-                <button
-                    onClick={() => setActiveTab('list')}
-                    style={{
-                        padding: '10px 20px',
-                        border: 'none',
-                        background: activeTab === 'list' ? '#fff' : '#f8f9fa',
-                        borderBottom: activeTab === 'list' ? '2px solid var(--primary)' : '2px solid transparent',
-                        fontWeight: activeTab === 'list' ? '600' : '500',
-                        color: activeTab === 'list' ? 'var(--primary)' : '#666',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    <i className="fas fa-list" style={{ marginRight: '8px' }}></i>
-                    Danh sách nhân viên
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    style={{
-                        padding: '10px 20px',
-                        border: 'none',
-                        background: activeTab === 'history' ? '#fff' : '#f8f9fa',
-                        borderBottom: activeTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent',
-                        fontWeight: activeTab === 'history' ? '600' : '500',
-                        color: activeTab === 'history' ? 'var(--primary)' : '#666',
-                        cursor: 'pointer',
-                        fontSize: '1rem'
-                    }}
-                >
-                    <i className="fas fa-history" style={{ marginRight: '8px' }}></i>
-                    Biến động trạng thái
-                </button>
+                <div className="detail-content">
+                    <EmployeeDetail
+                        employee={selectedEmployee}
+                        onSave={handleSaveEmployee}
+                        onCancel={() => {
+                            // If canceling creation, re-select the first one or clear
+                            if (!selectedEmployee && employees.length > 0) setSelectedEmployee(employees[0])
+                        }}
+                    />
+                </div>
             </div>
 
-            {
-                activeTab === 'list' ? (
-                    <>
-                        <div className="search-box">
-                            <input
-                                type="text"
-                                placeholder="Tìm theo Mã NV, Họ tên, SĐT, Email..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
-                                <option value="">Tất cả chi nhánh</option>
-                                <option value="HCM">HCM</option>
-                                <option value="Hà Nội">Hà Nội</option>
-                            </select>
-                            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                                <option value="">Tất cả phòng ban</option>
-                                {departments.map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
-                            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                                <option value="">Tất cả trạng thái</option>
-                                <option value="Thử việc">Thử việc</option>
-                                <option value="Chính thức">Chính thức</option>
-                                <option value="Tạm nghỉ">Tạm nghỉ</option>
-                                <option value="Nghỉ việc">Nghỉ việc</option>
-                            </select>
-                            <select value={filterBirthMonth} onChange={(e) => setFilterBirthMonth(e.target.value)}>
-                                <option value="">Tất cả tháng sinh</option>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                    <option key={month} value={month}>Tháng {month}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Personal Info Table */}
-                        {profileTab === 'personal' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '80px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Avatar</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Số thẻ</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Tên</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Giới tính</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày sinh</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Quốc tịch</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi sinh</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Dân tộc</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Tôn giáo</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Trình độ VH</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Hình thức ĐT</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>TT Hôn nhân</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Trình độ HV</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const avatar = emp.avatarDataUrl || emp.avatarUrl || emp.avatar || ''
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const nameParts = fullName.split(' ')
-                                                const ten = nameParts.pop() || ''
-                                                const ho = nameParts.join(' ') || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>
-                                                            {avatar ? (
-                                                                <img src={avatar} alt={fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => e.target.style.display = 'none'} />
-                                                            ) : (
-                                                                <span style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }}></span>
-                                                            )}
-                                                        </td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.card_number || emp.so_the || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{ho || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{ten || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{emp.gioi_tinh || emp.gender || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(emp.ngay_sinh || emp.dob)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.nationality || emp.quoc_tich || 'Việt Nam'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.place_of_birth || emp.noi_sinh || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.ethnicity || emp.dan_toc || 'Kinh'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.religion || emp.ton_giao || 'Không'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.education_level || emp.trinh_do_van_hoa || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.training_form || emp.hinh_thuc_dao_tao || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.marital_status_code || emp.tinh_trang_hon_nhan || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.academic_level_code || emp.trinh_do_hoc_van || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="btn-icon" title="Chấm điểm KPI" style={{ color: '#ff9800', border: '1px solid #ff9800', background: '#fff' }} onClick={() => window.open(`/grading/${emp.id}`, '_blank')}><i className="fas fa-star-half-alt"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                                <button className="delete" title="Xóa" onClick={() => handleDelete(emp.id, fullName)}><i className="fas fa-trash"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="17" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Contact Info Table */}
-                        {profileTab === 'contact' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ và tên</th>
-                                            <th style={{ minWidth: '250px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Địa chỉ thường trú</th>
-                                            <th style={{ minWidth: '250px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi đăng ký tạm trú</th>
-                                            <th style={{ minWidth: '200px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Quê quán</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Điện thoại</th>
-                                            <th style={{ minWidth: '180px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Email ACV</th>
-                                            <th style={{ minWidth: '180px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Email</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>SĐT người thân</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Quan hệ</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.permanent_address || emp.dia_chi_thuong_tru || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.temporary_address || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.hometown || emp.que_quan || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.phone || emp.sdt || emp.sđt || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.email_acv || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.email_personal || emp.email || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.relative_phone || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.relative_relation || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="12" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Work Info Table */}
-                        {profileTab === 'work' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ và tên</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Số QĐ</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày vào làm</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày thành NVCT</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Vị trí công việc</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Phòng</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Đội</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Tổ</th>
-                                            <th style={{ minWidth: '140px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Loại nhân viên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Loại lao động</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức danh công việc</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức vụ hiện tại</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày bổ nhiệm</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức vụ kiêm nhiệm</th>
-                                            <th style={{ minWidth: '140px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>ĐT tính phép</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.decision_number || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.join_date || emp.ngay_vao_lam)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.official_date || emp.ngay_lam_chinh_thuc)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.job_position || emp.vi_tri || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.department || emp.bo_phan || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.team || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.group_name || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.employee_type || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.labor_type || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.job_title || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.current_position || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.appointment_date)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.concurrent_position || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.leave_calculation_type || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="18" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Family Members Table */}
-                        {profileTab === 'family' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nhân viên</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ (thân nhân)</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Tên (thân nhân)</th>
-                                            <th style={{ minWidth: '100px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Giới tính</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày sinh</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Quan hệ</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Giảm trừ PT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Từ tháng</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(() => {
-                                            // Flatten family members with employee info
-                                            const allFamilyRows = []
-                                            let rowIndex = 0
-                                            filteredEmployees.forEach(emp => {
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const members = familyData[empCode] || []
-                                                members.forEach(member => {
-                                                    rowIndex++
-                                                    allFamilyRows.push(
-                                                        <tr key={member.id}>
-                                                            <td style={{ textAlign: 'center', padding: '4px 8px' }}>{rowIndex}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                            <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{member.last_name || '-'}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{member.first_name || '-'}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{member.gender || '-'}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{formatDateDisplay(member.date_of_birth)}</td>
-                                                            <td style={{ padding: '4px 8px' }}>{member.relationship || '-'}</td>
-                                                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                                                {member.is_dependent ? (
-                                                                    <i className="fas fa-check-circle" style={{ color: '#4caf50' }}></i>
-                                                                ) : (
-                                                                    <i className="fas fa-times-circle" style={{ color: '#ccc' }}></i>
-                                                                )}
-                                                            </td>
-                                                            <td style={{ padding: '4px 8px' }}>{member.is_dependent ? formatDateDisplay(member.dependent_from_month) : '-'}</td>
-                                                            <td style={{ padding: '4px 8px' }}>
-                                                                <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                    <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })
-                                            })
-                                            return allFamilyRows.length > 0 ? allFamilyRows : (
-                                                <tr><td colSpan="11" className="empty-state">Chưa có dữ liệu thân nhân</td></tr>
-                                            )
-                                        })()}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Party Records Table */}
-                        {profileTab === 'party' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ và tên</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Là Đảng viên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Số thẻ Đảng viên</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày kết nạp</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày chính thức</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức vụ Đảng</th>
-                                            <th style={{ minWidth: '180px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi sinh hoạt</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Trình độ chính trị</th>
-                                            <th style={{ minWidth: '200px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ghi chú</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                                            {profile.is_party_member ? (
-                                                                <i className="fas fa-check-circle" style={{ color: '#d32f2f' }}></i>
-                                                            ) : (
-                                                                <i className="fas fa-times-circle" style={{ color: '#ccc' }}></i>
-                                                            )}
-                                                        </td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.party_card_number || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.party_join_date)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.party_official_date)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.party_position || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.party_activity_location || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.political_education_level || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.party_notes || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="12" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Youth Union Table */}
-                        {profileTab === 'youth' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ và tên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Là Đoàn viên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thẻ Đoàn viên</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày vào Đoàn</th>
-                                            <th style={{ minWidth: '180px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi vào Đoàn</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức vụ Đoàn</th>
-                                            <th style={{ minWidth: '180px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi sinh hoạt Đoàn</th>
-                                            <th style={{ minWidth: '200px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ghi chú</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                                            {profile.is_youth_union_member ? (
-                                                                <i className="fas fa-check-circle" style={{ color: '#1976d2' }}></i>
-                                                            ) : (
-                                                                <i className="fas fa-times-circle" style={{ color: '#ccc' }}></i>
-                                                            )}
-                                                        </td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.youth_union_card_number || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.youth_union_join_date)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.youth_union_join_location || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.youth_union_position || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.youth_union_activity_location || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.youth_union_notes || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="11" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Trade Union Table */}
-                        {profileTab === 'union' && (
-                            <div className="card" style={{ overflowX: 'scroll', overflowY: 'auto', maxHeight: 'calc(100vh - 350px)', position: 'relative', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
-                                <table style={{ minWidth: '101%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ minWidth: '60px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>STT</th>
-                                            <th style={{ minWidth: '120px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Mã NV</th>
-                                            <th style={{ minWidth: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Họ và tên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Là Công đoàn viên</th>
-                                            <th style={{ minWidth: '130px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thẻ Công Đoàn</th>
-                                            <th style={{ minWidth: '140px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ngày vào Công đoàn</th>
-                                            <th style={{ minWidth: '160px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Chức vụ Công đoàn</th>
-                                            <th style={{ minWidth: '200px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Nơi sinh hoạt Công đoàn</th>
-                                            <th style={{ minWidth: '200px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Ghi chú</th>
-                                            <th style={{ width: '150px', whiteSpace: 'nowrap', padding: '4px 8px', position: 'sticky', top: 0, background: '#f8f9fa', zIndex: 10 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp, idx) => {
-                                                const fullName = emp.ho_va_ten || emp.name || ''
-                                                const empCode = emp.ma_nhan_vien || emp.employeeId || ''
-                                                const profile = profilesData[empCode] || {}
-                                                return (
-                                                    <tr key={emp.id || idx}>
-                                                        <td style={{ textAlign: 'center', padding: '4px 8px' }}>{idx + 1}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{empCode || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', fontWeight: '500' }}>{fullName || '-'}</td>
-                                                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                                            {profile.is_trade_union_member ? (
-                                                                <i className="fas fa-check-circle" style={{ color: '#ff5722' }}></i>
-                                                            ) : (
-                                                                <i className="fas fa-times-circle" style={{ color: '#ccc' }}></i>
-                                                            )}
-                                                        </td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.trade_union_card_number || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{formatDateDisplay(profile.trade_union_join_date)}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.trade_union_position || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.trade_union_activity_location || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>{profile.trade_union_notes || '-'}</td>
-                                                        <td style={{ padding: '4px 8px' }}>
-                                                            <div className="actions" style={{ justifyContent: 'center' }}>
-                                                                <button className="view" title="Xem" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(true); setIsModalOpen(true); }}><i className="fas fa-eye"></i></button>
-                                                                <button className="edit" title="Sửa" onClick={() => { setSelectedEmployee(emp); setIsReadOnly(false); setIsModalOpen(true); }}><i className="fas fa-edit"></i></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        ) : (
-                                            <tr><td colSpan="10" className="empty-state">{employees.length === 0 ? 'Chưa có dữ liệu nhân sự' : 'Không tìm thấy kết quả'}</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <StatusHistoryView employees={employees} onDataChange={() => { }} />
-                )
-            }
-
-            <EmployeeModal
-                employee={selectedEmployee}
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false)
-                    setSelectedEmployee(null)
-                    setIsReadOnly(false)
-                }}
-                onSave={loadEmployees}
-                readOnly={isReadOnly}
-            />
-
-            {
-                isImportModalOpen && (
-                    <div className="modal show" onClick={() => setIsImportModalOpen(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h3>
-                                    <i className="fas fa-file-upload"></i>
-                                    Upload Excel nhân sự
-                                </h3>
-                                <button className="modal-close" onClick={() => setIsImportModalOpen(false)}>&times;</button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="form-group">
-                                    <label>Chọn tệp (.xlsx, .xls, .csv)</label>
-                                    <input
-                                        type="file"
-                                        accept=".xlsx,.xls,.csv"
-                                        ref={fileInputRef}
-                                        onChange={(e) => {
-                                            handleImportExcel(e)
-                                            setIsImportModalOpen(false)
-                                        }}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Lưu ý định dạng cột (theo thứ tự):</label>
-                                    <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
-                                        <li>Họ và tên</li>
-                                        <li>Email</li>
-                                        <li>SĐT</li>
-                                        <li>Chi nhánh</li>
-                                        <li>Bộ phận</li>
-                                        <li>Vị trí</li>
-                                        <li>Trạng thái</li>
-                                        <li>Ngày vào làm</li>
-                                        <li>Ngày chính thức</li>
-                                        <li>CCCD</li>
-                                        <li>Ngày cấp</li>
-                                        <li>Nơi cấp</li>
-                                        <li>Quê quán</li>
-                                        <li>Giới tính</li>
-                                        <li>Tình trạng hôn nhân</li>
-                                        <li>Link ảnh (tùy chọn)</li>
-                                    </ul>
-                                    <small>Hàng đầu tiên nên là header với tên cột như trên. Cột "Link ảnh" có thể để trống nếu không có.</small>
-                                </div>
-                            </div>
-                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                                <button className="btn" onClick={() => setIsImportModalOpen(false)}>Đóng</button>
-                            </div>
-                        </div>
+            {/* BOTTOM PANEL: LIST VIEW */}
+            <div className="list-panel">
+                <div className="list-toolbar">
+                    <div className="search-group">
+                        <input
+                            type="text"
+                            placeholder="Tìm NV..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                            <option value="">Tất cả phòng ban</option>
+                            {departments.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
                     </div>
-                )
-            }
-        </div >
+                    <div className="list-stats">
+                        {filteredEmployees.length} / {employees.length} nhân viên
+                    </div>
+                </div>
+
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mã</th>
+                                <th>Họ Tên</th>
+                                <th>Phòng</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredEmployees.map(emp => (
+                                <tr
+                                    key={emp.id}
+                                    onClick={() => setSelectedEmployee(emp)}
+                                    className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
+                                >
+                                    <td>{emp.employeeId}</td>
+                                    <td>{emp.ho_va_ten}</td>
+                                    <td>{emp.bo_phan}</td>
+                                    <td>
+                                        <span className={`status-badge ${emp.trang_thai === 'Nghỉ việc' ? 'inactive' : 'active'}`}>
+                                            {emp.trang_thai}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredEmployees.length === 0 && (
+                                <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
     )
 }
 

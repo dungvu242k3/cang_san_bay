@@ -1,80 +1,84 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
+import { mapAppToUser } from '../utils/helpers'
+
+const DEFAULT_FORM_DATA = {
+  ho_va_ten: '',
+  employeeId: '',
+  email: '',
+  sđt: '',
+  chi_nhanh: 'HCM',
+  bo_phan: '',
+  vi_tri: '',
+  trang_thai: 'Thử việc',
+  ca_lam_viec: 'Ca full',
+  ngay_vao_lam: '',
+  ngay_lam_chinh_thuc: '',
+  cccd: '',
+  ngay_cap: '',
+  noi_cap: '',
+  dia_chi_thuong_tru: '',
+  que_quan: '',
+  ngay_sinh: '',
+  gioi_tinh: '',
+  tinh_trang_hon_nhan: '',
+  avatarDataUrl: '',
+  images: [],
+  files: [],
+  // New Profile Fields
+  nationality: 'Việt Nam',
+  place_of_birth: '',
+  ethnicity: 'Kinh',
+  religion: 'Không',
+  education_level: '12/12',
+  training_form: 'Phổ Thông',
+  academic_level_code: 'DH',
+  marital_status_code: 1, // Default 'Độc thân'
+  card_number: '',
+  // 1.2 Contact Info (match DB schema)
+  permanent_address: '',
+  temporary_address: '',
+  hometown: '',
+  phone: '',
+  email_acv: '',
+  email_personal: '',
+  relative_phone: '',
+  relative_relation: 'Khác',
+  // 1.3 Work Info
+  decision_number: '',
+  join_date: '',
+  official_date: '',
+  job_position: '',
+  department: '',
+  team: '',
+  group_name: '',
+  employee_type: 'MB NVCT',
+  labor_type: '',
+  job_title: '',
+  date_received_job_title: '',
+  current_position: 'Khác',
+  appointment_date: '',
+  concurrent_position: '',
+  concurrent_job_title: '',
+  concurrent_start_date: '',
+  concurrent_end_date: '',
+  leave_calculation_type: 'Có cộng dồn'
+}
 
 function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) {
-  const [formData, setFormData] = useState({
-    ho_va_ten: '',
-    employeeId: '',
-    email: '',
-    sđt: '',
-    chi_nhanh: 'HCM',
-    bo_phan: '',
-    vi_tri: '',
-    trang_thai: 'Thử việc',
-    ca_lam_viec: 'Ca full',
-    ngay_vao_lam: '',
-    ngay_lam_chinh_thuc: '',
-    cccd: '',
-    ngay_cap: '',
-    noi_cap: '',
-    dia_chi_thuong_tru: '',
-    que_quan: '',
-    ngay_sinh: '',
-    gioi_tinh: '',
-    tinh_trang_hon_nhan: '',
-    avatarDataUrl: '',
-    images: [],
-    files: [],
-    // New Profile Fields
-    nationality: 'Việt Nam',
-    place_of_birth: '',
-    ethnicity: 'Kinh',
-    religion: 'Không',
-    education_level: '12/12',
-    training_form: 'Phổ Thông',
-    academic_level_code: 'DH',
-    marital_status_code: 1, // Default 'Độc thân'
-    card_number: '',
-    // 1.2 Contact Info (match DB schema)
-    permanent_address: '',
-    temporary_address: '',
-    hometown: '',
-    phone: '',
-    email_acv: '',
-    email_personal: '',
-    relative_phone: '',
-    relative_relation: 'Khác',
-    // 1.3 Work Info
-    decision_number: '',
-    join_date: '',
-    official_date: '',
-    job_position: '',
-    department: '',
-    team: '',
-    group_name: '',
-    employee_type: 'MB NVCT',
-    labor_type: '',
-    job_title: '',
-    date_received_job_title: '',
-    current_position: 'Khác',
-    appointment_date: '',
-    concurrent_position: '',
-    concurrent_job_title: '',
-    concurrent_start_date: '',
-    concurrent_end_date: '',
-    leave_calculation_type: 'Có cộng dồn'
-  })
+  const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
   const [avatarPreview, setAvatarPreview] = useState('')
   const [imagesPreview, setImagesPreview] = useState([])
   const [filesPreview, setFilesPreview] = useState([])
 
-  // State for URL inputs
+  // State for url inputs
   const [avatarUrlInput, setAvatarUrlInput] = useState('')
   const [galleryUrlInput, setGalleryUrlInput] = useState('')
 
   useEffect(() => {
     if (employee) {
       setFormData({
+        ...DEFAULT_FORM_DATA, // Merge with defaults to ensure all keys exist
         ho_va_ten: employee.ho_va_ten || '',
         employeeId: employee.employeeId || '',
         email: employee.email || '',
@@ -158,8 +162,6 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
                 concurrent_start_date: data.concurrent_start_date || '',
                 concurrent_end_date: data.concurrent_end_date || '',
                 leave_calculation_type: data.leave_calculation_type || 'Có cộng dồn'
-                // Note: Some fields like avatar, name allow logic to sync or keep separate. 
-                // Here we keep the main user table as source for common fields.
               }))
             }
           })
@@ -170,30 +172,7 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
   }, [employee, isOpen])
 
   const resetForm = () => {
-    setFormData({
-      ho_va_ten: '',
-      employeeId: '',
-      email: '',
-      sđt: '',
-      chi_nhanh: 'HCM',
-      bo_phan: '',
-      vi_tri: '',
-      trang_thai: 'Thử việc',
-      ca_lam_viec: 'Ca full',
-      ngay_vao_lam: '',
-      ngay_lam_chinh_thuc: '',
-      cccd: '',
-      ngay_cap: '',
-      noi_cap: '',
-      dia_chi_thuong_tru: '',
-      que_quan: '',
-      ngay_sinh: '',
-      gioi_tinh: '',
-      tinh_trang_hon_nhan: '',
-      avatarDataUrl: '',
-      images: [],
-      files: []
-    })
+    setFormData(DEFAULT_FORM_DATA)
     setAvatarPreview('')
     setImagesPreview([])
     setFilesPreview([])
@@ -1367,4 +1346,3 @@ function EmployeeModal({ employee, isOpen, onClose, onSave, readOnly = false }) 
 }
 
 export default EmployeeModal
-

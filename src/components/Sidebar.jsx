@@ -5,14 +5,7 @@ function Sidebar() {
 
   const menuItems = [
     { path: '/dashboard', icon: 'fas fa-home', label: 'Tổng quan' },
-    { path: '/employees', icon: 'fas fa-users', label: 'Lý lịch cá nhân' },
-    { path: '/recruitment', icon: 'fas fa-user-plus', label: 'Tuyển dụng' },
-    { path: '/salary', icon: 'fas fa-money-bill-wave', label: 'Lương & Phúc lợi' },
-    { path: '/competency', icon: 'fas fa-chart-line', label: 'Khung năng lực' },
-    { path: '/kpi', icon: 'fas fa-bullseye', label: 'KPI' },
-    { path: '/grading', icon: 'fas fa-star-half-alt', label: 'Chấm điểm' },
-    { path: '/tasks', icon: 'fas fa-tasks', label: 'Công việc' },
-    { path: '/attendance', icon: 'fas fa-clock', label: 'Chấm công' }
+    { path: '/employees', icon: 'fas fa-users', label: 'Danh sách nhân viên' }
   ]
 
   return (

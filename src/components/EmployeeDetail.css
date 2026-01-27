@@ -1,0 +1,265 @@
+.employee-detail-container {
+    display: flex;
+    height: 100%;
+    background: #fff;
+    font-family: 'Inter', sans-serif;
+}
+
+.detail-sidebar {
+    width: 280px;
+    /* Wider for new content */
+    border-right: 1px solid #eee;
+    padding: 15px;
+    background: #fbfbfb;
+    /* Slightly lighter */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tools Header */
+.menu-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.menu-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+}
+
+.tool-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-tool {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #1976d2;
+    /* Primary blue */
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+}
+
+.btn-tool:hover {
+    text-decoration: underline;
+}
+
+/* Search Box */
+.menu-search {
+    margin-bottom: 15px;
+}
+
+.menu-search input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #eee;
+    border-radius: 20px;
+    /* Rounded pill shape */
+    font-size: 0.9rem;
+    background: #fff;
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+
+.menu-search input:focus {
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+    border-color: #1976d2;
+}
+
+/* Menu Groups */
+.menu-group {
+    margin-bottom: 5px;
+}
+
+.group-header {
+    font-weight: 600;
+    color: #444;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.group-header.collapsed {
+    color: #666;
+}
+
+.group-header.collapsed:hover {
+    background: #f0f0f0;
+}
+
+.group-content {
+    padding-left: 0;
+}
+
+.sub-group-header {
+    padding: 8px 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* List Items */
+.section-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.section-menu li {
+    padding: 8px 10px 8px 32px;
+    /* Indent */
+    cursor: pointer;
+    color: #666;
+    font-size: 0.9rem;
+    border-left: 3px solid transparent;
+    transition: color 0.2s, background 0.2s;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 2px;
+}
+
+.section-menu li:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.section-menu li.active {
+    background: #eef5ff;
+    color: #1976d2;
+    border-left-color: #1976d2;
+    font-weight: 500;
+}
+
+/* Main Content Area adjustments if needed */
+.detail-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.detail-toolbar {
+    padding: 15px 30px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.breadcrumbs {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.breadcrumbs span {
+    color: #333;
+    font-weight: 500;
+}
+
+.actions button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 5px 15px;
+}
+
+.actions button.primary {
+    color: #1976d2;
+}
+
+.actions button.warning {
+    color: #d32f2f;
+}
+
+.detail-form-area {
+    padding: 30px;
+    overflow-y: auto;
+    flex: 1;
+    background: #f9f9f9;
+}
+
+.section-content {
+    background: #fff;
+    padding: 30px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.section-content h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 30px;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+    background: #f9f9f9;
+    color: #333;
+    border-color: #eee;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #1976d2;
+    outline: none;
+}
