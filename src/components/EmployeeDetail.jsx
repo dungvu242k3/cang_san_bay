@@ -281,127 +281,109 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
     }
 
     const loadEmployeeData = (emp) => {
+        console.log('loadEmployeeData called with:', emp.ho_va_ten, emp.ngay_sinh || emp.date_of_birth, emp.gioi_tinh || emp.gender)
+        // emp already contains spread profile data from Employees.jsx mapping
         setFormData(prev => ({
             ...DEFAULT_FORM_DATA,
-            ho_va_ten: emp.ho_va_ten || '',
-            employeeId: emp.employeeId || '',
-            email: emp.email || '',
-            sđt: emp.sđt || emp.sdt || '',
+            // Basic info - mapped from both Vietnamese keys and DB columns
+            ho_va_ten: emp.ho_va_ten || ((emp.last_name || '') + ' ' + (emp.first_name || '')).trim() || '',
+            employeeId: emp.employeeId || emp.employee_code || '',
+            email: emp.email || emp.email_personal || '',
+            sđt: emp.sđt || emp.sdt || emp.phone || '',
             chi_nhanh: emp.chi_nhanh || 'HCM',
-            bo_phan: emp.bo_phan || '',
-            vi_tri: emp.vi_tri || '',
+            bo_phan: emp.bo_phan || emp.department || '',
+            vi_tri: emp.vi_tri || emp.job_position || emp.current_position || '',
             trang_thai: emp.trang_thai || emp.status || 'Thử việc',
             ca_lam_viec: emp.ca_lam_viec || 'Ca full',
-            ngay_vao_lam: emp.ngay_vao_lam || '',
-            ngay_lam_chinh_thuc: emp.ngay_lam_chinh_thuc || '',
+            ngay_vao_lam: emp.ngay_vao_lam || emp.join_date || '',
+            ngay_lam_chinh_thuc: emp.ngay_lam_chinh_thuc || emp.official_date || '',
             cccd: emp.cccd || '',
             ngay_cap: emp.ngay_cap || '',
             noi_cap: emp.noi_cap || '',
-            dia_chi_thuong_tru: emp.dia_chi_thuong_tru || '',
-            que_quan: emp.que_quan || '',
-            ngay_sinh: emp.ngay_sinh || emp.dob || '',
-            gioi_tinh: emp.gioi_tinh || '',
+            dia_chi_thuong_tru: emp.dia_chi_thuong_tru || emp.permanent_address || '',
+            que_quan: emp.que_quan || emp.hometown || '',
+            ngay_sinh: emp.ngay_sinh || emp.date_of_birth || '',
+            gioi_tinh: emp.gioi_tinh || emp.gender || '',
             tinh_trang_hon_nhan: emp.tinh_trang_hon_nhan || '',
             avatarDataUrl: emp.avatarDataUrl || emp.avatarUrl || emp.avatar || '',
-            // ... map other base fields
+            // Extended profile fields - already in emp from spread
+            nationality: emp.nationality || 'Việt Nam',
+            place_of_birth: emp.place_of_birth || '',
+            ethnicity: emp.ethnicity || 'Kinh',
+            religion: emp.religion || 'Không',
+            education_level: emp.education_level || '12/12',
+            training_form: emp.training_form || 'Phổ Thông',
+            academic_level_code: emp.academic_level_code || 'DH',
+            marital_status_code: emp.marital_status_code || 1,
+            card_number: emp.card_number || emp.so_the || '',
+            // Contact info
+            permanent_address: emp.permanent_address || emp.dia_chi_thuong_tru || '',
+            temporary_address: emp.temporary_address || '',
+            hometown: emp.hometown || emp.que_quan || '',
+            phone: emp.phone || emp.sđt || '',
+            email_acv: emp.email_acv || '',
+            email_personal: emp.email_personal || emp.email || '',
+            relative_phone: emp.relative_phone || '',
+            relative_relation: emp.relative_relation || 'Khác',
+            // Work info
+            decision_number: emp.decision_number || '',
+            join_date: emp.join_date || emp.ngay_vao_lam || '',
+            official_date: emp.official_date || emp.ngay_lam_chinh_thuc || '',
+            job_position: emp.job_position || emp.vi_tri || '',
+            department: emp.department || emp.bo_phan || '',
+            team: emp.team || '',
+            group_name: emp.group_name || '',
+            employee_type: emp.employee_type || 'MB NVCT',
+            labor_type: emp.labor_type || '',
+            job_title: emp.job_title || '',
+            date_received_job_title: emp.date_received_job_title || '',
+            current_position: emp.current_position || 'Khác',
+            appointment_date: emp.appointment_date || '',
+            concurrent_position: emp.concurrent_position || '',
+            concurrent_job_title: emp.concurrent_job_title || '',
+            concurrent_start_date: emp.concurrent_start_date || '',
+            concurrent_end_date: emp.concurrent_end_date || '',
+            leave_calculation_type: emp.leave_calculation_type || 'Có cộng dồn',
+            // Party records
+            is_party_member: emp.is_party_member || false,
+            party_card_number: emp.party_card_number || '',
+            party_join_date: emp.party_join_date || '',
+            party_official_date: emp.party_official_date || '',
+            party_position: emp.party_position || '',
+            party_activity_location: emp.party_activity_location || '',
+            political_education_level: emp.political_education_level || '',
+            party_notes: emp.party_notes || '',
+            // Youth union
+            is_youth_union_member: emp.is_youth_union_member || false,
+            youth_union_card_number: emp.youth_union_card_number || '',
+            youth_union_join_date: emp.youth_union_join_date || '',
+            youth_union_join_location: emp.youth_union_join_location || '',
+            youth_union_position: emp.youth_union_position || '',
+            youth_union_activity_location: emp.youth_union_activity_location || '',
+            youth_union_notes: emp.youth_union_notes || '',
+            // Trade union
+            is_trade_union_member: emp.is_trade_union_member || false,
+            trade_union_card_number: emp.trade_union_card_number || '',
+            trade_union_join_date: emp.trade_union_join_date || '',
+            trade_union_position: emp.trade_union_position || '',
+            trade_union_activity_location: emp.trade_union_activity_location || '',
+            trade_union_notes: emp.trade_union_notes || ''
         }))
 
-        // Fetch extended profile if we have an ID
-        if (emp.employeeId) {
-            setLoading(true)
-            supabase
-                .from('employee_profiles')
-                .select('*')
-                .eq('employee_code', emp.employeeId)
-                .single()
-                .then(({ data, error }) => {
-                    if (data && !error) {
-                        setFormData(prev => ({
-                            ...prev,
-                            nationality: data.nationality || 'Việt Nam',
-                            place_of_birth: data.place_of_birth || '',
-                            ethnicity: data.ethnicity || 'Kinh',
-                            religion: data.religion || 'Không',
-                            education_level: data.education_level || '12/12',
-                            training_form: data.training_form || 'Phổ Thông',
-                            academic_level_code: data.academic_level_code || 'DH',
-                            marital_status_code: data.marital_status_code || 1,
-                            card_number: data.card_number || '',
-                            permanent_address: data.permanent_address || '',
-                            temporary_address: data.temporary_address || '',
-                            hometown: data.hometown || '',
-                            phone: data.phone || '',
-                            email_acv: data.email_acv || '',
-                            email_personal: data.email_personal || '',
-                            relative_phone: data.relative_phone || '',
-                            relative_relation: data.relative_relation || 'Khác',
-                            // 1.3 Work
-                            decision_number: data.decision_number || '',
-                            join_date: data.join_date || '',
-                            official_date: data.official_date || '',
-                            job_position: data.job_position || '',
-                            department: data.department || '',
-                            team: data.team || '',
-                            group_name: data.group_name || '',
-                            employee_type: data.employee_type || 'MB NVCT',
-                            labor_type: data.labor_type || '',
-                            job_title: data.job_title || '',
-                            date_received_job_title: data.date_received_job_title || '',
-                            current_position: data.current_position || 'Khác',
-                            appointment_date: data.appointment_date || '',
-                            concurrent_position: data.concurrent_position || '',
-                            concurrent_job_title: data.concurrent_job_title || '',
-                            concurrent_start_date: data.concurrent_start_date || '',
-                            concurrent_end_date: data.concurrent_end_date || '',
-                            leave_calculation_type: data.leave_calculation_type || 'Có cộng dồn',
-
-                            // Map Party Info (Hồ sơ Đảng)
-                            is_party_member: data.is_party_member || false,
-                            party_card_number: data.party_card_number || '',
-                            party_join_date: data.party_join_date || '',
-                            party_official_date: data.party_official_date || '',
-                            party_position: data.party_position || '',
-                            party_activity_location: data.party_activity_location || '',
-                            political_education_level: data.political_education_level || '',
-                            party_notes: data.party_notes || '',
-
-                            // Map Youth Union (Đoàn thanh niên)
-                            is_youth_union_member: data.is_youth_union_member || false,
-                            youth_union_card_number: data.youth_union_card_number || '',
-                            youth_union_join_date: data.youth_union_join_date || '',
-                            youth_union_join_location: data.youth_union_join_location || '',
-                            youth_union_position: data.youth_union_position || '',
-                            youth_union_activity_location: data.youth_union_activity_location || '',
-                            youth_union_notes: data.youth_union_notes || '',
-
-                            // Map Trade Union (Công đoàn)
-                            is_trade_union_member: data.is_trade_union_member || false,
-                            trade_union_card_number: data.trade_union_card_number || '',
-                            trade_union_join_date: data.trade_union_join_date || '',
-                            trade_union_position: data.trade_union_position || '',
-                            trade_union_activity_location: data.trade_union_activity_location || '',
-                            trade_union_notes: data.trade_union_notes || ''
-                        }))
-                    }
-                    setLoading(false)
-                })
-
-            // Load Family Members
+        // Load Family Members if we have an employee code
+        if (emp.employeeId || emp.employee_code) {
+            const empCode = emp.employeeId || emp.employee_code
             const fetchFamily = async () => {
-                if (!emp.employeeId) return;
-
                 let { data, error } = await supabase
                     .from('family_members')
                     .select('*')
-                    .eq('employee_code', emp.employeeId)
+                    .eq('employee_code', empCode)
 
                 if (data) {
                     setFamilyMembers(data)
                 }
             }
             fetchFamily()
-
-            // Removed separate fetch calls for party/unions
         }
     }
 

@@ -89,11 +89,159 @@ function Employees() {
     }
 
     const handleSaveEmployee = async (formData, id) => {
-        // Here we would implement the save logic similar to EmployeeModal
-        // For now, reload data
-        console.log("Saving employee...", formData)
-        // Assume save was successful
-        await loadEmployees()
+        console.log('handleSaveEmployee called with formData:', {
+            ho_va_ten: formData.ho_va_ten,
+            ngay_sinh: formData.ngay_sinh,
+            gioi_tinh: formData.gioi_tinh,
+            nationality: formData.nationality,
+            ethnicity: formData.ethnicity,
+        })
+        console.log('Employee ID:', id)
+        try {
+            // Map formData to database columns
+            const nameParts = (formData.ho_va_ten || '').trim().split(' ')
+            const firstName = nameParts.pop() || ''
+            const lastName = nameParts.join(' ') || ''
+
+            const dbPayload = {
+                employee_code: formData.employeeId || null,
+                first_name: firstName,
+                last_name: lastName,
+                gender: formData.gioi_tinh || null,
+                date_of_birth: formData.ngay_sinh || null,
+                nationality: formData.nationality || 'Việt Nam',
+                place_of_birth: formData.place_of_birth || null,
+                ethnicity: formData.ethnicity || 'Kinh',
+                religion: formData.religion || 'Không',
+                education_level: formData.education_level || '12/12',
+                training_form: formData.training_form || 'Phổ Thông',
+                academic_level_code: formData.academic_level_code || 'DH',
+                marital_status_code: formData.marital_status_code || 1,
+                card_number: formData.card_number || null,
+                // Contact info
+                permanent_address: formData.permanent_address || formData.dia_chi_thuong_tru || null,
+                temporary_address: formData.temporary_address || null,
+                hometown: formData.hometown || formData.que_quan || null,
+                phone: formData.phone || formData.sđt || null,
+                email_acv: formData.email_acv || null,
+                email_personal: formData.email_personal || formData.email || null,
+                relative_phone: formData.relative_phone || null,
+                relative_relation: formData.relative_relation || 'Khác',
+                // Work info
+                decision_number: formData.decision_number || null,
+                join_date: formData.join_date || formData.ngay_vao_lam || null,
+                official_date: formData.official_date || formData.ngay_lam_chinh_thuc || null,
+                job_position: formData.job_position || formData.vi_tri || null,
+                department: formData.department || formData.bo_phan || null,
+                team: formData.team || null,
+                group_name: formData.group_name || null,
+                employee_type: formData.employee_type || 'MB NVCT',
+                labor_type: formData.labor_type || null,
+                job_title: formData.job_title || null,
+                date_received_job_title: formData.date_received_job_title || null,
+                current_position: formData.current_position || 'Khác',
+                appointment_date: formData.appointment_date || null,
+                concurrent_position: formData.concurrent_position || null,
+                concurrent_job_title: formData.concurrent_job_title || null,
+                concurrent_start_date: formData.concurrent_start_date || null,
+                concurrent_end_date: formData.concurrent_end_date || null,
+                leave_calculation_type: formData.leave_calculation_type || 'Có cộng dồn',
+                // Party records
+                is_party_member: formData.is_party_member || false,
+                party_card_number: formData.party_card_number || null,
+                party_join_date: formData.party_join_date || null,
+                party_official_date: formData.party_official_date || null,
+                party_position: formData.party_position || null,
+                party_activity_location: formData.party_activity_location || null,
+                political_education_level: formData.political_education_level || null,
+                party_notes: formData.party_notes || null,
+                // Youth union
+                is_youth_union_member: formData.is_youth_union_member || false,
+                youth_union_card_number: formData.youth_union_card_number || null,
+                youth_union_join_date: formData.youth_union_join_date || null,
+                youth_union_join_location: formData.youth_union_join_location || null,
+                youth_union_position: formData.youth_union_position || null,
+                youth_union_activity_location: formData.youth_union_activity_location || null,
+                youth_union_notes: formData.youth_union_notes || null,
+                // Trade union
+                is_trade_union_member: formData.is_trade_union_member || false,
+                trade_union_card_number: formData.trade_union_card_number || null,
+                trade_union_join_date: formData.trade_union_join_date || null,
+                trade_union_position: formData.trade_union_position || null,
+                trade_union_activity_location: formData.trade_union_activity_location || null,
+                trade_union_notes: formData.trade_union_notes || null,
+            }
+
+            console.log('dbPayload to save:', dbPayload)
+
+            let result
+            if (id) {
+                // Update existing employee
+                console.log('Updating employee with id:', id)
+                result = await supabase
+                    .from('employee_profiles')
+                    .update(dbPayload)
+                    .eq('id', id)
+                    .select()  // Add .select() to get the updated row back
+            } else {
+                // Insert new employee
+                result = await supabase
+                    .from('employee_profiles')
+                    .insert([dbPayload])
+                    .select()
+            }
+
+            console.log('Supabase result:', result)
+
+            if (result.error) {
+                console.error("Error saving employee:", result.error)
+                alert('Lỗi khi lưu: ' + result.error.message)
+                return
+            }
+
+            console.log('Save successful! Rows affected:', result.data)
+            alert('Đã lưu thành công!')
+
+            // Reload employees and update selectedEmployee
+            const { data: refreshedData } = await supabase
+                .from('employee_profiles')
+                .select('*')
+                .order('created_at', { ascending: true })
+
+            if (refreshedData) {
+                const mappedData = refreshedData.map(profile => ({
+                    id: profile.id,
+                    employeeId: profile.employee_code || '',
+                    ho_va_ten: (profile.last_name || '') + ' ' + (profile.first_name || ''),
+                    email: profile.email_acv || '',
+                    sđt: profile.phone || '',
+                    bo_phan: profile.department || '',
+                    vi_tri: profile.job_position || profile.current_position || '',
+                    trang_thai: 'Đang làm việc',
+                    ngay_vao_lam: profile.join_date || '',
+                    ngay_sinh: profile.date_of_birth || '',
+                    gioi_tinh: profile.gender || '',
+                    so_the: profile.card_number || '',
+                    dia_chi_thuong_tru: profile.permanent_address || '',
+                    que_quan: profile.hometown || '',
+                    ...profile
+                }))
+                setEmployees(mappedData)
+
+                // Re-select the updated employee
+                if (id) {
+                    const updatedEmp = mappedData.find(e => e.id === id)
+                    console.log('Updated employee data:', updatedEmp)
+                    if (updatedEmp) {
+                        // Force a state update with new object reference
+                        setSelectedEmployee({ ...updatedEmp })
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Error saving employee:", err)
+            alert('Lỗi khi lưu: ' + err.message)
+        }
     }
 
     const departments = [...new Set(employees.map(e => e.bo_phan).filter(Boolean))].sort()
