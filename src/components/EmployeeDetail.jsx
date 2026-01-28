@@ -156,7 +156,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
     // Grading States
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
     const [gradingReviewId, setGradingReviewId] = useState(null)
-    const [gradingStatus, setGradingStatus] = useState('draft')
+    const [isGradingLocked, setIsGradingLocked] = useState(false)
     const [selfAssessment, setSelfAssessment] = useState({})
     const [supervisorAssessment, setSupervisorAssessment] = useState({})
     const [selfComment, setSelfComment] = useState('')
@@ -229,14 +229,13 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
 
             if (data) {
                 setGradingReviewId(data.id)
-                setGradingStatus(data.status || 'draft')
                 setSelfAssessment(data.self_assessment || {})
                 setSupervisorAssessment(data.supervisor_assessment || {})
                 setSelfComment(data.self_comment || '')
                 setSupervisorComment(data.supervisor_comment || '')
+                setIsGradingLocked(true) // Lock if data exists
             } else {
                 setGradingReviewId(null)
-                setGradingStatus('draft')
                 setSelfAssessment({})
                 setSupervisorAssessment({})
                 setSelfComment('')
@@ -247,7 +246,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
         }
     }
 
-    const handleGradingSave = async (newStatus = 'draft') => {
+    const handleGradingSave = async () => {
         if (!employee || !employee.employeeId) return
 
         const selfTotals = calculateTotals(selfAssessment)
@@ -263,8 +262,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
             self_total_score: selfTotals.total,
             self_grade: getGrade(selfTotals.total),
             supervisor_total_score: supervisorTotals.total,
-            supervisor_grade: getGrade(supervisorTotals.total),
-            status: newStatus
+            supervisor_grade: getGrade(supervisorTotals.total)
         }
 
         try {
@@ -274,6 +272,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                 await supabase.from('performance_reviews').insert([payload])
             }
             alert('Đã lưu đánh giá!')
+            setIsGradingLocked(true) // Lock after save
             loadGradingData()
         } catch (e) {
             alert('Lỗi khi lưu: ' + e.message)
@@ -425,7 +424,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                         <li className={activeSection === 'ho_so_dang' ? 'active' : ''} onClick={() => setActiveSection('ho_so_dang')}>Hồ sơ Đảng</li>
                         <li className={activeSection === 'doan_thanh_nien' ? 'active' : ''} onClick={() => setActiveSection('doan_thanh_nien')}>Đoàn thanh niên</li>
                         <li className={activeSection === 'cong_doan' ? 'active' : ''} onClick={() => setActiveSection('cong_doan')}>Công đoàn</li>
-                        <li className={activeSection === 'grading' ? 'active' : ''} onClick={() => setActiveSection('grading')}>Đánh giá KPI</li>
+                        <li className={activeSection === 'grading' ? 'active' : ''} onClick={() => setActiveSection('grading')}>Chấm điểm</li>
                         <li className={activeSection === 'khac' ? 'active' : ''} onClick={() => setActiveSection('khac')}>Khác</li>
                     </ul>
                 </div>
@@ -1071,19 +1070,14 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
         return (
             <div className="section-content">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3>Đánh giá KPI - Tháng {month}</h3>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <input
-                            type="month"
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                            className="form-control"
-                            style={{ width: 'auto' }}
-                        />
-                        <span className={`badge badge-${gradingStatus === 'submitted' ? 'warning' : gradingStatus === 'approved' ? 'success' : 'secondary'}`}>
-                            {gradingStatus === 'draft' ? 'Nháp' : gradingStatus === 'submitted' ? 'Đã nộp' : gradingStatus === 'approved' ? 'Đã duyệt' : gradingStatus}
-                        </span>
-                    </div>
+                    <h3>Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                    <input
+                        type="month"
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                        className="form-control"
+                        style={{ width: 'auto' }}
+                    />
                 </div>
 
                 {/* Detail Table */}
@@ -1118,6 +1112,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                                 className="form-control form-control-sm text-center"
                                                 value={selfAssessment[item.id] || ''}
                                                 onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                disabled={isGradingLocked}
                                                 style={{ width: '80px', margin: '0 auto' }}
                                             />
                                         )}
@@ -1129,6 +1124,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                                 className="form-control form-control-sm text-center"
                                                 value={supervisorAssessment[item.id] || ''}
                                                 onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                disabled={isGradingLocked}
                                                 style={{ width: '80px', margin: '0 auto' }}
                                             />
                                         )}
@@ -1157,6 +1153,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                                 value={selfAssessment[item.id] || ''}
                                                 onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
                                                 min="0" max="10"
+                                                disabled={isGradingLocked}
                                                 style={{ width: '80px', margin: '0 auto' }}
                                             />
                                         )}
@@ -1169,6 +1166,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                                 value={supervisorAssessment[item.id] || ''}
                                                 onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
                                                 min="0" max="10"
+                                                disabled={isGradingLocked}
                                                 style={{ width: '80px', margin: '0 auto' }}
                                             />
                                         )}
@@ -1194,6 +1192,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                             value={selfAssessment[item.id] || ''}
                                             onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
                                             min="0" max="15"
+                                            disabled={isGradingLocked}
                                             style={{ width: '80px', margin: '0 auto' }}
                                         />
                                     </td>
@@ -1204,6 +1203,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                             value={supervisorAssessment[item.id] || ''}
                                             onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
                                             min="0" max="15"
+                                            disabled={isGradingLocked}
                                             style={{ width: '80px', margin: '0 auto' }}
                                         />
                                     </td>
@@ -1249,6 +1249,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 rows={3}
                                 value={selfComment}
                                 onChange={e => setSelfComment(e.target.value)}
+                                disabled={isGradingLocked}
                                 style={{ width: '100%' }}
                             />
                         </div>
@@ -1261,6 +1262,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 rows={3}
                                 value={supervisorComment}
                                 onChange={e => setSupervisorComment(e.target.value)}
+                                disabled={isGradingLocked}
                                 style={{ width: '100%' }}
                             />
                         </div>
@@ -1268,9 +1270,15 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                 </div>
 
                 <div className="mt-4 text-right" style={{ textAlign: 'right' }}>
-                    <button className="btn btn-primary" onClick={() => handleGradingSave('submitted')}>
-                        <i className="fas fa-save"></i> Lưu kết quả đánh giá
-                    </button>
+                    {isGradingLocked ? (
+                        <button className="btn btn-warning" onClick={() => setIsGradingLocked(false)}>
+                            <i className="fas fa-edit"></i> Sửa
+                        </button>
+                    ) : (
+                        <button className="btn btn-primary" onClick={() => handleGradingSave()}>
+                            <i className="fas fa-save"></i> Lưu
+                        </button>
+                    )}
                 </div>
             </div>
         )

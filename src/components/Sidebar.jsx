@@ -4,7 +4,6 @@ function Sidebar() {
   const location = useLocation()
 
   const menuItems = [
-    { path: '/dashboard', icon: 'fas fa-home', label: 'Tổng quan' },
     { path: '/employees', icon: 'fas fa-users', label: 'Danh sách nhân viên' }
   ]
 
