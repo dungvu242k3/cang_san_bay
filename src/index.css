@@ -104,7 +104,8 @@ body {
 /* Container */
 .container {
   display: flex;
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 130px);
+  /* Header 80px + TopNavBar ~50px */
 }
 
 /* Sidebar */
@@ -114,8 +115,9 @@ body {
   border-right: 1px solid var(--border);
   padding: 20px 0;
   position: sticky;
-  top: 80px;
-  height: calc(100vh - 80px);
+  top: 130px;
+  /* Below header and TopNavBar */
+  height: calc(100vh - 130px);
   overflow-y: auto;
 }
 
@@ -147,7 +149,7 @@ body {
 /* Main Content */
 .main {
   flex: 1;
-  padding: 25px;
+  padding: 0;
   overflow-y: auto;
 }
 

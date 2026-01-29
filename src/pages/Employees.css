@@ -1,11 +1,20 @@
 .employees-page {
     display: flex;
-    flex-direction: column;
-    height: calc(100vh - 60px);
-    /* Adjust based on Header height */
-    gap: 15px;
-    padding: 15px;
+    flex-direction: row;
+    height: calc(100vh - 130px);
+    /* Adjust based on Header + TopNavBar height */
+    gap: 0;
     background: #f0f2f5;
+}
+
+/* Employees Content - Right side */
+.employees-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    overflow-y: auto;
 }
 
 /* Top Panel */
@@ -13,7 +22,7 @@
     flex: 3;
     /* Takes significantly more space */
     background: #fff;
-    border-radius: 8px;
+    border-radius: 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
@@ -22,7 +31,7 @@
 }
 
 .panel-header {
-    padding: 10px 20px;
+    padding: 8px 15px;
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
@@ -47,7 +56,8 @@
     flex: 1;
     /* Takes less space */
     background: #fff;
-    border-radius: 8px;
+    border-radius: 0;
+    border-top: 10px solid #f0f2f5;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
@@ -56,7 +66,7 @@
 }
 
 .list-toolbar {
-    padding: 10px 20px;
+    padding: 8px 15px;
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;

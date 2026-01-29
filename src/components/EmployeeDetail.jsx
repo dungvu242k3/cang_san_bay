@@ -143,12 +143,15 @@ const DEFAULT_FORM_DATA = {
     trade_union_notes: ''
 }
 
-function EmployeeDetail({ employee, onSave, onCancel }) {
+function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange }) {
     const { user: authUser } = useAuth()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
-    const [activeSection, setActiveSection] = useState('ly_lich') // ly_lich, lien_he, cong_viec, grading, ...
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+
+    // Use internal state if no external control
+    const setActiveSection = onSectionChange || (() => { })
 
     // Sub-data states
     const [familyMembers, setFamilyMembers] = useState([])
@@ -399,6 +402,46 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
         setIsEditing(false)
     }
 
+    const renderActions = () => (
+        <div className="section-actions" style={{
+            position: 'absolute',
+            top: '8px',
+            right: '15px',
+            zIndex: 100,
+            background: 'rgba(255,255,255,0.5)',
+            padding: '2px 8px',
+            borderRadius: '4px'
+        }}>
+            {!isEditing ? (
+                <button className="btn btn-link primary"
+                    onClick={() => setIsEditing(true)}
+                    style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                >
+                    <i className="fas fa-edit"></i> Sửa
+                </button>
+            ) : (
+                <div style={{ display: 'flex', gap: '5px' }}>
+                    <button className="btn btn-link warning"
+                        onClick={() => {
+                            setIsEditing(false)
+                            if (employee) loadEmployeeData(employee)
+                            else onCancel()
+                        }}
+                        style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                    >
+                        <i className="fas fa-times"></i> Hủy
+                    </button>
+                    <button className="btn btn-link primary"
+                        onClick={handleSubmit}
+                        style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                    >
+                        <i className="fas fa-save"></i> Lưu
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+
     const renderSectionMenu = () => (
         <div className="section-menu">
             <div className="menu-tools">
@@ -409,7 +452,12 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                 </div>
             </div>
             <div className="menu-search">
-                <input type="text" placeholder="Tìm mục..." />
+                <input
+                    type="text"
+                    placeholder="Tìm mục..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </div>
 
             <div className="menu-group">
@@ -417,15 +465,27 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                 <div className="group-content open">
                     <div className="sub-group-header"><i className="fas fa-caret-down"></i> Sơ yếu lý lịch</div>
                     <ul>
-                        <li className={activeSection === 'ly_lich' ? 'active' : ''} onClick={() => setActiveSection('ly_lich')}>Lý lịch cá nhân</li>
-                        <li className={activeSection === 'lien_he' ? 'active' : ''} onClick={() => setActiveSection('lien_he')}>Thông tin liên hệ</li>
-                        <li className={activeSection === 'cong_viec' ? 'active' : ''} onClick={() => setActiveSection('cong_viec')}>Thông tin công việc</li>
-                        <li className={activeSection === 'than_nhan' ? 'active' : ''} onClick={() => setActiveSection('than_nhan')}>Thân nhân</li>
-                        <li className={activeSection === 'ho_so_dang' ? 'active' : ''} onClick={() => setActiveSection('ho_so_dang')}>Hồ sơ Đảng</li>
-                        <li className={activeSection === 'doan_thanh_nien' ? 'active' : ''} onClick={() => setActiveSection('doan_thanh_nien')}>Đoàn thanh niên</li>
-                        <li className={activeSection === 'cong_doan' ? 'active' : ''} onClick={() => setActiveSection('cong_doan')}>Công đoàn</li>
-                        <li className={activeSection === 'grading' ? 'active' : ''} onClick={() => setActiveSection('grading')}>Chấm điểm</li>
-                        <li className={activeSection === 'khac' ? 'active' : ''} onClick={() => setActiveSection('khac')}>Khác</li>
+                        {[
+                            { id: 'ly_lich', label: 'Lý lịch cá nhân' },
+                            { id: 'lien_he', label: 'Thông tin liên hệ' },
+                            { id: 'cong_viec', label: 'Thông tin công việc' },
+                            { id: 'than_nhan', label: 'Thân nhân' },
+                            { id: 'ho_so_dang', label: 'Hồ sơ Đảng' },
+                            { id: 'doan_thanh_nien', label: 'Đoàn thanh niên' },
+                            { id: 'cong_doan', label: 'Công đoàn' },
+                            { id: 'grading', label: 'Chấm điểm' },
+                            { id: 'khac', label: 'Khác' },
+                        ].filter(item =>
+                            item.label.toLowerCase().includes(searchTerm.toLowerCase())
+                        ).map(item => (
+                            <li
+                                key={item.id}
+                                className={activeSection === item.id ? 'active' : ''}
+                                onClick={() => setActiveSection(item.id)}
+                            >
+                                {item.label}
+                            </li>
+                        ))}
                     </ul>
                 </div>
             </div>
@@ -452,11 +512,11 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
     )
 
     const renderThanNhan = () => (
-        <div className="section-content">
+        <div className="section-content" style={{ background: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3>Thân nhân</h3>
-                <button className="btn btn-sm btn-outline-primary"><i className="fas fa-plus"></i> Thêm</button>
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="table-wrapper">
                 <table className="table table-bordered">
@@ -477,20 +537,30 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                     <td>{`${mem.last_name || ''} ${mem.first_name || ''}`.trim()}</td>
                                     <td>{mem.date_of_birth}</td>
                                     <td>{mem.gender}</td>
-                                    <td className="text-center">
+                                    <td>
                                         {mem.is_dependent ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                                <span className="badge badge-success" style={{ padding: '6px 12px', fontSize: '0.9rem' }}>
-                                                    <i className="fas fa-check"></i> Có
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                                                <span style={{
+                                                    background: '#e8f5e9',
+                                                    color: '#2e7d32',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '500',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    <i className="fas fa-check" style={{ fontSize: '0.65rem' }}></i> Đang giảm trừ
                                                 </span>
                                                 {mem.dependent_from_month && (
-                                                    <small className="text-muted" style={{ whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: '0.7rem', color: '#999' }}>
                                                         Từ: {mem.dependent_from_month}
-                                                    </small>
+                                                    </span>
                                                 )}
                                             </div>
                                         ) : (
-                                            <span className="text-muted">-</span>
+                                            <span style={{ color: '#ccc' }}>-</span>
                                         )}
                                     </td>
                                 </tr>
@@ -511,6 +581,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3>Hồ sơ Đảng</h3>
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', fontWeight: 600 }}>
@@ -549,9 +620,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="grid-2">
                         <div className="form-group">
                             <label>Ngày kết nạp</label>
                             <input
@@ -572,45 +640,41 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Nơi sinh hoạt</label>
-                        <input
-                            type="text"
-                            name="party_activity_location"
-                            value={formData.party_activity_location || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                        />
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Trình độ chính trị</label>
-                        <select
-                            name="political_education_level"
-                            value={formData.political_education_level || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                        >
-                            <option value="">-- Chọn trình độ --</option>
-                            <option value="Sơ cấp">Sơ cấp</option>
-                            <option value="Trung cấp">Trung cấp</option>
-                            <option value="Cao cấp">Cao cấp</option>
-                            <option value="Cử nhân">Cử nhân</option>
-                        </select>
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Ghi chú</label>
-                        <textarea
-                            name="party_notes"
-                            value={formData.party_notes || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                            rows={3}
-                            style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px', width: '100%' }}
-                        />
+                        <div className="form-group full-width">
+                            <label>Nơi sinh hoạt</label>
+                            <input
+                                type="text"
+                                name="party_activity_location"
+                                value={formData.party_activity_location || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                            />
+                        </div>
+                        <div className="form-group full-width">
+                            <label>Trình độ chính trị</label>
+                            <select
+                                name="political_education_level"
+                                value={formData.political_education_level || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                            >
+                                <option value="">-- Chọn trình độ --</option>
+                                <option value="Sơ cấp">Sơ cấp</option>
+                                <option value="Trung cấp">Trung cấp</option>
+                                <option value="Cao cấp">Cao cấp</option>
+                                <option value="Cử nhân">Cử nhân</option>
+                            </select>
+                        </div>
+                        <div className="form-group full-width">
+                            <label>Ghi chú</label>
+                            <textarea
+                                name="party_notes"
+                                value={formData.party_notes || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                rows={3}
+                            />
+                        </div>
                     </div>
                 </>
             )}
@@ -622,6 +686,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3>Đoàn thanh niên</h3>
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', fontWeight: 600 }}>
@@ -660,9 +725,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="grid-2">
                         <div className="form-group">
                             <label>Ngày vào Đoàn</label>
                             <input
@@ -683,29 +745,26 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Nơi sinh hoạt</label>
-                        <input
-                            type="text"
-                            name="youth_union_activity_location"
-                            value={formData.youth_union_activity_location || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                        />
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Ghi chú</label>
-                        <textarea
-                            name="youth_union_notes"
-                            value={formData.youth_union_notes || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                            rows={3}
-                            style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px', width: '100%' }}
-                        />
+                        <div className="form-group full-width">
+                            <label>Nơi sinh hoạt</label>
+                            <input
+                                type="text"
+                                name="youth_union_activity_location"
+                                value={formData.youth_union_activity_location || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                            />
+                        </div>
+                        <div className="form-group full-width">
+                            <label>Ghi chú</label>
+                            <textarea
+                                name="youth_union_notes"
+                                value={formData.youth_union_notes || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                rows={3}
+                            />
+                        </div>
                     </div>
                 </>
             )}
@@ -717,6 +776,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3>Công đoàn</h3>
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="form-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', fontWeight: 600 }}>
@@ -755,9 +815,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="grid-2">
                         <div className="form-group">
                             <label>Ngày gia nhập</label>
                             <input
@@ -778,18 +835,16 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                                 disabled={!isEditing}
                             />
                         </div>
-                    </div>
-
-                    <div className="form-group full-width">
-                        <label>Ghi chú</label>
-                        <textarea
-                            name="trade_union_notes"
-                            value={formData.trade_union_notes || ''}
-                            onChange={handleChange}
-                            disabled={!isEditing}
-                            rows={3}
-                            style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px', width: '100%' }}
-                        />
+                        <div className="form-group full-width">
+                            <label>Ghi chú</label>
+                            <textarea
+                                name="trade_union_notes"
+                                value={formData.trade_union_notes || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                rows={3}
+                            />
+                        </div>
                     </div>
                 </>
             )}
@@ -818,13 +873,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Tên</label>
                     <input type="text" value={formData.ho_va_ten.split(' ').slice(-1).join(' ')} disabled />
                 </div>
-                <div className="form-group full-width">
-                    <label>Họ và tên đầy đủ</label>
-                    <input type="text" name="ho_va_ten" value={formData.ho_va_ten} onChange={handleChange} disabled={!isEditing} />
-                </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Giới tính</label>
                     <select name="gioi_tinh" value={formData.gioi_tinh} onChange={handleChange} disabled={!isEditing}>
@@ -844,9 +892,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Nơi sinh</label>
                     <input type="text" name="place_of_birth" value={formData.place_of_birth} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Dân tộc</label>
                     <input type="text" name="ethnicity" value={formData.ethnicity} onChange={handleChange} disabled={!isEditing} />
@@ -869,8 +914,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                         <option value="Bổ túc">Bổ túc</option>
                     </select>
                 </div>
-            </div>
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Tình trạng hôn nhân</label>
                     <select name="marital_status_code" value={formData.marital_status_code} onChange={handleChange} disabled={!isEditing}>
@@ -892,6 +935,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
     const renderLienHe = () => (
         <div className="section-content">
             <h3>Thông tin liên hệ</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="grid-2">
                 <div className="form-group">
                     <label>Số điện thoại</label>
@@ -909,18 +953,18 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Điện thoại người thân</label>
                     <input type="text" name="relative_phone" value={formData.relative_phone} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-            <div className="form-group full-width">
-                <label>Địa chỉ thường trú</label>
-                <input type="text" name="permanent_address" value={formData.permanent_address} onChange={handleChange} disabled={!isEditing} />
-            </div>
-            <div className="form-group full-width">
-                <label>Địa chỉ tạm trú</label>
-                <input type="text" name="temporary_address" value={formData.temporary_address} onChange={handleChange} disabled={!isEditing} />
-            </div>
-            <div className="form-group full-width">
-                <label>Quê quán</label>
-                <input type="text" name="que_quan" value={formData.que_quan} onChange={handleChange} disabled={!isEditing} />
+                <div className="form-group full-width">
+                    <label>Địa chỉ thường trú</label>
+                    <input type="text" name="permanent_address" value={formData.permanent_address} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group full-width">
+                    <label>Địa chỉ tạm trú</label>
+                    <input type="text" name="temporary_address" value={formData.temporary_address} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group full-width">
+                    <label>Quê quán</label>
+                    <input type="text" name="que_quan" value={formData.que_quan} onChange={handleChange} disabled={!isEditing} />
+                </div>
             </div>
         </div>
 
@@ -929,17 +973,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
     const renderCongViec = () => (
         <div className="section-content">
             <h3>Thông tin công việc</h3>
-
-            <div className="form-group full-width" style={{ marginBottom: '20px' }}>
-                <input
-                    type="text"
-                    name="employeeId"
-                    value={formData.employeeId}
-                    disabled={true}
-                    style={{ background: '#f5f5f5', border: 'none', fontWeight: 'bold', width: '100px' }}
-                />
-                <span style={{ fontWeight: 'bold', marginLeft: '10px' }}>{formData.ho_va_ten}</span>
-            </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="grid-2">
                 <div className="form-group">
@@ -954,9 +988,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Ngày thành NVCT</label>
                     <input type="date" name="official_date" value={formData.official_date} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Vị trí công việc</label>
                     <input type="text" name="job_position" value={formData.job_position} onChange={handleChange} disabled={!isEditing} />
@@ -965,9 +996,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Phòng</label>
                     <input type="text" name="department" value={formData.department} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Tổ</label>
                     <input type="text" name="group_name" value={formData.group_name} onChange={handleChange} disabled={!isEditing} />
@@ -976,9 +1004,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Đội</label>
                     <input type="text" name="team" value={formData.team} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Loại nhân viên</label>
                     <select name="employee_type" value={formData.employee_type} onChange={handleChange} disabled={!isEditing}>
@@ -993,9 +1018,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Loại lao động</label>
                     <input type="text" name="labor_type" value={formData.labor_type} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Chức danh công việc</label>
                     <input type="text" name="job_title" value={formData.job_title} onChange={handleChange} disabled={!isEditing} />
@@ -1004,9 +1026,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Ngày nhận chức danh</label>
                     <input type="date" name="date_received_job_title" value={formData.date_received_job_title} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Chức vụ hiện tại</label>
                     <select name="current_position" value={formData.current_position} onChange={handleChange} disabled={!isEditing}>
@@ -1027,8 +1046,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Ngày bổ nhiệm</label>
                     <input type="date" name="appointment_date" value={formData.appointment_date} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Chức vụ kiêm nhiệm</label>
                     <input type="text" name="concurrent_position" value={formData.concurrent_position} onChange={handleChange} disabled={!isEditing} />
@@ -1037,8 +1054,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Chức danh kiêm nhiệm</label>
                     <input type="text" name="concurrent_job_title" value={formData.concurrent_job_title} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Thời gian kiêm nhiệm từ ngày</label>
                     <input type="date" name="concurrent_start_date" value={formData.concurrent_start_date} onChange={handleChange} disabled={!isEditing} />
@@ -1047,8 +1062,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     <label>Đến ngày</label>
                     <input type="date" name="concurrent_end_date" value={formData.concurrent_end_date} onChange={handleChange} disabled={!isEditing} />
                 </div>
-            </div>
-            <div className="grid-2">
                 <div className="form-group">
                     <label>Đối tượng tính phép</label>
                     <select name="leave_calculation_type" value={formData.leave_calculation_type} onChange={handleChange} disabled={!isEditing}>
@@ -1079,6 +1092,7 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                         style={{ width: 'auto' }}
                     />
                 </div>
+                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
                 {/* Detail Table */}
                 <div className="table-wrapper">
@@ -1289,30 +1303,8 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
 
     return (
         <div className="employee-detail-container">
-            <div className="detail-sidebar">
-                {renderSectionMenu()}
-            </div>
-            <div className="detail-main">
-                <div className="detail-toolbar">
-                    <div className="breadcrumbs">
-                        Hồ sơ / <span>{activeSection}</span>
-                    </div>
-                    <div className="actions">
-                        {!isEditing ? (
-                            <button className="btn btn-link" onClick={() => setIsEditing(true)}>Sửa</button>
-                        ) : (
-                            <>
-                                <button className="btn btn-link warning" onClick={() => {
-                                    setIsEditing(false)
-                                    if (employee) loadEmployeeData(employee) // reset
-                                    else onCancel()
-                                }}>Hủy</button>
-                                <button className="btn btn-link primary" onClick={handleSubmit}>Lưu</button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
+            <div className="detail-main" style={{ position: 'relative' }}>
+                {renderActions()}
                 <div className="detail-form-area">
                     {activeSection === 'ly_lich' && renderLyLich()}
                     {activeSection === 'lien_he' && renderLienHe()}
@@ -1325,7 +1317,6 @@ function EmployeeDetail({ employee, onSave, onCancel }) {
                     {activeSection === 'grading' && renderGrading()}
                 </div>
             </div>
-
         </div>
     )
 }

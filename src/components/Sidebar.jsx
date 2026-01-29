@@ -1,34 +1,44 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import './Sidebar.css';
 
 function Sidebar() {
   const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const menuItems = [
-    { path: '/employees', icon: 'fas fa-users', label: 'Danh sách nhân viên' }
+    { path: '/ho-so-cua-toi', icon: 'fas fa-user', label: 'Hồ sơ của tôi' },
+    { path: '/employees', icon: 'fas fa-users', label: 'Danh sách nhân viên' },
+    { path: '/quan-ly-nv', icon: 'fas fa-user-cog', label: 'Quản lý NV (Admin)' },
+    { path: '/cau-truc-ho-so', icon: 'fas fa-folder-open', label: 'Cấu trúc hồ sơ (Admin)' }
   ]
 
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <i className="fas fa-layer-group"></i>
-        <span>HRM Cảng Hàng Không</span>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="sidebar-header">
+        <span className="sidebar-title">Menu</span>
+        <button
+          className="collapse-btn"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
+        >
+          <i className={`fas fa-chevron-${isCollapsed ? 'right' : 'left'}`}></i>
+        </button>
       </div>
 
-      {menuItems.map(item => {
-        // Handle external or special links if needed, logic from before
-        const isExternal = item.path.startsWith('http');
-
-        return (
+      <nav className="sidebar-nav">
+        {menuItems.map(item => (
           <Link
             key={item.path}
             to={item.path}
             className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+            title={item.label}
           >
             <i className={item.icon}></i>
-            <span>{item.label}</span>
+            {!isCollapsed && <span>{item.label}</span>}
           </Link>
-        )
-      })}
+        ))}
+      </nav>
     </aside>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import EmployeeDetail from '../components/EmployeeDetail'
+import ProfileMenu from '../components/ProfileMenu'
 import { supabase } from '../services/supabase'
 import './Employees.css'
 
@@ -11,6 +12,7 @@ function Employees() {
     const [filterBranch, setFilterBranch] = useState('')
     const [filterDept, setFilterDept] = useState('')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [activeSection, setActiveSection] = useState('ly_lich')
     const fileInputRef = useRef(null)
 
     // Scroll ref to top on selection
@@ -246,89 +248,117 @@ function Employees() {
 
     const departments = [...new Set(employees.map(e => e.bo_phan).filter(Boolean))].sort()
 
+    // Map ProfileMenu section IDs to EmployeeDetail section IDs
+    const handleSectionChange = (sectionId) => {
+        const sectionMap = {
+            'ly-lich-ca-nhan': 'ly_lich',
+            'thong-tin-lien-he': 'lien_he',
+            'thong-tin-cong-viec': 'cong_viec',
+            'than-nhan': 'than_nhan',
+            'ho-so-dang': 'ho_so_dang',
+            'doan-thanh-nien': 'doan_thanh_nien',
+            'cong-doan': 'cong_doan',
+            'khac': 'khac',
+            'grading': 'grading'
+        }
+        setActiveSection(sectionMap[sectionId] || sectionId)
+    }
+
     return (
         <div className="employees-page">
-            {/* TOP PANEL: DETAIL VIEW */}
-            <div className="detail-panel" ref={detailRef}>
-                <div className="panel-header">
-                    <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
-                    <div className="panel-actions">
-                        <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
-                            <i className="fas fa-plus"></i> Thêm mới
-                        </button>
-                    </div>
-                </div>
-                <div className="detail-content">
-                    <EmployeeDetail
-                        employee={selectedEmployee}
-                        onSave={handleSaveEmployee}
-                        onCancel={() => {
-                            // If canceling creation, re-select the first one or clear
-                            if (!selectedEmployee && employees.length > 0) setSelectedEmployee(employees[0])
-                        }}
-                    />
-                </div>
-            </div>
+            {/* LEFT: PROFILE MENU */}
+            <ProfileMenu
+                activeSection={activeSection}
+                onSectionChange={handleSectionChange}
+            />
 
-            {/* BOTTOM PANEL: LIST VIEW */}
-            <div className="list-panel">
-                <div className="list-toolbar">
-                    <div className="search-group">
-                        <input
-                            type="text"
-                            placeholder="Tìm NV..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+            {/* RIGHT: MAIN CONTENT */}
+            <div className="employees-content">
+                {/* TOP PANEL: DETAIL VIEW */}
+                <div className="detail-panel" ref={detailRef}>
+                    <div className="panel-header">
+                        <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
+                        <div className="panel-actions">
+                            <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
+                                <i className="fas fa-plus"></i> Thêm mới
+                            </button>
+                        </div>
+                    </div>
+                    <div className="detail-content">
+                        <EmployeeDetail
+                            employee={selectedEmployee}
+                            onSave={handleSaveEmployee}
+                            onCancel={() => {
+                                // If canceling creation, re-select the first one or clear
+                                if (!selectedEmployee && employees.length > 0) setSelectedEmployee(employees[0])
+                            }}
+                            activeSection={activeSection}
+                            onSectionChange={setActiveSection}
                         />
-                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                            <option value="">Tất cả phòng ban</option>
-                            {departments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="list-stats">
-                        {filteredEmployees.length} / {employees.length} nhân viên
                     </div>
                 </div>
 
-                <div className="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Mã</th>
-                                <th>Họ Tên</th>
-                                <th>Phòng</th>
-                                <th>Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredEmployees.map(emp => (
-                                <tr
-                                    key={emp.id}
-                                    onClick={() => setSelectedEmployee(emp)}
-                                    className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
-                                >
-                                    <td>{emp.employeeId}</td>
-                                    <td>{emp.ho_va_ten}</td>
-                                    <td>{emp.bo_phan}</td>
-                                    <td>
-                                        <span className={`status-badge ${emp.trang_thai === 'Nghỉ việc' ? 'inactive' : 'active'}`}>
-                                            {emp.trang_thai}
-                                        </span>
-                                    </td>
+                {/* BOTTOM PANEL: LIST VIEW */}
+                <div className="list-panel">
+                    <div className="list-toolbar">
+                        <div className="search-group">
+                            <input
+                                type="text"
+                                placeholder="Tìm NV..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                                <option value="">Tất cả phòng ban</option>
+                                {departments.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="list-stats">
+                            {filteredEmployees.length} / {employees.length} nhân viên
+                        </div>
+                    </div>
+
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Họ Tên</th>
+                                    <th>Phòng</th>
+                                    <th>Trạng thái</th>
                                 </tr>
-                            ))}
-                            {filteredEmployees.length === 0 && (
-                                <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredEmployees.map(emp => (
+                                    <tr
+                                        key={emp.id}
+                                        onClick={() => setSelectedEmployee(emp)}
+                                        className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
+                                    >
+                                        <td>{emp.employeeId}</td>
+                                        <td>{emp.ho_va_ten}</td>
+                                        <td>{emp.bo_phan}</td>
+                                        <td>
+                                            <span className={`status-badge ${emp.trang_thai === 'Nghỉ việc' ? 'inactive' : 'active'}`}>
+                                                {emp.trang_thai}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredEmployees.length === 0 && (
+                                    <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-
         </div>
     )
 }
 
 export default Employees
+
+
