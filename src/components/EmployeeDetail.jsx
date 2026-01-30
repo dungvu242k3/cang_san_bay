@@ -140,7 +140,20 @@ const DEFAULT_FORM_DATA = {
     trade_union_join_date: '',
     trade_union_position: '',
     trade_union_activity_location: '',
-    trade_union_notes: ''
+    trade_union_notes: '',
+
+    // Legal Info
+    identity_card_number: '',
+    identity_card_issue_date: '',
+    identity_card_issue_place: '',
+    tax_code: '',
+    health_insurance_number: '',
+    health_insurance_issue_date: '',
+    health_insurance_place: '',
+    social_insurance_number: '',
+    social_insurance_issue_date: '',
+    unemployment_insurance_number: '',
+    unemployment_insurance_issue_date: ''
 }
 
 function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange }) {
@@ -155,14 +168,134 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Sub-data states
     const [familyMembers, setFamilyMembers] = useState([])
+    const [bankAccounts, setBankAccounts] = useState([])
+    const [laborContracts, setLaborContracts] = useState([])
+    const [passports, setPassports] = useState([])
+
+    // Editing States for Lists
+    const [editingBank, setEditingBank] = useState(null)
+    const [editingContract, setEditingContract] = useState(null)
+    const [editingPassport, setEditingPassport] = useState(null)
+
+    // CRUD Handlers
+    // Bank Accounts
+    const handleSaveBank = async (bank) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                bank_name: bank.bank_name,
+                account_name: bank.account_name,
+                account_number: bank.account_number,
+                note: bank.note
+            }
+            let res
+            if (bank.id) {
+                res = await supabase.from('employee_bank_accounts').update(payload).eq('id', bank.id).select()
+            } else {
+                res = await supabase.from('employee_bank_accounts').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            // Reload list
+            const { data } = await supabase.from('employee_bank_accounts').select('*').eq('employee_code', employee.employeeId)
+            setBankAccounts(data || [])
+            setEditingBank(null)
+        } catch (err) {
+            alert('Lỗi lưu ngân hàng: ' + err.message)
+        }
+    }
+    const handleDeleteBank = async (id) => {
+        if (!confirm('Bạn có chắc muốn xóa?')) return
+        try {
+            const { error } = await supabase.from('employee_bank_accounts').delete().eq('id', id)
+            if (error) throw error
+            setBankAccounts(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            alert('Lỗi xóa: ' + err.message)
+        }
+    }
+
+    // Labor Contracts
+    const handleSaveContract = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                contract_number: item.contract_number,
+                signed_date: item.signed_date || null,
+                effective_date: item.effective_date || null,
+                expiration_date: item.expiration_date || null,
+                contract_type: item.contract_type,
+                duration: item.duration,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('labor_contracts').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('labor_contracts').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            // Reload list
+            const { data } = await supabase.from('labor_contracts').select('*').eq('employee_code', employee.employeeId).order('effective_date', { ascending: false })
+            setLaborContracts(data || [])
+            setEditingContract(null)
+        } catch (err) {
+            alert('Lỗi lưu hợp đồng: ' + err.message)
+        }
+    }
+    const handleDeleteContract = async (id) => {
+        if (!confirm('Bạn có chắc muốn xóa?')) return
+        try {
+            const { error } = await supabase.from('labor_contracts').delete().eq('id', id)
+            if (error) throw error
+            setLaborContracts(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            alert('Lỗi xóa: ' + err.message)
+        }
+    }
+
+    // Passports
+    const handleSavePassport = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                passport_number: item.passport_number,
+                passport_type: item.passport_type,
+                issue_date: item.issue_date || null,
+                issue_place: item.issue_place,
+                expiration_date: item.expiration_date || null,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_passports').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_passports').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            // Reload list
+            const { data } = await supabase.from('employee_passports').select('*').eq('employee_code', employee.employeeId)
+            setPassports(data || [])
+            setEditingPassport(null)
+        } catch (err) {
+            alert('Lỗi lưu hộ chiếu: ' + err.message)
+        }
+    }
+    const handleDeletePassport = async (id) => {
+        if (!confirm('Bạn có chắc muốn xóa?')) return
+        try {
+            const { error } = await supabase.from('employee_passports').delete().eq('id', id)
+            if (error) throw error
+            setPassports(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            alert('Lỗi xóa: ' + err.message)
+        }
+    }
 
     // Grading States
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
-    const [gradingReviewId, setGradingReviewId] = useState(null)
-    const [isGradingLocked, setIsGradingLocked] = useState(false)
-    const [selfAssessment, setSelfAssessment] = useState({})
-    const [supervisorAssessment, setSupervisorAssessment] = useState({})
-    const [selfComment, setSelfComment] = useState('')
     const [supervisorComment, setSupervisorComment] = useState('')
 
     // Initialize data when employee changes
@@ -369,24 +502,52 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
             trade_union_join_date: emp.trade_union_join_date || '',
             trade_union_position: emp.trade_union_position || '',
             trade_union_activity_location: emp.trade_union_activity_location || '',
-            trade_union_notes: emp.trade_union_notes || ''
+            trade_union_notes: emp.trade_union_notes || '',
+            // Legal items
+            identity_card_number: emp.identity_card_number || emp.cccd || '',
+            identity_card_issue_date: emp.identity_card_issue_date || emp.ngay_cap || '',
+            identity_card_issue_place: emp.identity_card_issue_place || emp.noi_cap || '',
+            tax_code: emp.tax_code || '',
+            health_insurance_number: emp.health_insurance_number || '',
+            health_insurance_issue_date: emp.health_insurance_issue_date || '',
+            health_insurance_place: emp.health_insurance_place || '',
+            social_insurance_number: emp.social_insurance_number || '',
+            social_insurance_issue_date: emp.social_insurance_issue_date || '',
+            unemployment_insurance_number: emp.unemployment_insurance_number || '',
+            unemployment_insurance_issue_date: emp.unemployment_insurance_issue_date || ''
         }))
 
-        // Load Family Members if we have an employee code
-        if (emp.employeeId || emp.employee_code) {
-            const empCode = emp.employeeId || emp.employee_code
-            const fetchFamily = async () => {
-                let { data, error } = await supabase
-                    .from('family_members')
-                    .select('*')
-                    .eq('employee_code', empCode)
-
-                if (data) {
-                    setFamilyMembers(data)
-                }
+        const empCode = emp.employeeId || emp.employee_code
+        console.log('loadEmployeeData: Determined empCode:', empCode)
+        const fetchFamily = async () => {
+            if (!empCode) {
+                console.error('No empCode found, skipping fetch')
+                return
             }
-            fetchFamily()
+            console.log('Fetching sub-data for empCode:', empCode)
+            let { data, error } = await supabase
+                .from('family_members')
+                .select('*')
+                .eq('employee_code', empCode)
+
+            if (data) {
+                setFamilyMembers(data)
+            }
+
+            // Fetch Bank Accounts
+            const { data: bankData, error: bankError } = await supabase.from('employee_bank_accounts').select('*').eq('employee_code', empCode)
+            console.log('Bank Data fetched:', bankData, 'Error:', bankError)
+            if (bankData) setBankAccounts(bankData)
+
+            // Fetch Labor Contracts
+            const { data: contractData } = await supabase.from('labor_contracts').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
+            if (contractData) setLaborContracts(contractData)
+
+            // Fetch Passports
+            const { data: passportData } = await supabase.from('employee_passports').select('*').eq('employee_code', empCode)
+            if (passportData) setPassports(passportData)
         }
+        fetchFamily()
     }
 
     const handleChange = (e) => {
@@ -1073,6 +1234,343 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
         </div>
     )
 
+    const renderPhapLyChung = () => (
+        <div className="section-content">
+            <h3>Số CCCD - Số BH</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div className="grid-2">
+                {/* CCCD */}
+                <div className="form-group">
+                    <label>Số CCCD / CMND</label>
+                    <input type="text" name="identity_card_number" value={formData.identity_card_number} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group">
+                    <label>Ngày cấp</label>
+                    <input type="date" name="identity_card_issue_date" value={formData.identity_card_issue_date} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group full-width">
+                    <label>Nơi cấp</label>
+                    <input type="text" name="identity_card_issue_place" value={formData.identity_card_issue_place} onChange={handleChange} disabled={!isEditing} />
+                </div>
+
+                {/* Tax */}
+                <div className="form-group full-width">
+                    <label>Mã số thuế</label>
+                    <input type="text" name="tax_code" value={formData.tax_code} onChange={handleChange} disabled={!isEditing} />
+                </div>
+
+                {/* Insurance */}
+                <div className="form-group">
+                    <label>Số Bảo hiểm y tế</label>
+                    <input type="text" name="health_insurance_number" value={formData.health_insurance_number} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group">
+                    <label>Nơi KCB ban đầu</label>
+                    <input type="text" name="health_insurance_place" value={formData.health_insurance_place} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group">
+                    <label>Ngày cấp BHYT</label>
+                    <input type="date" name="health_insurance_issue_date" value={formData.health_insurance_issue_date} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group"></div> {/* Spacer */}
+
+                <div className="form-group">
+                    <label>Số Bảo hiểm xã hội</label>
+                    <input type="text" name="social_insurance_number" value={formData.social_insurance_number} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group">
+                    <label>Ngày cấp BHXH</label>
+                    <input type="date" name="social_insurance_issue_date" value={formData.social_insurance_issue_date} onChange={handleChange} disabled={!isEditing} />
+                </div>
+
+                <div className="form-group">
+                    <label>Số Bảo hiểm thất nghiệp</label>
+                    <input type="text" name="unemployment_insurance_number" value={formData.unemployment_insurance_number} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group">
+                    <label>Ngày cấp BHTN</label>
+                    <input type="date" name="unemployment_insurance_issue_date" value={formData.unemployment_insurance_issue_date} onChange={handleChange} disabled={!isEditing} />
+                </div>
+            </div>
+        </div>
+    )
+
+    const renderTaiKhoanNganHang = () => (
+        <div className="section-content">
+            <h3>Tài khoản cá nhân</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingBank({})}>
+                    <i className="fas fa-plus"></i> Thêm tài khoản
+                </button>
+            </div>
+
+            <div className="table-wrapper">
+                <table className="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Ngân hàng</th>
+                            <th>Tên tài khoản</th>
+                            <th>Số tài khoản</th>
+                            <th>Ghi chú</th>
+                            <th style={{ width: '100px' }}>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {bankAccounts.length > 0 ? bankAccounts.map((item, index) => (
+                            <tr key={item.id}>
+                                <td className="text-center">{index + 1}</td>
+                                <td>{item.bank_name}</td>
+                                <td>{item.account_name}</td>
+                                <td>{item.account_number}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                        <button className="btn btn-sm btn-link" onClick={() => setEditingBank(item)}>
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteBank(item.id)}>
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan="6" className="text-center">Chưa có dữ liệu</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingBank && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                }}>
+                    <div className="modal-content" style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '500px', maxWidth: '90%' }}>
+                        <h4>{editingBank.id ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}</h4>
+                        <div className="form-group">
+                            <label>Ngân hàng</label>
+                            <input type="text" value={editingBank.bank_name || ''} onChange={e => setEditingBank({ ...editingBank, bank_name: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Tên tài khoản</label>
+                            <input type="text" value={editingBank.account_name || ''} onChange={e => setEditingBank({ ...editingBank, account_name: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Số tài khoản</label>
+                            <input type="text" value={editingBank.account_number || ''} onChange={e => setEditingBank({ ...editingBank, account_number: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label>Ghi chú</label>
+                            <input type="text" value={editingBank.note || ''} onChange={e => setEditingBank({ ...editingBank, note: e.target.value })} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                            <button className="btn btn-secondary" onClick={() => setEditingBank(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveBank(editingBank)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    const renderHopDongLaoDong = () => (
+        <div className="section-content">
+            <h3>Hợp đồng lao động</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingContract({})}>
+                    <i className="fas fa-plus"></i> Thêm hợp đồng
+                </button>
+            </div>
+
+            <div className="table-wrapper">
+                <table className="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Số HĐ</th>
+                            <th>Ngày ký</th>
+                            <th>Hiệu lực</th>
+                            <th>Hết hạn</th>
+                            <th>Loại HĐ</th>
+                            <th>Thời hạn</th>
+                            <th>Ghi chú</th>
+                            <th style={{ width: '90px' }}>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {laborContracts.length > 0 ? laborContracts.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.contract_number}</td>
+                                <td>{item.signed_date}</td>
+                                <td>{item.effective_date}</td>
+                                <td>{item.expiration_date}</td>
+                                <td>{item.contract_type}</td>
+                                <td>{item.duration}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                        <button className="btn btn-sm btn-link" onClick={() => setEditingContract(item)}>
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteContract(item.id)}>
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingContract && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                }}>
+                    <div className="modal-content" style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '600px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h4>{editingContract.id ? 'Cập nhật hợp đồng' : 'Thêm hợp đồng mới'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group">
+                                <label>Số hợp đồng</label>
+                                <input type="text" value={editingContract.contract_number || ''} onChange={e => setEditingContract({ ...editingContract, contract_number: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Loại hợp đồng</label>
+                                <input type="text" value={editingContract.contract_type || ''} onChange={e => setEditingContract({ ...editingContract, contract_type: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ngày ký</label>
+                                <input type="date" value={editingContract.signed_date || ''} onChange={e => setEditingContract({ ...editingContract, signed_date: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ngày hiệu lực</label>
+                                <input type="date" value={editingContract.effective_date || ''} onChange={e => setEditingContract({ ...editingContract, effective_date: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ngày hết hạn</label>
+                                <input type="date" value={editingContract.expiration_date || ''} onChange={e => setEditingContract({ ...editingContract, expiration_date: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Thời hạn</label>
+                                <input type="text" value={editingContract.duration || ''} onChange={e => setEditingContract({ ...editingContract, duration: e.target.value })} />
+                            </div>
+                            <div className="form-group full-width">
+                                <label>Ghi chú</label>
+                                <textarea rows="2" value={editingContract.note || ''} onChange={e => setEditingContract({ ...editingContract, note: e.target.value })} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                            <button className="btn btn-secondary" onClick={() => setEditingContract(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveContract(editingContract)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    const renderHoChieu = () => (
+        <div className="section-content">
+            <h3>Hộ chiếu</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingPassport({})}>
+                    <i className="fas fa-plus"></i> Thêm hộ chiếu
+                </button>
+            </div>
+
+            <div className="table-wrapper">
+                <table className="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Số hộ chiếu</th>
+                            <th>Loại</th>
+                            <th>Ngày cấp</th>
+                            <th>Nơi cấp</th>
+                            <th>Hết hạn</th>
+                            <th>Ghi chú</th>
+                            <th style={{ width: '90px' }}>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {passports.length > 0 ? passports.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.passport_number}</td>
+                                <td>{item.passport_type}</td>
+                                <td>{item.issue_date}</td>
+                                <td>{item.issue_place}</td>
+                                <td>{item.expiration_date}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                        <button className="btn btn-sm btn-link" onClick={() => setEditingPassport(item)}>
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeletePassport(item.id)}>
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingPassport && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                }}>
+                    <div className="modal-content" style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '500px', maxWidth: '90%' }}>
+                        <h4>{editingPassport.id ? 'Cập nhật hộ chiếu' : 'Thêm hộ chiếu mới'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group">
+                                <label>Số hộ chiếu</label>
+                                <input type="text" value={editingPassport.passport_number || ''} onChange={e => setEditingPassport({ ...editingPassport, passport_number: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Loại hộ chiếu</label>
+                                <input type="text" value={editingPassport.passport_type || ''} onChange={e => setEditingPassport({ ...editingPassport, passport_type: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ngày cấp</label>
+                                <input type="date" value={editingPassport.issue_date || ''} onChange={e => setEditingPassport({ ...editingPassport, issue_date: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Nơi cấp</label>
+                                <input type="text" value={editingPassport.issue_place || ''} onChange={e => setEditingPassport({ ...editingPassport, issue_place: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ngày hết hạn</label>
+                                <input type="date" value={editingPassport.expiration_date || ''} onChange={e => setEditingPassport({ ...editingPassport, expiration_date: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label>Ghi chú</label>
+                                <input type="text" value={editingPassport.note || ''} onChange={e => setEditingPassport({ ...editingPassport, note: e.target.value })} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                            <button className="btn btn-secondary" onClick={() => setEditingPassport(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSavePassport(editingPassport)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
     const renderGrading = () => {
         // Derived state for calculations
         const selfTotals = calculateTotals(selfAssessment)
@@ -1314,6 +1812,10 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     {activeSection === 'ho_so_dang' && renderDang()}
                     {activeSection === 'doan_thanh_nien' && renderDoan()}
                     {activeSection === 'cong_doan' && renderCongDoan()}
+                    {activeSection === 'phap_ly_chung' && renderPhapLyChung()}
+                    {activeSection === 'tai_khoan' && renderTaiKhoanNganHang()}
+                    {activeSection === 'hop_dong' && renderHopDongLaoDong()}
+                    {activeSection === 'ho_chieu' && renderHoChieu()}
                     {activeSection === 'grading' && renderGrading()}
                 </div>
             </div>

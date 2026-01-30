@@ -19,7 +19,12 @@ const menuSections = [
     {
         id: 'thong-tin-phap-ly',
         title: 'Thông tin pháp lý',
-        items: []
+        items: [
+            { id: 'phap-ly-chung', label: 'Số CCCD - Số BH' },
+            { id: 'tai-khoan-ngan-hang', label: 'Tài khoản cá nhân' },
+            { id: 'hop-dong-lao-dong', label: 'Hợp đồng lao động' },
+            { id: 'ho-chieu', label: 'Hộ chiếu' }
+        ]
     },
     {
         id: 'phuc-loi',
@@ -57,6 +62,10 @@ const reverseMap = {
     'ho_so_dang': 'ho-so-dang',
     'doan_thanh_nien': 'doan-thanh-nien',
     'cong_doan': 'cong-doan',
+    'phap_ly_chung': 'phap-ly-chung',
+    'tai_khoan': 'tai-khoan-ngan-hang',
+    'hop_dong': 'hop-dong-lao-dong',
+    'ho_chieu': 'ho-chieu',
     'khac': 'khac',
     'grading': 'grading'
 };

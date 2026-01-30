@@ -172,6 +172,18 @@ function Employees() {
                 trade_union_position: formData.trade_union_position || null,
                 trade_union_activity_location: formData.trade_union_activity_location || null,
                 trade_union_notes: formData.trade_union_notes || null,
+                // Legal Info
+                identity_card_number: formData.cccd || formData.identity_card_number || null,
+                identity_card_issue_date: formData.ngay_cap || formData.identity_card_issue_date || null,
+                identity_card_issue_place: formData.noi_cap || formData.identity_card_issue_place || null,
+                tax_code: formData.tax_code || null,
+                health_insurance_number: formData.health_insurance_number || null,
+                health_insurance_issue_date: formData.health_insurance_issue_date || null,
+                health_insurance_place: formData.health_insurance_place || null,
+                social_insurance_number: formData.social_insurance_number || null,
+                social_insurance_issue_date: formData.social_insurance_issue_date || null,
+                unemployment_insurance_number: formData.unemployment_insurance_number || null,
+                unemployment_insurance_issue_date: formData.unemployment_insurance_issue_date || null
             }
 
             console.log('dbPayload to save:', dbPayload)
@@ -258,6 +270,10 @@ function Employees() {
             'ho-so-dang': 'ho_so_dang',
             'doan-thanh-nien': 'doan_thanh_nien',
             'cong-doan': 'cong_doan',
+            'phap-ly-chung': 'phap_ly_chung',
+            'tai-khoan-ngan-hang': 'tai_khoan',
+            'hop-dong-lao-dong': 'hop_dong',
+            'ho-chieu': 'ho_chieu',
             'khac': 'khac',
             'grading': 'grading'
         }
