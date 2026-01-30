@@ -39,22 +39,37 @@ const menuSections = [
     {
         id: 'qua-trinh-lam-viec',
         title: 'Quá trình làm việc',
-        items: []
+        items: [
+            { id: 'nghi-phep', label: 'Nghỉ phép' },
+            { id: 'bo-nhiem', label: 'Bổ nhiệm - Điều chuyển' },
+            { id: 'nhat-ky-cong-tac', label: 'Nhật ký công tác' }
+        ]
     },
     {
         id: 'kien-thuc',
         title: 'Kiến thức',
-        items: []
+        items: [
+            { id: 'chuyen-nganh', label: 'Chuyên ngành đào tạo' },
+            { id: 'chung-chi', label: 'Chứng chỉ' },
+            { id: 'dao-tao-noi-bo', label: 'Đào tạo nội bộ' }
+        ]
     },
     {
         id: 'khen-thuong-ky-luat',
         title: 'Khen thưởng kỷ luật',
-        items: []
+        items: [
+            { id: 'khen-thuong', label: 'Khen thưởng' },
+            { id: 'ky-luat', label: 'Kỷ luật' }
+        ]
     },
     {
         id: 'suc-khoe-hoat-dong',
         title: 'Sức khoẻ - Hoạt động',
-        items: []
+        items: [
+            { id: 'the-bhyt', label: 'Thẻ bảo hiểm y tế' },
+            { id: 'tai-nan-lao-dong', label: 'Tai nạn lao động' },
+            { id: 'kham-suc-khoe', label: 'Khám sức khỏe' }
+        ]
     }
 ];
 
@@ -76,7 +91,18 @@ const reverseMap = {
     'luong_co_ban': 'luong-co-ban',
     'luong_vi_tri': 'luong-vi-tri',
     'phu_cap': 'phu-cap',
-    'thu_nhap_khac': 'thu-nhap-khac'
+    'thu_nhap_khac': 'thu-nhap-khac',
+    'nghi_phep': 'nghi-phep',
+    'bo_nhiem': 'bo-nhiem',
+    'nhat_ky_cong_tac': 'nhat-ky-cong-tac',
+    'chuyen_nganh': 'chuyen-nganh',
+    'chung_chi': 'chung-chi',
+    'dao_tao_noi_bo': 'dao-tao-noi-bo',
+    'khen_thuong': 'khen-thuong',
+    'ky_luat': 'ky-luat',
+    'the_bhyt': 'the-bhyt',
+    'tai_nan_lao_dong': 'tai-nan-lao-dong',
+    'kham_suc_khoe': 'kham-suc-khoe'
 };
 
 function ProfileMenu({ activeSection = 'ly_lich', onSectionChange }) {

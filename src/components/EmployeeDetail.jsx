@@ -188,6 +188,40 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingAllowance, setEditingAllowance] = useState(null)
     const [editingOtherIncome, setEditingOtherIncome] = useState(null)
 
+    // Work Process States (4.x)
+    const [leaves, setLeaves] = useState([])
+    const [appointments, setAppointments] = useState([])
+    const [workJournals, setWorkJournals] = useState([])
+
+    const [editingLeave, setEditingLeave] = useState(null)
+    const [editingAppointment, setEditingAppointment] = useState(null)
+    const [editingWorkJournal, setEditingWorkJournal] = useState(null)
+
+    // Knowledge States (5.x)
+    const [trainingSpecializations, setTrainingSpecializations] = useState([])
+    const [certificates, setCertificates] = useState([])
+    const [internalTrainings, setInternalTrainings] = useState([])
+
+    const [editingSpecialization, setEditingSpecialization] = useState(null)
+    const [editingCertificate, setEditingCertificate] = useState(null)
+    const [editingInternalTraining, setEditingInternalTraining] = useState(null)
+
+    // Rewards & Discipline States (6.x)
+    const [rewards, setRewards] = useState([])
+    const [disciplines, setDisciplines] = useState([])
+
+    const [editingReward, setEditingReward] = useState(null)
+    const [editingDiscipline, setEditingDiscipline] = useState(null)
+
+    // Health & Activities States (7.x)
+    const [healthInsurance, setHealthInsurance] = useState(null)
+    const [workAccidents, setWorkAccidents] = useState([])
+    const [healthCheckups, setHealthCheckups] = useState([])
+
+    const [editingHealthInsurance, setEditingHealthInsurance] = useState(null)
+    const [editingWorkAccident, setEditingWorkAccident] = useState(null)
+    const [editingHealthCheckup, setEditingHealthCheckup] = useState(null)
+
     // CRUD Handlers
     // Bank Accounts
     const handleSaveBank = async (bank) => {
@@ -469,6 +503,407 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
         } catch (err) { alert('Lỗi xóa: ' + err.message) }
     }
 
+    // Work Process Handler: 4.1 Nghỉ phép (Leaves)
+    const handleSaveLeave = async (item) => {
+        try {
+            // Calculate leave_days if not provided
+            let leave_days = item.leave_days
+            if (!leave_days && item.from_date && item.to_date) {
+                const from = new Date(item.from_date)
+                const to = new Date(item.to_date)
+                leave_days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1
+            }
+
+            const payload = {
+                employee_code: employee.employeeId,
+                leave_type: item.leave_type,
+                reason: item.reason,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                leave_days: leave_days,
+                total_deducted: item.total_deducted,
+                remaining_leave: item.remaining_leave,
+                status: item.status || 'Chờ duyệt',
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_leaves').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_leaves').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_leaves').select('*').eq('employee_code', employee.employeeId).order('from_date', { ascending: false })
+            setLeaves(data || [])
+            setEditingLeave(null)
+        } catch (err) {
+            alert('Lỗi lưu nghỉ phép: ' + err.message)
+        }
+    }
+    const handleDeleteLeave = async (id) => {
+        if (!confirm('Xóa thông tin nghỉ phép này?')) return
+        try {
+            await supabase.from('employee_leaves').delete().eq('id', id)
+            setLeaves(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Work Process Handler: 4.2 Bổ nhiệm - Điều chuyển (Appointments)
+    const handleSaveAppointment = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                applied_date: item.applied_date,
+                job_title: item.job_title,
+                position: item.position,
+                department: item.department,
+                workplace: item.workplace,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_appointments').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_appointments').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_appointments').select('*').eq('employee_code', employee.employeeId).order('applied_date', { ascending: false })
+            setAppointments(data || [])
+            setEditingAppointment(null)
+        } catch (err) {
+            alert('Lỗi lưu bổ nhiệm: ' + err.message)
+        }
+    }
+    const handleDeleteAppointment = async (id) => {
+        if (!confirm('Xóa thông tin bổ nhiệm này?')) return
+        try {
+            await supabase.from('employee_appointments').delete().eq('id', id)
+            setAppointments(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Work Process Handler: 4.3 Nhật ký công tác (Work Journals)
+    const handleSaveWorkJournal = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                work_location: item.work_location,
+                purpose: item.purpose,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_work_journals').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_work_journals').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_work_journals').select('*').eq('employee_code', employee.employeeId).order('from_date', { ascending: false })
+            setWorkJournals(data || [])
+            setEditingWorkJournal(null)
+        } catch (err) {
+            alert('Lỗi lưu nhật ký công tác: ' + err.message)
+        }
+    }
+    const handleDeleteWorkJournal = async (id) => {
+        if (!confirm('Xóa nhật ký công tác này?')) return
+        try {
+            await supabase.from('employee_work_journals').delete().eq('id', id)
+            setWorkJournals(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Knowledge Handler: 5.1 Chuyên ngành đào tạo (Training Specializations)
+    const handleSaveSpecialization = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                specialization: item.specialization,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                training_place: item.training_place,
+                education_level: item.education_level,
+                training_type: item.training_type,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_training_specializations').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_training_specializations').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_training_specializations').select('*').eq('employee_code', employee.employeeId).order('from_date', { ascending: false })
+            setTrainingSpecializations(data || [])
+            setEditingSpecialization(null)
+        } catch (err) {
+            alert('Lỗi lưu chuyên ngành: ' + err.message)
+        }
+    }
+    const handleDeleteSpecialization = async (id) => {
+        if (!confirm('Xóa chuyên ngành đào tạo này?')) return
+        try {
+            await supabase.from('employee_training_specializations').delete().eq('id', id)
+            setTrainingSpecializations(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Knowledge Handler: 5.2 Chứng chỉ (Certificates)
+    const handleSaveCertificate = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                certificate_name: item.certificate_name,
+                level: item.level,
+                training_place: item.training_place,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                certificate_number: item.certificate_number,
+                issue_date: item.issue_date,
+                expiry_date: item.expiry_date,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_certificates').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_certificates').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_certificates').select('*').eq('employee_code', employee.employeeId).order('issue_date', { ascending: false })
+            setCertificates(data || [])
+            setEditingCertificate(null)
+        } catch (err) {
+            alert('Lỗi lưu chứng chỉ: ' + err.message)
+        }
+    }
+    const handleDeleteCertificate = async (id) => {
+        if (!confirm('Xóa chứng chỉ này?')) return
+        try {
+            await supabase.from('employee_certificates').delete().eq('id', id)
+            setCertificates(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Knowledge Handler: 5.3 Đào tạo nội bộ (Internal Trainings)
+    const handleSaveInternalTraining = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                class_code: item.class_code,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                decision_number: item.decision_number,
+                training_place: item.training_place,
+                training_course: item.training_course,
+                result: item.result,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_internal_trainings').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_internal_trainings').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_internal_trainings').select('*').eq('employee_code', employee.employeeId).order('from_date', { ascending: false })
+            setInternalTrainings(data || [])
+            setEditingInternalTraining(null)
+        } catch (err) {
+            alert('Lỗi lưu đào tạo nội bộ: ' + err.message)
+        }
+    }
+    const handleDeleteInternalTraining = async (id) => {
+        if (!confirm('Xóa đào tạo nội bộ này?')) return
+        try {
+            await supabase.from('employee_internal_trainings').delete().eq('id', id)
+            setInternalTrainings(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Rewards & Discipline Handler: 6.1 Khen thưởng (Rewards)
+    const handleSaveReward = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                reward_type: item.reward_type,
+                reward_content: item.reward_content,
+                signed_date: item.signed_date,
+                amount: item.amount,
+                reward_date: item.reward_date,
+                applied_year: item.applied_year,
+                attachment_url: item.attachment_url,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_rewards').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_rewards').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_rewards').select('*').eq('employee_code', employee.employeeId).order('reward_date', { ascending: false })
+            setRewards(data || [])
+            setEditingReward(null)
+        } catch (err) {
+            alert('Lỗi lưu khen thưởng: ' + err.message)
+        }
+    }
+    const handleDeleteReward = async (id) => {
+        if (!confirm('Xóa khen thưởng này?')) return
+        try {
+            await supabase.from('employee_rewards').delete().eq('id', id)
+            setRewards(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Rewards & Discipline Handler: 6.2 Kỷ luật (Disciplines)
+    const handleSaveDiscipline = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                signed_date: item.signed_date,
+                discipline_type: item.discipline_type,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_disciplines').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_disciplines').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_disciplines').select('*').eq('employee_code', employee.employeeId).order('signed_date', { ascending: false })
+            setDisciplines(data || [])
+            setEditingDiscipline(null)
+        } catch (err) {
+            alert('Lỗi lưu kỷ luật: ' + err.message)
+        }
+    }
+    const handleDeleteDiscipline = async (id) => {
+        if (!confirm('Xóa kỷ luật này?')) return
+        try {
+            await supabase.from('employee_disciplines').delete().eq('id', id)
+            setDisciplines(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Health Handler: 7.1 Thẻ bảo hiểm y tế (Health Insurance)
+    const handleSaveHealthInsurance = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                from_date: item.from_date,
+                to_date: item.to_date,
+                medical_facility: item.medical_facility,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_health_insurance').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_health_insurance').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_health_insurance').select('*').eq('employee_code', employee.employeeId).single()
+            setHealthInsurance(data || null)
+            setEditingHealthInsurance(null)
+        } catch (err) {
+            alert('Lỗi lưu thẻ BHYT: ' + err.message)
+        }
+    }
+
+    // Health Handler: 7.2 Tai nạn lao động (Work Accidents)
+    const handleSaveWorkAccident = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                accident_date: item.accident_date,
+                accident_location: item.accident_location,
+                leave_reason: item.leave_reason,
+                accident_type: item.accident_type,
+                leave_days: item.leave_days,
+                employee_cost: item.employee_cost,
+                property_damage: item.property_damage,
+                compensation_amount: item.compensation_amount,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_work_accidents').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_work_accidents').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_work_accidents').select('*').eq('employee_code', employee.employeeId).order('accident_date', { ascending: false })
+            setWorkAccidents(data || [])
+            setEditingWorkAccident(null)
+        } catch (err) {
+            alert('Lỗi lưu tai nạn lao động: ' + err.message)
+        }
+    }
+    const handleDeleteWorkAccident = async (id) => {
+        if (!confirm('Xóa tai nạn lao động này?')) return
+        try {
+            await supabase.from('employee_work_accidents').delete().eq('id', id)
+            setWorkAccidents(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Health Handler: 7.3 Khám sức khỏe (Health Checkups)
+    const handleSaveHealthCheckup = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                checkup_date: item.checkup_date,
+                expiry_date: item.expiry_date,
+                checkup_location: item.checkup_location,
+                cost: item.cost,
+                result: item.result,
+                attachment_url: item.attachment_url,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_health_checkups').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_health_checkups').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_health_checkups').select('*').eq('employee_code', employee.employeeId).order('checkup_date', { ascending: false })
+            setHealthCheckups(data || [])
+            setEditingHealthCheckup(null)
+        } catch (err) {
+            alert('Lỗi lưu khám sức khỏe: ' + err.message)
+        }
+    }
+    const handleDeleteHealthCheckup = async (id) => {
+        if (!confirm('Xóa khám sức khỏe này?')) return
+        try {
+            await supabase.from('employee_health_checkups').delete().eq('id', id)
+            setHealthCheckups(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
     // Grading States
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
     const [supervisorComment, setSupervisorComment] = useState('')
@@ -700,43 +1135,89 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 return
             }
             console.log('Fetching sub-data for empCode:', empCode)
-            let { data, error } = await supabase
-                .from('family_members')
-                .select('*')
-                .eq('employee_code', empCode)
 
-            if (data) {
-                setFamilyMembers(data)
-            }
+            // Parallel fetch all data using Promise.all for better performance
+            const [
+                familyResult,
+                bankResult,
+                contractResult,
+                passportResult,
+                salaryResult,
+                jobSalaryResult,
+                allowanceResult,
+                incomeResult,
+                leaveResult,
+                appointmentResult,
+                journalResult,
+                specResult,
+                certResult,
+                intTrainResult,
+                rewardResult,
+                disciplineResult,
+                hiResult,
+                accidentResult,
+                checkupResult
+            ] = await Promise.all([
+                // Family members
+                supabase.from('family_members').select('*').eq('employee_code', empCode),
+                // Bank Accounts
+                supabase.from('employee_bank_accounts').select('*').eq('employee_code', empCode),
+                // Labor Contracts (3.0)
+                supabase.from('labor_contracts').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
+                // Passports
+                supabase.from('employee_passports').select('*').eq('employee_code', empCode),
+                // Salaries (3.1)
+                supabase.from('employee_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
+                // Job Salaries (3.2)
+                supabase.from('employee_job_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
+                // Allowances (3.3)
+                supabase.from('employee_allowances').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
+                // Other Incomes (3.4)
+                supabase.from('employee_other_incomes').select('*').eq('employee_code', empCode).order('date_incurred', { ascending: false }),
+                // Leaves (4.1)
+                supabase.from('employee_leaves').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
+                // Appointments (4.2)
+                supabase.from('employee_appointments').select('*').eq('employee_code', empCode).order('applied_date', { ascending: false }),
+                // Work Journals (4.3)
+                supabase.from('employee_work_journals').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
+                // Training Specializations (5.1)
+                supabase.from('employee_training_specializations').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
+                // Certificates (5.2)
+                supabase.from('employee_certificates').select('*').eq('employee_code', empCode).order('issue_date', { ascending: false }),
+                // Internal Trainings (5.3)
+                supabase.from('employee_internal_trainings').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
+                // Rewards (6.1)
+                supabase.from('employee_rewards').select('*').eq('employee_code', empCode).order('reward_date', { ascending: false }),
+                // Disciplines (6.2)
+                supabase.from('employee_disciplines').select('*').eq('employee_code', empCode).order('signed_date', { ascending: false }),
+                // Health Insurance (7.1)
+                supabase.from('employee_health_insurance').select('*').eq('employee_code', empCode).maybeSingle(),
+                // Work Accidents (7.2)
+                supabase.from('employee_work_accidents').select('*').eq('employee_code', empCode).order('accident_date', { ascending: false }),
+                // Health Checkups (7.3)
+                supabase.from('employee_health_checkups').select('*').eq('employee_code', empCode).order('checkup_date', { ascending: false })
+            ])
 
-            // Fetch Bank Accounts
-            const { data: bankData, error: bankError } = await supabase.from('employee_bank_accounts').select('*').eq('employee_code', empCode)
-            console.log('Bank Data fetched:', bankData, 'Error:', bankError)
-            if (bankData) setBankAccounts(bankData)
-
-            // Fetch Labor Contracts
-            const { data: contractData } = await supabase.from('labor_contracts').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
-            if (contractData) setLaborContracts(contractData)
-
-            // Fetch Passports
-            const { data: passportData } = await supabase.from('employee_passports').select('*').eq('employee_code', empCode)
-            if (passportData) setPassports(passportData)
-            // Fetch Welfare Data
-            // Salaries (3.1)
-            const { data: salaryData } = await supabase.from('employee_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
-            if (salaryData) setSalaries(salaryData)
-
-            // Job Salaries (3.2)
-            const { data: jobSalaryData } = await supabase.from('employee_job_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
-            if (jobSalaryData) setJobSalaries(jobSalaryData)
-
-            // Allowances (3.3)
-            const { data: allowanceData } = await supabase.from('employee_allowances').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
-            if (allowanceData) setAllowances(allowanceData)
-
-            // Other Incomes (3.4)
-            const { data: incomeData } = await supabase.from('employee_other_incomes').select('*').eq('employee_code', empCode).order('date_incurred', { ascending: false })
-            if (incomeData) setOtherIncomes(incomeData)
+            // Set all data states
+            if (familyResult.data) setFamilyMembers(familyResult.data)
+            if (bankResult.data) setBankAccounts(bankResult.data)
+            if (contractResult.data) setLaborContracts(contractResult.data)
+            if (passportResult.data) setPassports(passportResult.data)
+            if (salaryResult.data) setSalaries(salaryResult.data)
+            if (jobSalaryResult.data) setJobSalaries(jobSalaryResult.data)
+            if (allowanceResult.data) setAllowances(allowanceResult.data)
+            if (incomeResult.data) setOtherIncomes(incomeResult.data)
+            if (leaveResult.data) setLeaves(leaveResult.data)
+            if (appointmentResult.data) setAppointments(appointmentResult.data)
+            if (journalResult.data) setWorkJournals(journalResult.data)
+            if (specResult.data) setTrainingSpecializations(specResult.data)
+            if (certResult.data) setCertificates(certResult.data)
+            if (intTrainResult.data) setInternalTrainings(intTrainResult.data)
+            if (rewardResult.data) setRewards(rewardResult.data)
+            if (disciplineResult.data) setDisciplines(disciplineResult.data)
+            setHealthInsurance(hiResult.data || null)
+            if (accidentResult.data) setWorkAccidents(accidentResult.data)
+            if (checkupResult.data) setHealthCheckups(checkupResult.data)
         }
         fetchFamily()
     }
@@ -2389,6 +2870,819 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
         </div>
     )
 
+    // 4.1 Nghỉ phép
+    const renderNghiPhep = () => (
+        <div className="section-content">
+            <h3>Nghỉ phép</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingLeave({})}>
+                    <i className="fas fa-plus"></i> Đăng ký nghỉ phép
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Loại ngày nghỉ</th>
+                            <th>Lý do</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Số ngày nghỉ</th>
+                            <th>Tổng ngày trừ</th>
+                            <th>Phép còn lại</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {leaves.length > 0 ? leaves.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.leave_type}</td>
+                                <td>{item.reason}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.leave_days}</td>
+                                <td>{item.total_deducted}</td>
+                                <td>{item.remaining_leave}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingLeave(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteLeave(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingLeave && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                        <h4>{editingLeave.id ? 'Cập nhật nghỉ phép' : 'Đăng ký nghỉ phép'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Loại ngày nghỉ</label>
+                                <select value={editingLeave.leave_type || ''} onChange={e => setEditingLeave({ ...editingLeave, leave_type: e.target.value })}>
+                                    <option value="">Chọn loại</option>
+                                    <option value="Phép năm">Phép năm</option>
+                                    <option value="Việc riêng">Việc riêng</option>
+                                    <option value="Ốm đau">Ốm đau</option>
+                                    <option value="Thai sản">Thai sản</option>
+                                    <option value="Không lương">Không lương</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div className="form-group"><label>Lý do</label><input type="text" value={editingLeave.reason || ''} onChange={e => setEditingLeave({ ...editingLeave, reason: e.target.value })} /></div>
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingLeave.from_date || ''} onChange={e => setEditingLeave({ ...editingLeave, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingLeave.to_date || ''} onChange={e => setEditingLeave({ ...editingLeave, to_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Số ngày nghỉ</label><input type="number" step="0.5" value={editingLeave.leave_days || ''} onChange={e => setEditingLeave({ ...editingLeave, leave_days: e.target.value })} /></div>
+                            <div className="form-group"><label>Tổng ngày trừ</label><input type="number" step="0.5" value={editingLeave.total_deducted || ''} onChange={e => setEditingLeave({ ...editingLeave, total_deducted: e.target.value })} /></div>
+                            <div className="form-group"><label>Phép còn lại</label><input type="number" step="0.5" value={editingLeave.remaining_leave || ''} onChange={e => setEditingLeave({ ...editingLeave, remaining_leave: e.target.value })} /></div>
+                            <div className="form-group"><label>Trạng thái</label>
+                                <select value={editingLeave.status || 'Chờ duyệt'} onChange={e => setEditingLeave({ ...editingLeave, status: e.target.value })}>
+                                    <option value="Chờ duyệt">Chờ duyệt</option>
+                                    <option value="Đã duyệt">Đã duyệt</option>
+                                    <option value="Từ chối">Từ chối</option>
+                                </select>
+                            </div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingLeave.note || ''} onChange={e => setEditingLeave({ ...editingLeave, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingLeave(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveLeave(editingLeave)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 4.2 Bổ nhiệm - Điều chuyển
+    const renderBoNhiem = () => (
+        <div className="section-content">
+            <h3>Bổ nhiệm - Điều chuyển</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingAppointment({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Số quyết định</th>
+                            <th>Ngày áp dụng</th>
+                            <th>Chức danh</th>
+                            <th>Chức vụ</th>
+                            <th>Bộ phận làm việc</th>
+                            <th>Nơi làm việc</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {appointments.length > 0 ? appointments.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.decision_number}</td>
+                                <td>{item.applied_date}</td>
+                                <td>{item.job_title}</td>
+                                <td>{item.position}</td>
+                                <td>{item.department}</td>
+                                <td>{item.workplace}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingAppointment(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteAppointment(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingAppointment && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                        <h4>{editingAppointment.id ? 'Cập nhật bổ nhiệm' : 'Thêm bổ nhiệm'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Số quyết định</label><input type="text" value={editingAppointment.decision_number || ''} onChange={e => setEditingAppointment({ ...editingAppointment, decision_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày áp dụng</label><input type="date" value={editingAppointment.applied_date || ''} onChange={e => setEditingAppointment({ ...editingAppointment, applied_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Chức danh</label><input type="text" value={editingAppointment.job_title || ''} onChange={e => setEditingAppointment({ ...editingAppointment, job_title: e.target.value })} /></div>
+                            <div className="form-group"><label>Chức vụ</label><input type="text" value={editingAppointment.position || ''} onChange={e => setEditingAppointment({ ...editingAppointment, position: e.target.value })} /></div>
+                            <div className="form-group"><label>Bộ phận làm việc</label><input type="text" value={editingAppointment.department || ''} onChange={e => setEditingAppointment({ ...editingAppointment, department: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi làm việc</label><input type="text" value={editingAppointment.workplace || ''} onChange={e => setEditingAppointment({ ...editingAppointment, workplace: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingAppointment.note || ''} onChange={e => setEditingAppointment({ ...editingAppointment, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingAppointment(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveAppointment(editingAppointment)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 4.3 Nhật ký công tác
+    const renderNhatKyCongTac = () => (
+        <div className="section-content">
+            <h3>Nhật ký công tác</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingWorkJournal({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Số quyết định</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Nơi công tác</th>
+                            <th>Mục đích</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {workJournals.length > 0 ? workJournals.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.decision_number}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.work_location}</td>
+                                <td>{item.purpose}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingWorkJournal(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteWorkJournal(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingWorkJournal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '700px', maxWidth: '95%' }}>
+                        <h4>{editingWorkJournal.id ? 'Cập nhật nhật ký công tác' : 'Thêm nhật ký công tác'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Số quyết định</label><input type="text" value={editingWorkJournal.decision_number || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, decision_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingWorkJournal.from_date || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingWorkJournal.to_date || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, to_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi công tác</label><input type="text" value={editingWorkJournal.work_location || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, work_location: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Mục đích</label><input type="text" value={editingWorkJournal.purpose || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, purpose: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingWorkJournal.note || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingWorkJournal(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveWorkJournal(editingWorkJournal)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 5.1 Chuyên ngành đào tạo
+    const renderChuyenNganh = () => (
+        <div className="section-content">
+            <h3>Chuyên ngành đào tạo</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingSpecialization({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Chuyên ngành</th>
+                            <th>Thời gian đào tạo từ</th>
+                            <th>Đến</th>
+                            <th>Nơi đào tạo</th>
+                            <th>Trình độ</th>
+                            <th>Loại hình đào tạo</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {trainingSpecializations.length > 0 ? trainingSpecializations.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.specialization}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.training_place}</td>
+                                <td>{item.education_level}</td>
+                                <td>{item.training_type}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingSpecialization(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteSpecialization(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingSpecialization && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                        <h4>{editingSpecialization.id ? 'Cập nhật chuyên ngành' : 'Thêm chuyên ngành đào tạo'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group full-width"><label>Chuyên ngành</label><input type="text" value={editingSpecialization.specialization || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, specialization: e.target.value })} /></div>
+                            <div className="form-group"><label>Thời gian từ</label><input type="date" value={editingSpecialization.from_date || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến</label><input type="date" value={editingSpecialization.to_date || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, to_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi đào tạo</label><input type="text" value={editingSpecialization.training_place || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, training_place: e.target.value })} /></div>
+                            <div className="form-group"><label>Trình độ</label>
+                                <select value={editingSpecialization.education_level || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, education_level: e.target.value })}>
+                                    <option value="">Chọn trình độ</option>
+                                    <option value="Tiến sĩ">Tiến sĩ</option>
+                                    <option value="Thạc sĩ">Thạc sĩ</option>
+                                    <option value="Đại học">Đại học</option>
+                                    <option value="Cao đẳng">Cao đẳng</option>
+                                    <option value="Trung cấp">Trung cấp</option>
+                                    <option value="Sơ cấp">Sơ cấp</option>
+                                </select>
+                            </div>
+                            <div className="form-group"><label>Loại hình đào tạo</label>
+                                <select value={editingSpecialization.training_type || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, training_type: e.target.value })}>
+                                    <option value="">Chọn loại hình</option>
+                                    <option value="Chính quy">Chính quy</option>
+                                    <option value="Tại chức">Tại chức</option>
+                                    <option value="Từ xa">Từ xa</option>
+                                    <option value="Liên thông">Liên thông</option>
+                                </select>
+                            </div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingSpecialization.note || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingSpecialization(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveSpecialization(editingSpecialization)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 5.2 Chứng chỉ
+    const renderChungChi = () => (
+        <div className="section-content">
+            <h3>Chứng chỉ</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingCertificate({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tên chứng chỉ</th>
+                            <th>Trình độ</th>
+                            <th>Nơi đào tạo</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Số hiệu</th>
+                            <th>Ngày cấp</th>
+                            <th>Hiệu lực đến</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {certificates.length > 0 ? certificates.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.certificate_name}</td>
+                                <td>{item.level}</td>
+                                <td>{item.training_place}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.certificate_number}</td>
+                                <td>{item.issue_date}</td>
+                                <td>{item.expiry_date}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingCertificate(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteCertificate(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingCertificate && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '900px', maxWidth: '95%' }}>
+                        <h4>{editingCertificate.id ? 'Cập nhật chứng chỉ' : 'Thêm chứng chỉ'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group full-width"><label>Tên chứng chỉ</label><input type="text" value={editingCertificate.certificate_name || ''} onChange={e => setEditingCertificate({ ...editingCertificate, certificate_name: e.target.value })} /></div>
+                            <div className="form-group"><label>Trình độ</label><input type="text" value={editingCertificate.level || ''} onChange={e => setEditingCertificate({ ...editingCertificate, level: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi đào tạo</label><input type="text" value={editingCertificate.training_place || ''} onChange={e => setEditingCertificate({ ...editingCertificate, training_place: e.target.value })} /></div>
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingCertificate.from_date || ''} onChange={e => setEditingCertificate({ ...editingCertificate, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingCertificate.to_date || ''} onChange={e => setEditingCertificate({ ...editingCertificate, to_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Số hiệu</label><input type="text" value={editingCertificate.certificate_number || ''} onChange={e => setEditingCertificate({ ...editingCertificate, certificate_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày cấp</label><input type="date" value={editingCertificate.issue_date || ''} onChange={e => setEditingCertificate({ ...editingCertificate, issue_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Hiệu lực đến ngày</label><input type="date" value={editingCertificate.expiry_date || ''} onChange={e => setEditingCertificate({ ...editingCertificate, expiry_date: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingCertificate.note || ''} onChange={e => setEditingCertificate({ ...editingCertificate, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingCertificate(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveCertificate(editingCertificate)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 5.3 Đào tạo nội bộ
+    const renderDaoTaoNoiBo = () => (
+        <div className="section-content">
+            <h3>Đào tạo nội bộ</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingInternalTraining({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Mã lớp</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Số quyết định</th>
+                            <th>Nơi đào tạo</th>
+                            <th>Khóa đào tạo</th>
+                            <th>Kết quả</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {internalTrainings.length > 0 ? internalTrainings.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.class_code}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.decision_number}</td>
+                                <td>{item.training_place}</td>
+                                <td>{item.training_course}</td>
+                                <td>{item.result}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingInternalTraining(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteInternalTraining(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingInternalTraining && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                        <h4>{editingInternalTraining.id ? 'Cập nhật đào tạo nội bộ' : 'Thêm đào tạo nội bộ'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Mã lớp</label><input type="text" value={editingInternalTraining.class_code || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, class_code: e.target.value })} /></div>
+                            <div className="form-group"><label>Số quyết định</label><input type="text" value={editingInternalTraining.decision_number || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, decision_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingInternalTraining.from_date || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingInternalTraining.to_date || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, to_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi đào tạo</label><input type="text" value={editingInternalTraining.training_place || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, training_place: e.target.value })} /></div>
+                            <div className="form-group"><label>Khóa đào tạo</label><input type="text" value={editingInternalTraining.training_course || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, training_course: e.target.value })} /></div>
+                            <div className="form-group"><label>Kết quả</label>
+                                <select value={editingInternalTraining.result || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, result: e.target.value })}>
+                                    <option value="">Chọn kết quả</option>
+                                    <option value="Đạt">Đạt</option>
+                                    <option value="Không đạt">Không đạt</option>
+                                    <option value="Giỏi">Giỏi</option>
+                                    <option value="Khá">Khá</option>
+                                    <option value="Trung bình">Trung bình</option>
+                                </select>
+                            </div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingInternalTraining.note || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingInternalTraining(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveInternalTraining(editingInternalTraining)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 6.1 Khen thưởng
+    const renderKhenThuong = () => (
+        <div className="section-content">
+            <h3>Khen thưởng</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingReward({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Số quyết định</th>
+                            <th>Hình thức khen thưởng</th>
+                            <th>Nội dung khen thưởng</th>
+                            <th>Ngày ký</th>
+                            <th>Số tiền</th>
+                            <th>Ngày khen thưởng</th>
+                            <th>Tính vào năm</th>
+                            <th>File đính kèm</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rewards.length > 0 ? rewards.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.decision_number}</td>
+                                <td>{item.reward_type}</td>
+                                <td>{item.reward_content}</td>
+                                <td>{item.signed_date}</td>
+                                <td>{item.amount?.toLocaleString()}</td>
+                                <td>{item.reward_date}</td>
+                                <td>{item.applied_year}</td>
+                                <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingReward(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteReward(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingReward && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '900px', maxWidth: '95%' }}>
+                        <h4>{editingReward.id ? 'Cập nhật khen thưởng' : 'Thêm khen thưởng'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Số quyết định</label><input type="text" value={editingReward.decision_number || ''} onChange={e => setEditingReward({ ...editingReward, decision_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Hình thức khen thưởng</label>
+                                <select value={editingReward.reward_type || ''} onChange={e => setEditingReward({ ...editingReward, reward_type: e.target.value })}>
+                                    <option value="">Chọn hình thức</option>
+                                    <option value="Bằng khen">Bằng khen</option>
+                                    <option value="Giấy khen">Giấy khen</option>
+                                    <option value="Thưởng tiền">Thưởng tiền</option>
+                                    <option value="Thăng chức">Thăng chức</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div className="form-group full-width"><label>Nội dung khen thưởng</label><textarea rows="2" value={editingReward.reward_content || ''} onChange={e => setEditingReward({ ...editingReward, reward_content: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày ký</label><input type="date" value={editingReward.signed_date || ''} onChange={e => setEditingReward({ ...editingReward, signed_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Số tiền</label><input type="number" value={editingReward.amount || ''} onChange={e => setEditingReward({ ...editingReward, amount: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày khen thưởng</label><input type="date" value={editingReward.reward_date || ''} onChange={e => setEditingReward({ ...editingReward, reward_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Tính vào năm</label><input type="number" value={editingReward.applied_year || new Date().getFullYear()} onChange={e => setEditingReward({ ...editingReward, applied_year: parseInt(e.target.value) })} /></div>
+                            <div className="form-group full-width"><label>File đính kèm (URL)</label><input type="text" value={editingReward.attachment_url || ''} onChange={e => setEditingReward({ ...editingReward, attachment_url: e.target.value })} placeholder="https://..." /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingReward.note || ''} onChange={e => setEditingReward({ ...editingReward, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingReward(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveReward(editingReward)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 6.2 Kỷ luật
+    const renderKyLuat = () => (
+        <div className="section-content">
+            <h3>Kỷ luật</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingDiscipline({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Số quyết định</th>
+                            <th>Ngày ký</th>
+                            <th>Hình thức kỷ luật</th>
+                            <th>Từ ngày</th>
+                            <th>Đến ngày</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {disciplines.length > 0 ? disciplines.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.decision_number}</td>
+                                <td>{item.signed_date}</td>
+                                <td>{item.discipline_type}</td>
+                                <td>{item.from_date}</td>
+                                <td>{item.to_date}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingDiscipline(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteDiscipline(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingDiscipline && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '700px', maxWidth: '95%' }}>
+                        <h4>{editingDiscipline.id ? 'Cập nhật kỷ luật' : 'Thêm kỷ luật'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Số quyết định</label><input type="text" value={editingDiscipline.decision_number || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, decision_number: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày ký</label><input type="date" value={editingDiscipline.signed_date || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, signed_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Hình thức kỷ luật</label>
+                                <select value={editingDiscipline.discipline_type || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, discipline_type: e.target.value })}>
+                                    <option value="">Chọn hình thức</option>
+                                    <option value="Khiển trách">Khiển trách</option>
+                                    <option value="Cảnh cáo">Cảnh cáo</option>
+                                    <option value="Cách chức">Cách chức</option>
+                                    <option value="Buộc thôi việc">Buộc thôi việc</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingDiscipline.from_date || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingDiscipline.to_date || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, to_date: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingDiscipline.note || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingDiscipline(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveDiscipline(editingDiscipline)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 7.1 Thẻ bảo hiểm y tế
+    const renderTheBHYT = () => (
+        <div className="section-content">
+            <h3>Thẻ bảo hiểm y tế</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+            {!healthInsurance && !editingHealthInsurance && (
+                <div style={{ textAlign: 'center', padding: '30px' }}>
+                    <p>Chưa có thông tin thẻ BHYT</p>
+                    <button className="btn btn-primary" onClick={() => setEditingHealthInsurance({})}>
+                        <i className="fas fa-plus"></i> Thêm thông tin
+                    </button>
+                </div>
+            )}
+
+            {healthInsurance && !editingHealthInsurance && (
+                <div className="form-section">
+                    <div className="grid-2">
+                        <div className="form-group"><label>Từ ngày</label><input type="date" value={healthInsurance.from_date || ''} disabled /></div>
+                        <div className="form-group"><label>Đến ngày</label><input type="date" value={healthInsurance.to_date || ''} disabled /></div>
+                        <div className="form-group full-width"><label>Nơi khám chữa bệnh (KCB)</label><input type="text" value={healthInsurance.medical_facility || ''} disabled /></div>
+                        <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={healthInsurance.note || ''} disabled /></div>
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: '15px' }}>
+                        <button className="btn btn-primary" onClick={() => setEditingHealthInsurance(healthInsurance)}>
+                            <i className="fas fa-edit"></i> Cập nhật
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {editingHealthInsurance && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '600px', maxWidth: '95%' }}>
+                        <h4>{healthInsurance ? 'Cập nhật thẻ BHYT' : 'Thêm thẻ BHYT'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Từ ngày</label><input type="date" value={editingHealthInsurance.from_date || ''} onChange={e => setEditingHealthInsurance({ ...editingHealthInsurance, from_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Đến ngày</label><input type="date" value={editingHealthInsurance.to_date || ''} onChange={e => setEditingHealthInsurance({ ...editingHealthInsurance, to_date: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Nơi KCB</label><input type="text" value={editingHealthInsurance.medical_facility || ''} onChange={e => setEditingHealthInsurance({ ...editingHealthInsurance, medical_facility: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingHealthInsurance.note || ''} onChange={e => setEditingHealthInsurance({ ...editingHealthInsurance, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingHealthInsurance(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveHealthInsurance(editingHealthInsurance)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 7.2 Tai nạn lao động
+    const renderTaiNanLaoDong = () => (
+        <div className="section-content">
+            <h3>Tai nạn lao động</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingWorkAccident({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ngày xảy ra</th>
+                            <th>Nơi xảy ra</th>
+                            <th>Lý do nghỉ</th>
+                            <th>Loại tai nạn</th>
+                            <th>Số ngày nghỉ</th>
+                            <th>Chi phí cho NLĐ</th>
+                            <th>Thiệt hại tài sản</th>
+                            <th>Tiền đền bù</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {workAccidents.length > 0 ? workAccidents.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.accident_date}</td>
+                                <td>{item.accident_location}</td>
+                                <td>{item.leave_reason}</td>
+                                <td>{item.accident_type}</td>
+                                <td>{item.leave_days}</td>
+                                <td>{item.employee_cost?.toLocaleString()}</td>
+                                <td>{item.property_damage?.toLocaleString()}</td>
+                                <td>{item.compensation_amount?.toLocaleString()}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingWorkAccident(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteWorkAccident(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingWorkAccident && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '900px', maxWidth: '95%' }}>
+                        <h4>{editingWorkAccident.id ? 'Cập nhật tai nạn lao động' : 'Thêm tai nạn lao động'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Ngày xảy ra</label><input type="date" value={editingWorkAccident.accident_date || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, accident_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi xảy ra</label><input type="text" value={editingWorkAccident.accident_location || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, accident_location: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Lý do nghỉ</label><input type="text" value={editingWorkAccident.leave_reason || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, leave_reason: e.target.value })} /></div>
+                            <div className="form-group"><label>Loại tai nạn lao động</label>
+                                <select value={editingWorkAccident.accident_type || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, accident_type: e.target.value })}>
+                                    <option value="">Chọn loại</option>
+                                    <option value="Nhẹ">Nhẹ</option>
+                                    <option value="Nặng">Nặng</option>
+                                    <option value="Chết người">Chết người</option>
+                                </select>
+                            </div>
+                            <div className="form-group"><label>Số ngày nghỉ do tai nạn</label><input type="number" value={editingWorkAccident.leave_days || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, leave_days: parseInt(e.target.value) })} /></div>
+                            <div className="form-group"><label>Tổng chi phí cho NLĐ</label><input type="number" value={editingWorkAccident.employee_cost || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, employee_cost: e.target.value })} /></div>
+                            <div className="form-group"><label>Giá trị tài sản thiệt hại</label><input type="number" value={editingWorkAccident.property_damage || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, property_damage: e.target.value })} /></div>
+                            <div className="form-group"><label>Tổng tiền đền bù</label><input type="number" value={editingWorkAccident.compensation_amount || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, compensation_amount: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingWorkAccident.note || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingWorkAccident(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveWorkAccident(editingWorkAccident)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
+    // 7.3 Khám sức khỏe
+    const renderKhamSucKhoe = () => (
+        <div className="section-content">
+            <h3>Khám sức khỏe</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingHealthCheckup({})}>
+                    <i className="fas fa-plus"></i> Thêm mới
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ngày khám</th>
+                            <th>Ngày hết hạn</th>
+                            <th>Nơi khám</th>
+                            <th>Chi phí</th>
+                            <th>Kết quả</th>
+                            <th>File đính kèm</th>
+                            <th>Ghi chú</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {healthCheckups.length > 0 ? healthCheckups.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.checkup_date}</td>
+                                <td>{item.expiry_date}</td>
+                                <td>{item.checkup_location}</td>
+                                <td>{item.cost?.toLocaleString()}</td>
+                                <td>{item.result}</td>
+                                <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
+                                <td>{item.note}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingHealthCheckup(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteHealthCheckup(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingHealthCheckup && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                        <h4>{editingHealthCheckup.id ? 'Cập nhật khám sức khỏe' : 'Thêm khám sức khỏe'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Ngày khám</label><input type="date" value={editingHealthCheckup.checkup_date || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, checkup_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Ngày hết hạn</label><input type="date" value={editingHealthCheckup.expiry_date || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, expiry_date: e.target.value })} /></div>
+                            <div className="form-group"><label>Nơi khám</label><input type="text" value={editingHealthCheckup.checkup_location || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, checkup_location: e.target.value })} /></div>
+                            <div className="form-group"><label>Chi phí</label><input type="number" value={editingHealthCheckup.cost || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, cost: e.target.value })} /></div>
+                            <div className="form-group"><label>Kết quả</label>
+                                <select value={editingHealthCheckup.result || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, result: e.target.value })}>
+                                    <option value="">Chọn kết quả</option>
+                                    <option value="Đủ sức khỏe">Đủ sức khỏe</option>
+                                    <option value="Cần theo dõi">Cần theo dõi</option>
+                                    <option value="Không đủ sức khỏe">Không đủ sức khỏe</option>
+                                </select>
+                            </div>
+                            <div className="form-group full-width"><label>File đính kèm (URL)</label><input type="text" value={editingHealthCheckup.attachment_url || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, attachment_url: e.target.value })} placeholder="https://..." /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingHealthCheckup.note || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingHealthCheckup(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveHealthCheckup(editingHealthCheckup)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
     return (
         <div className="employee-detail-container">
             <div className="detail-main" style={{ position: 'relative' }}>
@@ -2410,6 +3704,17 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     {activeSection === 'luong_vi_tri' && renderLuongViTriCV()}
                     {activeSection === 'phu_cap' && renderPhuCap()}
                     {activeSection === 'thu_nhap_khac' && renderThuNhapKhac()}
+                    {activeSection === 'nghi_phep' && renderNghiPhep()}
+                    {activeSection === 'bo_nhiem' && renderBoNhiem()}
+                    {activeSection === 'nhat_ky_cong_tac' && renderNhatKyCongTac()}
+                    {activeSection === 'chuyen_nganh' && renderChuyenNganh()}
+                    {activeSection === 'chung_chi' && renderChungChi()}
+                    {activeSection === 'dao_tao_noi_bo' && renderDaoTaoNoiBo()}
+                    {activeSection === 'khen_thuong' && renderKhenThuong()}
+                    {activeSection === 'ky_luat' && renderKyLuat()}
+                    {activeSection === 'the_bhyt' && renderTheBHYT()}
+                    {activeSection === 'tai_nan_lao_dong' && renderTaiNanLaoDong()}
+                    {activeSection === 'kham_suc_khoe' && renderKhamSucKhoe()}
                     {activeSection === 'grading' && renderGrading()}
                 </div>
             </div>

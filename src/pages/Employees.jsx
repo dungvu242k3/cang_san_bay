@@ -279,7 +279,18 @@ function Employees() {
             'luong-co-ban': 'luong_co_ban',
             'luong-vi-tri': 'luong_vi_tri',
             'phu-cap': 'phu_cap',
-            'thu-nhap-khac': 'thu_nhap_khac'
+            'thu-nhap-khac': 'thu_nhap_khac',
+            'nghi-phep': 'nghi_phep',
+            'bo-nhiem': 'bo_nhiem',
+            'nhat-ky-cong-tac': 'nhat_ky_cong_tac',
+            'chuyen-nganh': 'chuyen_nganh',
+            'chung-chi': 'chung_chi',
+            'dao-tao-noi-bo': 'dao_tao_noi_bo',
+            'khen-thuong': 'khen_thuong',
+            'ky-luat': 'ky_luat',
+            'the-bhyt': 'the_bhyt',
+            'tai-nan-lao-dong': 'tai_nan_lao_dong',
+            'kham-suc-khoe': 'kham_suc_khoe'
         }
         setActiveSection(sectionMap[sectionId] || sectionId)
     }
