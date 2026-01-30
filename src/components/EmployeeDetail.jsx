@@ -177,6 +177,17 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingContract, setEditingContract] = useState(null)
     const [editingPassport, setEditingPassport] = useState(null)
 
+    // Welfare States
+    const [salaries, setSalaries] = useState([])
+    const [jobSalaries, setJobSalaries] = useState([])
+    const [allowances, setAllowances] = useState([])
+    const [otherIncomes, setOtherIncomes] = useState([])
+
+    const [editingSalary, setEditingSalary] = useState(null)
+    const [editingJobSalary, setEditingJobSalary] = useState(null)
+    const [editingAllowance, setEditingAllowance] = useState(null)
+    const [editingOtherIncome, setEditingOtherIncome] = useState(null)
+
     // CRUD Handlers
     // Bank Accounts
     const handleSaveBank = async (bank) => {
@@ -292,6 +303,170 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
         } catch (err) {
             alert('Lỗi xóa: ' + err.message)
         }
+    }
+
+    // Welfare Handler: 3.1 Basic Salary
+    const handleSaveSalary = async (item) => {
+        try {
+            // Auto calc basic_salary if missing
+            let basic_salary = item.basic_salary
+            if (!basic_salary && item.minimum_wage && item.salary_coefficient) {
+                basic_salary = Number(item.minimum_wage) * Number(item.salary_coefficient)
+            }
+
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                effective_date: item.effective_date,
+                salary_scale: item.salary_scale,
+                salary_level: item.salary_level,
+                salary_coefficient: item.salary_coefficient,
+                minimum_wage: item.minimum_wage,
+                basic_salary: basic_salary,
+                social_insurance_salary: item.social_insurance_salary,
+                salary_unit_price: item.salary_unit_price,
+                contract_salary: item.contract_salary,
+                date_received_level: item.date_received_level,
+                is_active: item.is_active || false,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_salaries').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_salaries').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_salaries').select('*').eq('employee_code', employee.employeeId).order('effective_date', { ascending: false })
+            setSalaries(data || [])
+            setEditingSalary(null)
+        } catch (err) {
+            alert('Lỗi lưu lương cơ bản: ' + err.message)
+        }
+    }
+    const handleDeleteSalary = async (id) => {
+        if (!confirm('Xóa thông tin lương cơ bản này?')) return
+        try {
+            await supabase.from('employee_salaries').delete().eq('id', id)
+            setSalaries(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Welfare Handler: 3.2 Job Position Salary
+    const handleSaveJobSalary = async (item) => {
+        try {
+            let position_salary = item.position_salary
+            if (!position_salary && item.minimum_wage && item.salary_level && item.salary_coefficient) {
+                position_salary = Number(item.minimum_wage) * Number(item.salary_level) * Number(item.salary_coefficient)
+            }
+
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                effective_date: item.effective_date,
+                salary_scale: item.salary_scale,
+                minimum_wage: item.minimum_wage,
+                salary_level: item.salary_level,
+                salary_coefficient: item.salary_coefficient,
+                position_salary: position_salary,
+                signed_date: item.signed_date,
+                attachment_url: item.attachment_url,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_job_salaries').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_job_salaries').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_job_salaries').select('*').eq('employee_code', employee.employeeId).order('effective_date', { ascending: false })
+            setJobSalaries(data || [])
+            setEditingJobSalary(null)
+        } catch (err) {
+            alert('Lỗi lưu lương vị trí: ' + err.message)
+        }
+    }
+    const handleDeleteJobSalary = async (id) => {
+        if (!confirm('Xóa thông tin lương vị trí này?')) return
+        try {
+            await supabase.from('employee_job_salaries').delete().eq('id', id)
+            setJobSalaries(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Welfare Handler: 3.3 Allowances
+    const handleSaveAllowance = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                decision_number: item.decision_number,
+                effective_date: item.effective_date,
+                allowance_type: item.allowance_type,
+                allowance_level: item.allowance_level,
+                amount: item.amount,
+                attachment_url: item.attachment_url,
+                is_active: item.is_active || false,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_allowances').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_allowances').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_allowances').select('*').eq('employee_code', employee.employeeId).order('effective_date', { ascending: false })
+            setAllowances(data || [])
+            setEditingAllowance(null)
+        } catch (err) {
+            alert('Lỗi lưu phụ cấp: ' + err.message)
+        }
+    }
+    const handleDeleteAllowance = async (id) => {
+        if (!confirm('Xóa phụ cấp này?')) return
+        try {
+            await supabase.from('employee_allowances').delete().eq('id', id)
+            setAllowances(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
+    }
+
+    // Welfare Handler: 3.4 Other Income
+    const handleSaveOtherIncome = async (item) => {
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                date_incurred: item.date_incurred,
+                income_type: item.income_type,
+                amount: item.amount,
+                tax_amount: item.tax_amount,
+                applied_month: item.applied_month,
+                note: item.note
+            }
+            let res
+            if (item.id) {
+                res = await supabase.from('employee_other_incomes').update(payload).eq('id', item.id).select()
+            } else {
+                res = await supabase.from('employee_other_incomes').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('employee_other_incomes').select('*').eq('employee_code', employee.employeeId).order('date_incurred', { ascending: false })
+            setOtherIncomes(data || [])
+            setEditingOtherIncome(null)
+        } catch (err) {
+            alert('Lỗi lưu thu nhập khác: ' + err.message)
+        }
+    }
+    const handleDeleteOtherIncome = async (id) => {
+        if (!confirm('Xóa khoản thu nhập này?')) return
+        try {
+            await supabase.from('employee_other_incomes').delete().eq('id', id)
+            setOtherIncomes(prev => prev.filter(i => i.id !== id))
+        } catch (err) { alert('Lỗi xóa: ' + err.message) }
     }
 
     // Grading States
@@ -546,6 +721,22 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
             // Fetch Passports
             const { data: passportData } = await supabase.from('employee_passports').select('*').eq('employee_code', empCode)
             if (passportData) setPassports(passportData)
+            // Fetch Welfare Data
+            // Salaries (3.1)
+            const { data: salaryData } = await supabase.from('employee_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
+            if (salaryData) setSalaries(salaryData)
+
+            // Job Salaries (3.2)
+            const { data: jobSalaryData } = await supabase.from('employee_job_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
+            if (jobSalaryData) setJobSalaries(jobSalaryData)
+
+            // Allowances (3.3)
+            const { data: allowanceData } = await supabase.from('employee_allowances').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false })
+            if (allowanceData) setAllowances(allowanceData)
+
+            // Other Incomes (3.4)
+            const { data: incomeData } = await supabase.from('employee_other_incomes').select('*').eq('employee_code', empCode).order('date_incurred', { ascending: false })
+            if (incomeData) setOtherIncomes(incomeData)
         }
         fetchFamily()
     }
@@ -1799,6 +1990,405 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // End of renderGrading
 
+    // Welfare Render Functions
+    // 3.1 Lương cơ bản
+    const renderLuongCoBan = () => {
+        const activeSalary = salaries.find(s => s.is_active) || {}
+
+        // Calculate custom salary warning (3 years cycle)
+        let warningMsg = null
+        if (activeSalary.date_received_level) {
+            const received = new Date(activeSalary.date_received_level)
+            const nextRaise = new Date(received)
+            nextRaise.setFullYear(received.getFullYear() + 3)
+            const today = new Date()
+            const diffDays = Math.ceil((nextRaise - today) / (1000 * 60 * 60 * 24))
+
+            if (diffDays <= 90 && diffDays > 0) {
+                warningMsg = <span className="text-warning"><i className="fas fa-exclamation-triangle"></i> Sắp nâng bậc: {nextRaise.toLocaleDateString('vi-VN')} ({diffDays} ngày)</span>
+            } else if (diffDays <= 0) {
+                warningMsg = <span className="text-danger"><i className="fas fa-exclamation-circle"></i> Quá hạn nâng bậc: {nextRaise.toLocaleDateString('vi-VN')}</span>
+            }
+        }
+
+        return (
+            <div className="section-content">
+                <h3>Lương cơ bản</h3>
+                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+                {/* AREA 1: CURRENT INFO */}
+                <div className="current-salary-info" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '20px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#1976d2', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                        Thông tin hiện tại
+                        {activeSalary.is_active && <span className="badge badge-success ml-2" style={{ marginLeft: '10px' }}>Đang hiệu lực</span>}
+                    </h4>
+                    <div className="grid-2">
+                        <div className="form-group"><label>Số QĐ lương CB</label><div className="field-value">{activeSalary.decision_number || '-'}</div></div>
+                        <div className="form-group"><label>Ngày hiệu lực</label><div className="field-value">{activeSalary.effective_date || '-'}</div></div>
+                        <div className="form-group"><label>Ngạch lương</label><div className="field-value">{activeSalary.salary_scale || '-'}</div></div>
+                        <div className="form-group"><label>Lương tối thiểu</label><div className="field-value">{activeSalary.minimum_wage ? Number(activeSalary.minimum_wage).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group"><label>Bậc lương</label><div className="field-value">{activeSalary.salary_level || '-'}</div></div>
+                        <div className="form-group">
+                            <label>Ngày nhận bậc lương</label>
+                            <div className="field-value">
+                                {activeSalary.date_received_level || '-'}
+                                {warningMsg && <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>{warningMsg}</div>}
+                            </div>
+                        </div>
+                        <div className="form-group"><label>Hệ số lương</label><div className="field-value">{activeSalary.salary_coefficient || '-'}</div></div>
+                        <div className="form-group"><label>Lương cơ bản</label><div className="field-value font-weight-bold">{activeSalary.basic_salary ? Number(activeSalary.basic_salary).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group"><label>Lương đóng BHXH</label><div className="field-value">{activeSalary.social_insurance_salary ? Number(activeSalary.social_insurance_salary).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group full-width"><label>Ghi chú</label><div className="field-value">{activeSalary.note || '-'}</div></div>
+                    </div>
+                </div>
+
+                {/* AREA 2: HISTORY TABLE */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Diễn biến lương</h4>
+                    <button className="btn btn-primary btn-sm" onClick={() => setEditingSalary({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                </div>
+
+                <div className="table-wrapper">
+                    <table className="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Số QĐ</th>
+                                <th>Ngày hiệu lực</th>
+                                <th>Hệ số</th>
+                                <th>Lương CB</th>
+                                <th>Lương BHXH</th>
+                                <th>Đơn giá</th>
+                                <th>Lương khoán</th>
+                                <th style={{ textAlign: 'center' }}>Hiệu lực</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {salaries.length > 0 ? salaries.map(item => (
+                                <tr key={item.id}>
+                                    <td>{item.decision_number}</td>
+                                    <td>{item.effective_date}</td>
+                                    <td>{item.salary_coefficient}</td>
+                                    <td>{Number(item.basic_salary).toLocaleString('vi-VN')}</td>
+                                    <td>{Number(item.social_insurance_salary).toLocaleString('vi-VN')}</td>
+                                    <td>{item.salary_unit_price ? Number(item.salary_unit_price).toLocaleString('vi-VN') : '-'}</td>
+                                    <td>{item.contract_salary ? Number(item.contract_salary).toLocaleString('vi-VN') : '-'}</td>
+                                    <td className="text-center">
+                                        <input type="checkbox" checked={item.is_active || false} disabled />
+                                    </td>
+                                    <td className="text-center">
+                                        <button className="btn btn-link btn-sm" onClick={() => setEditingSalary(item)}><i className="fas fa-edit"></i></button>
+                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+
+                {editingSalary && (
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                            <h4>{editingSalary.id ? 'Cập nhật lương cơ bản' : 'Thêm mới lương cơ bản'}</h4>
+                            <div className="grid-2">
+                                <div className="form-group"><label>Số QĐ</label><input type="text" value={editingSalary.decision_number || ''} onChange={e => setEditingSalary({ ...editingSalary, decision_number: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngày hiệu lực</label><input type="date" value={editingSalary.effective_date || ''} onChange={e => setEditingSalary({ ...editingSalary, effective_date: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngạch lương</label><input type="text" value={editingSalary.salary_scale || ''} onChange={e => setEditingSalary({ ...editingSalary, salary_scale: e.target.value })} /></div>
+                                <div className="form-group"><label>Bậc lương</label><input type="text" value={editingSalary.salary_level || ''} onChange={e => setEditingSalary({ ...editingSalary, salary_level: e.target.value })} /></div>
+                                <div className="form-group"><label>Lương tối thiểu</label><input type="number" value={editingSalary.minimum_wage || ''} onChange={e => setEditingSalary({ ...editingSalary, minimum_wage: e.target.value })} /></div>
+                                <div className="form-group"><label>Hệ số lương</label><input type="number" step="0.01" value={editingSalary.salary_coefficient || ''} onChange={e => setEditingSalary({ ...editingSalary, salary_coefficient: e.target.value })} /></div>
+                                <div className="form-group"><label>Lương đóng BHXH</label><input type="number" value={editingSalary.social_insurance_salary || ''} onChange={e => setEditingSalary({ ...editingSalary, social_insurance_salary: e.target.value })} /></div>
+                                <div className="form-group"><label>Đơn giá lương</label><input type="number" value={editingSalary.salary_unit_price || ''} onChange={e => setEditingSalary({ ...editingSalary, salary_unit_price: e.target.value })} /></div>
+                                <div className="form-group"><label>Mức lương khoán</label><input type="number" value={editingSalary.contract_salary || ''} onChange={e => setEditingSalary({ ...editingSalary, contract_salary: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngày nhận bậc</label><input type="date" value={editingSalary.date_received_level || ''} onChange={e => setEditingSalary({ ...editingSalary, date_received_level: e.target.value })} /></div>
+                                <div className="form-group full-width">
+                                    <label><input type="checkbox" checked={editingSalary.is_active || false} onChange={e => setEditingSalary({ ...editingSalary, is_active: e.target.checked })} /> Đang hiệu lực</label>
+                                </div>
+                                <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingSalary.note || ''} onChange={e => setEditingSalary({ ...editingSalary, note: e.target.value })} /></div>
+                            </div>
+                            <div className="modal-actions">
+                                <button className="btn btn-secondary" onClick={() => setEditingSalary(null)}>Hủy</button>
+                                <button className="btn btn-primary" onClick={() => handleSaveSalary(editingSalary)}>Lưu</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // 3.2 Lương vị trí
+    const renderLuongViTriCV = () => {
+        // Since we order by effective_date desc, the first one is the "Current" or "Latest"
+        const currentJobSalary = jobSalaries.length > 0 ? jobSalaries[0] : {}
+
+        return (
+            <div className="section-content">
+                <h3>Lương theo vị trí công việc</h3>
+                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+                {/* AREA 1: CURRENT INFO */}
+                <div className="current-salary-info" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '20px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#1976d2', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                        Thông tin hiện tại
+                    </h4>
+                    <div className="grid-2">
+                        <div className="form-group"><label>Số quyết định</label><div className="field-value">{currentJobSalary.decision_number || '-'}</div></div>
+                        <div className="form-group"><label>Ngày hiệu lực</label><div className="field-value">{currentJobSalary.effective_date || '-'}</div></div>
+                        <div className="form-group"><label>Ngạch lương</label><div className="field-value">{currentJobSalary.salary_scale || '-'}</div></div>
+                        <div className="form-group"><label>Mức tối thiểu</label><div className="field-value">{currentJobSalary.minimum_wage ? Number(currentJobSalary.minimum_wage).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group"><label>Bậc lương</label><div className="field-value">{currentJobSalary.salary_level || '-'}</div></div>
+                        <div className="form-group"><label>Hệ số lương</label><div className="field-value">{currentJobSalary.salary_coefficient || '-'}</div></div>
+                        <div className="form-group"><label>Lương theo tính chất CV</label><div className="field-value font-weight-bold">{currentJobSalary.position_salary ? Number(currentJobSalary.position_salary).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group"><label>Ngày ký</label><div className="field-value">{currentJobSalary.signed_date || '-'}</div></div>
+                        <div className="form-group"><label>TT đính kèm</label>
+                            <div className="field-value">
+                                {currentJobSalary.attachment_url ? (
+                                    <a href={currentJobSalary.attachment_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <i className="fas fa-paperclip"></i> Xem file
+                                    </a>
+                                ) : '-'}
+                            </div>
+                        </div>
+                        <div className="form-group full-width"><label>Ghi chú</label><div className="field-value">{currentJobSalary.note || '-'}</div></div>
+                    </div>
+                </div>
+
+                {/* AREA 2: HISTORY TABLE */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Diễn biến lương theo vị trí</h4>
+                    <button className="btn btn-primary btn-sm" onClick={() => setEditingJobSalary({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                </div>
+
+                <div className="table-wrapper">
+                    <table className="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Số QĐ</th>
+                                <th>Ngày hiệu lực</th>
+                                <th>Ngạch/Bậc</th>
+                                <th>Hệ số</th>
+                                <th>Lương vị trí</th>
+                                <th>Ngày ký</th>
+                                <th>File</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {jobSalaries.length > 0 ? jobSalaries.map(item => (
+                                <tr key={item.id}>
+                                    <td>{item.decision_number}</td>
+                                    <td>{item.effective_date}</td>
+                                    <td>{item.salary_scale} / {item.salary_level}</td>
+                                    <td>{item.salary_coefficient}</td>
+                                    <td>{Number(item.position_salary).toLocaleString('vi-VN')}</td>
+                                    <td>{item.signed_date}</td>
+                                    <td>
+                                        {item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"><i className="fas fa-file-pdf"></i></a> : '-'}
+                                    </td>
+                                    <td className="text-center">
+                                        <button className="btn btn-link btn-sm" onClick={() => setEditingJobSalary(item)}><i className="fas fa-edit"></i></button>
+                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteJobSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+
+                {editingJobSalary && (
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                            <h4>{editingJobSalary.id ? 'Cập nhật lương vị trí' : 'Thêm mới lương vị trí'}</h4>
+                            <div className="grid-2">
+                                <div className="form-group"><label>Số QĐ</label><input type="text" value={editingJobSalary.decision_number || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, decision_number: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngày hiệu lực</label><input type="date" value={editingJobSalary.effective_date || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, effective_date: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngạch lương</label><input type="text" value={editingJobSalary.salary_scale || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, salary_scale: e.target.value })} /></div>
+                                <div className="form-group"><label>Mức tối thiểu</label><input type="number" value={editingJobSalary.minimum_wage || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, minimum_wage: e.target.value })} /></div>
+                                <div className="form-group"><label>Bậc lương</label><input type="number" value={editingJobSalary.salary_level || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, salary_level: e.target.value })} /></div>
+                                <div className="form-group"><label>Hệ số lương</label><input type="number" step="0.01" value={editingJobSalary.salary_coefficient || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, salary_coefficient: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngày ký</label><input type="date" value={editingJobSalary.signed_date || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, signed_date: e.target.value })} /></div>
+                                <div className="form-group"><label>Link đính kèm</label><input type="text" value={editingJobSalary.attachment_url || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, attachment_url: e.target.value })} /></div>
+                                <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingJobSalary.note || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, note: e.target.value })} /></div>
+                            </div>
+                            <div className="modal-actions">
+                                <button className="btn btn-secondary" onClick={() => setEditingJobSalary(null)}>Hủy</button>
+                                <button className="btn btn-primary" onClick={() => handleSaveJobSalary(editingJobSalary)}>Lưu</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // 3.3 Phụ cấp
+    const renderPhuCap = () => {
+        // Find the latest active allowance or just the first one
+        const currentAllowance = allowances.find(a => a.is_active) || allowances[0] || {}
+
+        return (
+            <div className="section-content">
+                <h3>Phụ cấp</h3>
+                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+
+                {/* AREA 1: CURRENT INFO */}
+                <div className="current-salary-info" style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '20px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#1976d2', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                        Thông tin hiện tại
+                    </h4>
+                    <div className="grid-2">
+                        <div className="form-group"><label>Số quyết định</label><div className="field-value">{currentAllowance.decision_number || '-'}</div></div>
+                        <div className="form-group"><label>Ngày hiệu lực</label><div className="field-value">{currentAllowance.effective_date || '-'}</div></div>
+                        <div className="form-group"><label>Loại phụ cấp</label><div className="field-value">{currentAllowance.allowance_type || '-'}</div></div>
+                        <div className="form-group"><label>Mức phụ cấp</label><div className="field-value">{currentAllowance.allowance_level || '-'}</div></div>
+                        <div className="form-group"><label>Số tiền</label><div className="field-value font-weight-bold">{currentAllowance.amount ? Number(currentAllowance.amount).toLocaleString('vi-VN') : '-'}</div></div>
+                        <div className="form-group"><label>TT đính kèm</label>
+                            <div className="field-value">
+                                {currentAllowance.attachment_url ? (
+                                    <a href={currentAllowance.attachment_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <i className="fas fa-paperclip"></i> Xem file
+                                    </a>
+                                ) : '-'}
+                            </div>
+                        </div>
+                        <div className="form-group full-width"><label>Ghi chú</label><div className="field-value">{currentAllowance.note || '-'}</div></div>
+                    </div>
+                </div>
+
+                {/* AREA 2: HISTORY TABLE */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Bảng diễn biến phụ cấp</h4>
+                    <button className="btn btn-primary btn-sm" onClick={() => setEditingAllowance({})}>
+                        <i className="fas fa-plus"></i> Thêm phụ cấp
+                    </button>
+                </div>
+
+                <div className="table-wrapper">
+                    <table className="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Ngày hiệu lực</th>
+                                <th>Số quyết định</th>
+                                <th>Loại phụ cấp</th>
+                                <th>Số tiền</th>
+                                <th>Mức phụ cấp</th>
+                                <th style={{ textAlign: 'center' }}>Đang hiệu lực</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {allowances.length > 0 ? allowances.map(item => (
+                                <tr key={item.id}>
+                                    <td>{item.effective_date}</td>
+                                    <td>{item.decision_number}</td>
+                                    <td>{item.allowance_type}</td>
+                                    <td>{Number(item.amount).toLocaleString('vi-VN')}</td>
+                                    <td>{item.allowance_level}</td>
+                                    <td className="text-center">
+                                        <input type="checkbox" checked={item.is_active || false} disabled />
+                                    </td>
+                                    <td className="text-center">
+                                        <button className="btn btn-link btn-sm" onClick={() => setEditingAllowance(item)}><i className="fas fa-edit"></i></button>
+                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteAllowance(item.id)}><i className="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+
+                {editingAllowance && (
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ width: '800px', maxWidth: '95%' }}>
+                            <h4>{editingAllowance.id ? 'Cập nhật phụ cấp' : 'Thêm phụ cấp'}</h4>
+                            <div className="grid-2">
+                                <div className="form-group"><label>Số quyết định</label><input type="text" value={editingAllowance.decision_number || ''} onChange={e => setEditingAllowance({ ...editingAllowance, decision_number: e.target.value })} /></div>
+                                <div className="form-group"><label>Ngày hiệu lực</label><input type="date" value={editingAllowance.effective_date || ''} onChange={e => setEditingAllowance({ ...editingAllowance, effective_date: e.target.value })} /></div>
+                                <div className="form-group"><label>Loại phụ cấp</label><input type="text" value={editingAllowance.allowance_type || ''} onChange={e => setEditingAllowance({ ...editingAllowance, allowance_type: e.target.value })} /></div>
+                                <div className="form-group"><label>Mức phụ cấp</label><input type="text" value={editingAllowance.allowance_level || ''} onChange={e => setEditingAllowance({ ...editingAllowance, allowance_level: e.target.value })} /></div>
+                                <div className="form-group"><label>Số tiền</label><input type="number" value={editingAllowance.amount || ''} onChange={e => setEditingAllowance({ ...editingAllowance, amount: e.target.value })} /></div>
+                                <div className="form-group"><label>Link đính kèm</label><input type="text" value={editingAllowance.attachment_url || ''} onChange={e => setEditingAllowance({ ...editingAllowance, attachment_url: e.target.value })} /></div>
+                                <div className="form-group full-width"><label><input type="checkbox" checked={editingAllowance.is_active || false} onChange={e => setEditingAllowance({ ...editingAllowance, is_active: e.target.checked })} /> Đang hiệu lực</label></div>
+                                <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingAllowance.note || ''} onChange={e => setEditingAllowance({ ...editingAllowance, note: e.target.value })} /></div>
+                            </div>
+                            <div className="modal-actions">
+                                <button className="btn btn-secondary" onClick={() => setEditingAllowance(null)}>Hủy</button>
+                                <button className="btn btn-primary" onClick={() => handleSaveAllowance(editingAllowance)}>Lưu</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // 3.4 Thu nhập khác
+    const renderThuNhapKhac = () => (
+        <div className="section-content">
+            <h3>Thu nhập khác</h3>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setEditingOtherIncome({})}>
+                    <i className="fas fa-plus"></i> Thêm thu nhập
+                </button>
+            </div>
+            <div className="table-wrapper">
+                <table className="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ngày phát sinh</th>
+                            <th>Loại thu nhập</th>
+                            <th>Số tiền</th>
+                            <th>Thuế TN</th>
+                            <th>Tính vào tháng</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {otherIncomes.length > 0 ? otherIncomes.map(item => (
+                            <tr key={item.id}>
+                                <td>{item.date_incurred}</td>
+                                <td>{item.income_type}</td>
+                                <td>{Number(item.amount).toLocaleString('vi-VN')}</td>
+                                <td>{Number(item.tax_amount).toLocaleString('vi-VN')}</td>
+                                <td>{item.applied_month}</td>
+                                <td className="text-center">
+                                    <button className="btn btn-link btn-sm" onClick={() => setEditingOtherIncome(item)}><i className="fas fa-edit"></i></button>
+                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteOtherIncome(item.id)}><i className="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        )) : <tr><td colSpan="6" className="text-center">Chưa có dữ liệu</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+
+            {editingOtherIncome && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '600px', maxWidth: '95%' }}>
+                        <h4>{editingOtherIncome.id ? 'Cập nhật thu nhập' : 'Thêm thu nhập'}</h4>
+                        <div className="grid-2">
+                            <div className="form-group"><label>Ngày phát sinh</label><input type="date" value={editingOtherIncome.date_incurred || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, date_incurred: e.target.value })} /></div>
+                            <div className="form-group"><label>Loại thu nhập</label><input type="text" value={editingOtherIncome.income_type || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, income_type: e.target.value })} /></div>
+                            <div className="form-group"><label>Số tiền</label><input type="number" value={editingOtherIncome.amount || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, amount: e.target.value })} /></div>
+                            <div className="form-group"><label>Thuế TN</label><input type="number" value={editingOtherIncome.tax_amount || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, tax_amount: e.target.value })} /></div>
+                            <div className="form-group"><label>Tính vào tháng</label><input type="month" value={editingOtherIncome.applied_month || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, applied_month: e.target.value })} /></div>
+                            <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingOtherIncome.note || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, note: e.target.value })} /></div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setEditingOtherIncome(null)}>Hủy</button>
+                            <button className="btn btn-primary" onClick={() => handleSaveOtherIncome(editingOtherIncome)}>Lưu</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+
     return (
         <div className="employee-detail-container">
             <div className="detail-main" style={{ position: 'relative' }}>
@@ -1816,6 +2406,10 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     {activeSection === 'tai_khoan' && renderTaiKhoanNganHang()}
                     {activeSection === 'hop_dong' && renderHopDongLaoDong()}
                     {activeSection === 'ho_chieu' && renderHoChieu()}
+                    {activeSection === 'luong_co_ban' && renderLuongCoBan()}
+                    {activeSection === 'luong_vi_tri' && renderLuongViTriCV()}
+                    {activeSection === 'phu_cap' && renderPhuCap()}
+                    {activeSection === 'thu_nhap_khac' && renderThuNhapKhac()}
                     {activeSection === 'grading' && renderGrading()}
                 </div>
             </div>

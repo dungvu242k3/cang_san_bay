@@ -29,7 +29,12 @@ const menuSections = [
     {
         id: 'phuc-loi',
         title: 'Phúc lợi',
-        items: []
+        items: [
+            { id: 'luong-co-ban', label: 'Lương cơ bản' },
+            { id: 'luong-vi-tri', label: 'Lương theo vị trí công việc' },
+            { id: 'phu-cap', label: 'Phụ cấp' },
+            { id: 'thu-nhap-khac', label: 'Thu nhập khác' }
+        ]
     },
     {
         id: 'qua-trinh-lam-viec',
@@ -67,7 +72,11 @@ const reverseMap = {
     'hop_dong': 'hop-dong-lao-dong',
     'ho_chieu': 'ho-chieu',
     'khac': 'khac',
-    'grading': 'grading'
+    'grading': 'grading',
+    'luong_co_ban': 'luong-co-ban',
+    'luong_vi_tri': 'luong-vi-tri',
+    'phu_cap': 'phu-cap',
+    'thu_nhap_khac': 'thu-nhap-khac'
 };
 
 function ProfileMenu({ activeSection = 'ly_lich', onSectionChange }) {

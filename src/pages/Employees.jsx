@@ -275,7 +275,11 @@ function Employees() {
             'hop-dong-lao-dong': 'hop_dong',
             'ho-chieu': 'ho_chieu',
             'khac': 'khac',
-            'grading': 'grading'
+            'grading': 'grading',
+            'luong-co-ban': 'luong_co_ban',
+            'luong-vi-tri': 'luong_vi_tri',
+            'phu-cap': 'phu_cap',
+            'thu-nhap-khac': 'thu_nhap_khac'
         }
         setActiveSection(sectionMap[sectionId] || sectionId)
     }
