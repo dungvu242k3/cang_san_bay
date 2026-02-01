@@ -1,8 +1,21 @@
+/* Apply Roboto font to all form elements */
+.employee-detail-container,
+.employee-detail-container input,
+.employee-detail-container select,
+.employee-detail-container textarea,
+.employee-detail-container button,
+.employee-detail-container label,
+.employee-detail-container .form-group,
+.employee-detail-container .form-control,
+.employee-detail-container .form-label {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif !important;
+}
+
 .employee-detail-container {
     display: flex;
     height: 100%;
     background: #fff;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .detail-sidebar {

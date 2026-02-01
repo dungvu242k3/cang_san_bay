@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.employee_profiles (
     avatar_url TEXT,
     is_party_member BOOLEAN DEFAULT false,
     score_template_code TEXT DEFAULT 'NVTT',
+    password TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -259,16 +260,35 @@ CREATE POLICY "Enable read access for all" ON public.rbac_matrix
 CREATE POLICY "Enable write access for all" ON public.rbac_matrix
     FOR ALL USING (true) WITH CHECK (true);
 
+-- 5.5. THÊM CỘT PASSWORD VÀO employee_profiles (nếu chưa có)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'employee_profiles'
+        AND column_name = 'password'
+    ) THEN
+        ALTER TABLE public.employee_profiles ADD COLUMN password TEXT;
+        COMMENT ON COLUMN public.employee_profiles.password IS 'Mật khẩu đăng nhập (hashed)';
+        
+        -- Tạo index cho tìm kiếm nhanh
+        CREATE INDEX IF NOT EXISTS idx_employee_profiles_password ON public.employee_profiles(password) WHERE password IS NOT NULL;
+    END IF;
+END $$;
+
 -- 6. TẠO ADMIN USER VÀ ROLE
 -- Chỉ insert các cột bắt buộc, các cột khác sẽ dùng giá trị mặc định
-INSERT INTO public.employee_profiles (employee_code, last_name, first_name, department, current_position, email_acv)
-VALUES ('ADMIN', 'Quản trị', 'Hệ Thống', 'Văn phòng', 'Quản trị viên', 'admin@cangsanbay.vn')
+-- Password mặc định: 123456 (plain text, sẽ được hash khi đăng nhập lần đầu)
+INSERT INTO public.employee_profiles (employee_code, last_name, first_name, department, current_position, email_acv, password)
+VALUES ('ADMIN', 'Quản trị', 'Hệ Thống', 'Văn phòng', 'Quản trị viên', 'admin@cangsanbay.vn', '123456')
 ON CONFLICT (employee_code) DO UPDATE 
 SET last_name = EXCLUDED.last_name,
     first_name = EXCLUDED.first_name,
     department = EXCLUDED.department,
     current_position = EXCLUDED.current_position,
-    email_acv = EXCLUDED.email_acv;
+    email_acv = EXCLUDED.email_acv,
+    password = COALESCE(EXCLUDED.password, employee_profiles.password);
 
 INSERT INTO public.user_roles (employee_code, role_level)
 VALUES ('ADMIN', 'SUPER_ADMIN')
@@ -294,7 +314,366 @@ SET can_view = EXCLUDED.can_view,
     can_edit = EXCLUDED.can_edit, 
     can_delete = EXCLUDED.can_delete;
 
--- 8. GRANT PERMISSIONS
+-- 8. TẠO BẢNG CÀI ĐẶT NGHỈ PHÉP THEO PHÒNG BAN
+CREATE TABLE IF NOT EXISTS public.department_leave_settings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    department TEXT NOT NULL UNIQUE,
+    annual_leave_days INTEGER NOT NULL DEFAULT 12,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.department_leave_settings IS 'Cài đặt số ngày nghỉ phép năm cho từng phòng ban';
+COMMENT ON COLUMN public.department_leave_settings.department IS 'Tên phòng ban';
+COMMENT ON COLUMN public.department_leave_settings.annual_leave_days IS 'Số ngày nghỉ phép năm (mặc định 12 ngày)';
+
+-- Enable RLS
+ALTER TABLE public.department_leave_settings ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow all authenticated users to read
+DROP POLICY IF EXISTS "Allow authenticated users to read department leave settings" ON public.department_leave_settings;
+CREATE POLICY "Allow authenticated users to read department leave settings"
+    ON public.department_leave_settings FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Policy: Allow authenticated users to insert
+DROP POLICY IF EXISTS "Allow authenticated users to insert department leave settings" ON public.department_leave_settings;
+CREATE POLICY "Allow authenticated users to insert department leave settings"
+    ON public.department_leave_settings FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Policy: Allow authenticated users to update
+DROP POLICY IF EXISTS "Allow authenticated users to update department leave settings" ON public.department_leave_settings;
+CREATE POLICY "Allow authenticated users to update department leave settings"
+    ON public.department_leave_settings FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- Policy: Allow authenticated users to delete
+DROP POLICY IF EXISTS "Allow authenticated users to delete department leave settings" ON public.department_leave_settings;
+CREATE POLICY "Allow authenticated users to delete department leave settings"
+    ON public.department_leave_settings FOR DELETE
+    TO authenticated
+    USING (true);
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_department_leave_settings_department ON public.department_leave_settings(department);
+
+-- 9. TẠO BẢNG THẢO LUẬN TEAM
+CREATE TABLE IF NOT EXISTS public.team_discussions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    team TEXT NOT NULL,
+    sender_code TEXT NOT NULL REFERENCES public.employee_profiles(employee_code) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.team_discussions IS 'Thảo luận/chat trong cùng một team';
+COMMENT ON COLUMN public.team_discussions.team IS 'Tên team (Đội)';
+COMMENT ON COLUMN public.team_discussions.sender_code IS 'Mã nhân viên người gửi';
+COMMENT ON COLUMN public.team_discussions.message IS 'Nội dung tin nhắn';
+
+-- Enable RLS
+ALTER TABLE public.team_discussions ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to read messages
+DROP POLICY IF EXISTS "Allow team members to read discussions" ON public.team_discussions;
+CREATE POLICY "Allow team members to read discussions"
+    ON public.team_discussions FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Policy: Allow authenticated users to send messages
+DROP POLICY IF EXISTS "Allow team members to send messages" ON public.team_discussions;
+CREATE POLICY "Allow team members to send messages"
+    ON public.team_discussions FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Policy: Allow users to update/delete their own messages
+DROP POLICY IF EXISTS "Allow users to update their own messages" ON public.team_discussions;
+CREATE POLICY "Allow users to update their own messages"
+    ON public.team_discussions FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow users to delete their own messages" ON public.team_discussions;
+CREATE POLICY "Allow users to delete their own messages"
+    ON public.team_discussions FOR DELETE
+    TO authenticated
+    USING (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_team_discussions_team ON public.team_discussions(team);
+CREATE INDEX IF NOT EXISTS idx_team_discussions_sender ON public.team_discussions(sender_code);
+CREATE INDEX IF NOT EXISTS idx_team_discussions_created_at ON public.team_discussions(created_at DESC);
+
+-- 10. TẠO BẢNG TASK_COMMENTS (Thảo luận cho công việc)
+CREATE TABLE IF NOT EXISTS public.task_comments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    task_id UUID NOT NULL,
+    sender_code TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Thêm các cột nếu bảng đã tồn tại nhưng thiếu cột
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'task_comments'
+    ) THEN
+        -- Thêm cột comment nếu thiếu
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'task_comments'
+            AND column_name = 'comment'
+        ) THEN
+            ALTER TABLE public.task_comments ADD COLUMN comment TEXT;
+            
+            -- Cập nhật giá trị mặc định cho các bản ghi cũ (nếu có)
+            UPDATE public.task_comments 
+            SET comment = '' 
+            WHERE comment IS NULL;
+            
+            -- Đặt NOT NULL sau khi đã có giá trị
+            ALTER TABLE public.task_comments 
+            ALTER COLUMN comment SET NOT NULL;
+        END IF;
+
+        -- Thêm cột sender_code nếu thiếu
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'task_comments'
+            AND column_name = 'sender_code'
+        ) THEN
+            ALTER TABLE public.task_comments ADD COLUMN sender_code TEXT;
+            
+            -- Cập nhật giá trị mặc định cho các bản ghi cũ (nếu có)
+            UPDATE public.task_comments 
+            SET sender_code = 'ADMIN' 
+            WHERE sender_code IS NULL;
+            
+            -- Đặt NOT NULL sau khi đã có giá trị
+            ALTER TABLE public.task_comments 
+            ALTER COLUMN sender_code SET NOT NULL;
+        END IF;
+
+        -- Thêm cột updated_at nếu thiếu
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'task_comments'
+            AND column_name = 'updated_at'
+        ) THEN
+            ALTER TABLE public.task_comments ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+        END IF;
+    END IF;
+END $$;
+
+-- Thêm foreign key constraints nếu chưa có
+DO $$
+BEGIN
+    -- Foreign key to tasks
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'task_comments_task_id_fkey'
+        AND table_name = 'task_comments'
+    ) THEN
+        ALTER TABLE public.task_comments
+        ADD CONSTRAINT task_comments_task_id_fkey 
+        FOREIGN KEY (task_id) 
+        REFERENCES public.tasks(id) 
+        ON DELETE CASCADE;
+    END IF;
+
+    -- Foreign key to employee_profiles
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'task_comments_sender_code_fkey'
+        AND table_name = 'task_comments'
+    ) THEN
+        ALTER TABLE public.task_comments
+        ADD CONSTRAINT task_comments_sender_code_fkey 
+        FOREIGN KEY (sender_code) 
+        REFERENCES public.employee_profiles(employee_code) 
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+COMMENT ON TABLE public.task_comments IS 'Thảo luận/comments cho từng công việc';
+COMMENT ON COLUMN public.task_comments.task_id IS 'ID của công việc';
+COMMENT ON COLUMN public.task_comments.sender_code IS 'Mã nhân viên người comment';
+COMMENT ON COLUMN public.task_comments.comment IS 'Nội dung comment';
+
+-- Enable RLS
+ALTER TABLE public.task_comments ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to read comments
+DROP POLICY IF EXISTS "Allow authenticated users to read task comments" ON public.task_comments;
+CREATE POLICY "Allow authenticated users to read task comments"
+    ON public.task_comments FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Policy: Allow authenticated users to send comments
+DROP POLICY IF EXISTS "Allow authenticated users to send task comments" ON public.task_comments;
+CREATE POLICY "Allow authenticated users to send task comments"
+    ON public.task_comments FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Policy: Allow users to update/delete their own comments
+DROP POLICY IF EXISTS "Allow users to update their own task comments" ON public.task_comments;
+CREATE POLICY "Allow users to update their own task comments"
+    ON public.task_comments FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow users to delete their own task comments" ON public.task_comments;
+CREATE POLICY "Allow users to delete their own task comments"
+    ON public.task_comments FOR DELETE
+    TO authenticated
+    USING (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON public.task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_sender ON public.task_comments(sender_code);
+CREATE INDEX IF NOT EXISTS idx_task_comments_created_at ON public.task_comments(created_at DESC);
+
+-- 11. TẠO BẢNG TASK_ATTACHMENTS (File đính kèm cho công việc)
+CREATE TABLE IF NOT EXISTS public.task_attachments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    task_id UUID NOT NULL,
+    uploaded_by TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size INTEGER,
+    file_type TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Thêm các cột nếu bảng đã tồn tại nhưng thiếu cột
+DO $$
+BEGIN
+    -- Thêm cột file_path nếu thiếu
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'task_attachments'
+        AND column_name = 'file_path'
+    ) THEN
+        ALTER TABLE public.task_attachments ADD COLUMN file_path TEXT;
+        
+        -- Cập nhật giá trị mặc định cho các bản ghi cũ (nếu có)
+        UPDATE public.task_attachments 
+        SET file_path = file_name 
+        WHERE file_path IS NULL;
+        
+        -- Đặt NOT NULL sau khi đã có giá trị
+        ALTER TABLE public.task_attachments 
+        ALTER COLUMN file_path SET NOT NULL;
+    END IF;
+
+    -- Thêm các cột khác nếu thiếu
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'task_attachments'
+        AND column_name = 'file_size'
+    ) THEN
+        ALTER TABLE public.task_attachments ADD COLUMN file_size INTEGER;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'task_attachments'
+        AND column_name = 'file_type'
+    ) THEN
+        ALTER TABLE public.task_attachments ADD COLUMN file_type TEXT;
+    END IF;
+END $$;
+
+-- Thêm foreign key constraints nếu chưa có
+DO $$
+BEGIN
+    -- Foreign key to tasks
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'task_attachments_task_id_fkey'
+        AND table_name = 'task_attachments'
+    ) THEN
+        ALTER TABLE public.task_attachments
+        ADD CONSTRAINT task_attachments_task_id_fkey 
+        FOREIGN KEY (task_id) 
+        REFERENCES public.tasks(id) 
+        ON DELETE CASCADE;
+    END IF;
+
+    -- Foreign key to employee_profiles
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'task_attachments_uploaded_by_fkey'
+        AND table_name = 'task_attachments'
+    ) THEN
+        ALTER TABLE public.task_attachments
+        ADD CONSTRAINT task_attachments_uploaded_by_fkey 
+        FOREIGN KEY (uploaded_by) 
+        REFERENCES public.employee_profiles(employee_code) 
+        ON DELETE CASCADE;
+    END IF;
+END $$;
+
+COMMENT ON TABLE public.task_attachments IS 'File đính kèm cho từng công việc';
+COMMENT ON COLUMN public.task_attachments.task_id IS 'ID của công việc';
+COMMENT ON COLUMN public.task_attachments.uploaded_by IS 'Mã nhân viên người upload';
+COMMENT ON COLUMN public.task_attachments.file_name IS 'Tên file';
+COMMENT ON COLUMN public.task_attachments.file_path IS 'Đường dẫn file trong storage';
+COMMENT ON COLUMN public.task_attachments.file_size IS 'Kích thước file (bytes)';
+COMMENT ON COLUMN public.task_attachments.file_type IS 'Loại file (MIME type)';
+
+-- Enable RLS
+ALTER TABLE public.task_attachments ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to read attachments
+DROP POLICY IF EXISTS "Allow authenticated users to read task attachments" ON public.task_attachments;
+CREATE POLICY "Allow authenticated users to read task attachments"
+    ON public.task_attachments FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Policy: Allow authenticated users to upload attachments
+DROP POLICY IF EXISTS "Allow authenticated users to upload task attachments" ON public.task_attachments;
+CREATE POLICY "Allow authenticated users to upload task attachments"
+    ON public.task_attachments FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Policy: Allow users to delete their own attachments
+DROP POLICY IF EXISTS "Allow users to delete their own task attachments" ON public.task_attachments;
+CREATE POLICY "Allow users to delete their own task attachments"
+    ON public.task_attachments FOR DELETE
+    TO authenticated
+    USING (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_task_attachments_task_id ON public.task_attachments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_attachments_uploaded_by ON public.task_attachments(uploaded_by);
+
+-- 12. GRANT PERMISSIONS
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 

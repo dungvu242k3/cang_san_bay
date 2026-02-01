@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import EmployeeDetail from '../components/EmployeeDetail'
 import ProfileMenu from '../components/ProfileMenu'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +8,7 @@ import './Employees.css'
 
 function Employees() {
     const { user } = useAuth()
+    const navigate = useNavigate()
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
     const [loading, setLoading] = useState(true)
@@ -15,6 +17,8 @@ function Employees() {
     const [filterDept, setFilterDept] = useState('')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
     const [activeSection, setActiveSection] = useState('ly_lich')
+    const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
+    const [employeeToReset, setEmployeeToReset] = useState(null)
     const fileInputRef = useRef(null)
 
     // Scroll ref to top on selection
@@ -116,15 +120,125 @@ function Employees() {
         setFilteredEmployees(filtered)
     }
 
-    const handleSaveEmployee = async (formData, id) => {
-        console.log('handleSaveEmployee called with formData:', {
-            ho_va_ten: formData.ho_va_ten,
-            ngay_sinh: formData.ngay_sinh,
-            gioi_tinh: formData.gioi_tinh,
-            nationality: formData.nationality,
-            ethnicity: formData.ethnicity,
+    // Group employees by department
+    const groupedEmployees = () => {
+        const groups = {}
+        filteredEmployees.forEach(emp => {
+            const dept = emp.bo_phan || 'Chưa phân loại'
+            if (!groups[dept]) {
+                groups[dept] = []
+            }
+            groups[dept].push(emp)
         })
-        console.log('Employee ID:', id)
+        // Sort departments alphabetically
+        return Object.keys(groups).sort().map(dept => ({
+            department: dept,
+            employees: groups[dept],
+            count: groups[dept].length
+        }))
+    }
+
+    const handleDisableEmployee = async (employee) => {
+        if (!window.confirm(`Bạn có chắc chắn muốn ngừng hoạt động nhân viên ${employee.employeeId}?`)) {
+            return
+        }
+
+        try {
+            await supabase
+                .from('employee_profiles')
+                .update({ status: 'Nghỉ việc' })
+                .eq('id', employee.id)
+
+            alert('Đã ngừng hoạt động nhân viên thành công!')
+            loadEmployees()
+        } catch (err) {
+            console.error('Error disabling employee:', err)
+            alert('Lỗi: ' + err.message)
+        }
+    }
+
+    const handleActivateEmployee = async (employee) => {
+        try {
+            await supabase
+                .from('employee_profiles')
+                .update({ status: 'Đang làm việc' })
+                .eq('id', employee.id)
+
+            alert('Đã kích hoạt nhân viên thành công!')
+            loadEmployees()
+        } catch (err) {
+            console.error('Error activating employee:', err)
+            alert('Lỗi: ' + err.message)
+        }
+    }
+
+    const handleResetPassword = (employee) => {
+        setEmployeeToReset(employee)
+        setShowResetPasswordModal(true)
+    }
+
+    const hashPassword = async (password) => {
+        const encoder = new TextEncoder()
+        const data = encoder.encode(password)
+        const hash = await crypto.subtle.digest('SHA-256', data)
+        return Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+    }
+
+    const confirmResetPassword = async () => {
+        if (!employeeToReset) return
+
+        try {
+            // Hash default password
+            const hashedPassword = await hashPassword('123456')
+
+            // Reset password in database
+            const { error } = await supabase
+                .from('employee_profiles')
+                .update({ password: hashedPassword })
+                .eq('employee_code', employeeToReset.employeeId)
+
+            if (error) {
+                throw error
+            }
+
+            alert(`Đã reset mật khẩu về mặc định (123456) cho ${employeeToReset.employeeId}`)
+            setShowResetPasswordModal(false)
+            setEmployeeToReset(null)
+        } catch (err) {
+            console.error('Error resetting password:', err)
+            alert('Lỗi reset mật khẩu: ' + err.message)
+        }
+    }
+
+    const handleSaveEmployee = async (formData, id) => {
+        // Validation for new employees
+        if (!id) {
+            if (!formData.employeeId || !formData.employeeId.trim()) {
+                alert('Vui lòng nhập mã nhân viên')
+                return
+            }
+            // Validate employee_code format: CBA + 4 digits
+            const code = formData.employeeId.trim().toUpperCase()
+            if (!/^CBA\d{4}$/.test(code)) {
+                alert('Mã nhân viên phải có format: CBA + 4 chữ số\nVí dụ: CBA0001, CBA0004, CBA0016')
+                return
+            }
+            if (!formData.ho_va_ten || !formData.ho_va_ten.trim()) {
+                alert('Vui lòng nhập họ tên')
+                return
+            }
+            if (!formData.email_acv || !formData.email_acv.trim()) {
+                alert('Vui lòng nhập email doanh nghiệp')
+                return
+            }
+            if (!formData.department || !formData.department.trim()) {
+                alert('Vui lòng chọn phòng ban')
+                return
+            }
+        }
+
         try {
             // Map formData to database columns
             const nameParts = (formData.ho_va_ten || '').trim().split(' ')
@@ -132,9 +246,11 @@ function Employees() {
             const lastName = nameParts.join(' ') || ''
 
             const dbPayload = {
-                employee_code: formData.employeeId || null,
+                employee_code: formData.employeeId ? formData.employeeId.trim().toUpperCase() : null,
                 first_name: firstName,
                 last_name: lastName,
+                status: formData.status || formData.trang_thai || 'Đang làm việc',
+                score_template_code: formData.score_template_code || 'NVTT',
                 gender: formData.gioi_tinh || null,
                 date_of_birth: formData.ngay_sinh || null,
                 nationality: formData.nationality || 'Việt Nam',
@@ -218,13 +334,37 @@ function Employees() {
             let result
             if (id) {
                 // Update existing employee
-                console.log('Updating employee with id:', id)
                 result = await supabase
                     .from('employee_profiles')
                     .update(dbPayload)
                     .eq('id', id)
-                    .select()  // Add .select() to get the updated row back
+                    .select()
             } else {
+                // Check if employee_code already exists
+                const { data: existing } = await supabase
+                    .from('employee_profiles')
+                    .select('employee_code')
+                    .eq('employee_code', dbPayload.employee_code)
+                    .single()
+
+                if (existing) {
+                    alert('Mã nhân viên đã tồn tại!')
+                    return
+                }
+
+                // Hash default password
+                const hashPassword = async (password) => {
+                    const encoder = new TextEncoder()
+                    const data = encoder.encode(password)
+                    const hash = await crypto.subtle.digest('SHA-256', data)
+                    return Array.from(new Uint8Array(hash))
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join('')
+                }
+                
+                const hashedPassword = await hashPassword('123456')
+                dbPayload.password = hashedPassword
+
                 // Insert new employee
                 result = await supabase
                     .from('employee_profiles')
@@ -332,31 +472,7 @@ function Employees() {
 
             {/* RIGHT: MAIN CONTENT */}
             <div className="employees-content">
-                {/* TOP PANEL: DETAIL VIEW */}
-                <div className="detail-panel" ref={detailRef}>
-                    <div className="panel-header">
-                        <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
-                        <div className="panel-actions">
-                            <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
-                                <i className="fas fa-plus"></i> Thêm mới
-                            </button>
-                        </div>
-                    </div>
-                    <div className="detail-content">
-                        <EmployeeDetail
-                            employee={selectedEmployee}
-                            onSave={handleSaveEmployee}
-                            onCancel={() => {
-                                // If canceling creation, re-select the first one or clear
-                                if (!selectedEmployee && employees.length > 0) setSelectedEmployee(employees[0])
-                            }}
-                            activeSection={activeSection}
-                            onSectionChange={setActiveSection}
-                        />
-                    </div>
-                </div>
-
-                {/* BOTTOM PANEL: LIST VIEW */}
+                {/* LEFT PANEL: LIST VIEW */}
                 <div className="list-panel">
                     <div className="list-toolbar">
                         <div className="search-group">
@@ -379,40 +495,107 @@ function Employees() {
                     </div>
 
                     <div className="table-container">
-                        <table>
+                        <table className="employees-table-compact">
                             <thead>
                                 <tr>
                                     <th>Mã</th>
                                     <th>Họ Tên</th>
-                                    <th>Phòng</th>
-                                    <th>Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredEmployees.map(emp => (
-                                    <tr
-                                        key={emp.id}
-                                        onClick={() => setSelectedEmployee(emp)}
-                                        className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
-                                    >
-                                        <td>{emp.employeeId}</td>
-                                        <td>{emp.ho_va_ten}</td>
-                                        <td>{emp.bo_phan}</td>
-                                        <td>
-                                            <span className={`status-badge ${emp.trang_thai === 'Nghỉ việc' ? 'inactive' : 'active'}`}>
-                                                {emp.trang_thai}
-                                            </span>
-                                        </td>
-                                    </tr>
+                                {groupedEmployees().map(group => (
+                                    <React.Fragment key={group.department}>
+                                        {/* Department Header */}
+                                        <tr className="department-header-row">
+                                            <td colSpan="2" className="department-header">
+                                                <strong>{group.department}</strong>
+                                                <span className="employee-count">({group.count} nhân viên)</span>
+                                            </td>
+                                        </tr>
+                                        {/* Employees in this department */}
+                                        {group.employees.map(emp => (
+                                            <tr
+                                                key={emp.id}
+                                                onClick={() => setSelectedEmployee(emp)}
+                                                className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
+                                            >
+                                                <td className="employee-code">{emp.employeeId}</td>
+                                                <td className="employee-name">{emp.ho_va_ten}</td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                                 {filteredEmployees.length === 0 && (
-                                    <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                                    <tr><td colSpan="2" className="empty-state">Không tìm thấy nhân viên</td></tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                {/* RIGHT PANEL: DETAIL VIEW */}
+                <div className="detail-panel" ref={detailRef}>
+                    <div className="panel-header">
+                        <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
+                        <div className="panel-actions">
+                            <button 
+                                className="btn btn-secondary btn-sm" 
+                                onClick={() => navigate('/import-nhan-vien')}
+                                style={{ marginRight: '8px' }}
+                            >
+                                <i className="fas fa-file-import"></i> Import
+                            </button>
+                            <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
+                                <i className="fas fa-plus"></i> Thêm mới
+                            </button>
+                        </div>
+                    </div>
+                    <div className="detail-content">
+                        <EmployeeDetail
+                            employee={selectedEmployee}
+                            onSave={handleSaveEmployee}
+                            onCancel={() => {
+                                // If canceling creation, re-select the first one or clear
+                                if (!selectedEmployee && employees.length > 0) setSelectedEmployee(employees[0])
+                            }}
+                            activeSection={activeSection}
+                            onSectionChange={setActiveSection}
+                            onDisable={handleDisableEmployee}
+                            onActivate={handleActivateEmployee}
+                            onResetPassword={handleResetPassword}
+                            canManage={true}
+                        />
+                    </div>
+                </div>
             </div>
+
+            {/* Reset Password Modal */}
+            {showResetPasswordModal && employeeToReset && (
+                <div className="modal-overlay" onClick={() => setShowResetPasswordModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>
+                                <i className="fas fa-key"></i> Reset mật khẩu
+                            </h2>
+                            <button className="close-btn" onClick={() => setShowResetPasswordModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <p>Bạn có chắc chắn muốn reset mật khẩu của <strong>{employeeToReset.employeeId}</strong> về mặc định (123456)?</p>
+                            <p className="text-muted">Người dùng sẽ phải đổi mật khẩu trong lần đăng nhập tiếp theo.</p>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>
+                                Hủy
+                            </button>
+                            <button className="btn btn-primary" onClick={confirmResetPassword}>
+                                <i className="fas fa-check"></i> Xác nhận
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

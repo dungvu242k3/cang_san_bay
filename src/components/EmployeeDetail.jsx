@@ -169,7 +169,7 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true }) => {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false }) => {
     const { user: authUser } = useAuth()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
     const [isEditing, setIsEditing] = useState(false)
@@ -1894,11 +1894,22 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     </select>
                 </div>
                 <div className="form-group">
-                    <label>Mẫu chấm điểm</label>
-                    <select name="score_template_code" value={formData.score_template_code} onChange={handleChange} disabled={!isEditing}>
+                    <label>Mẫu chấm điểm <span className="text-danger">*</span></label>
+                    <select name="score_template_code" value={formData.score_template_code} onChange={handleChange} disabled={!isEditing} required>
                         <option value="NVTT">Trực tiếp (NVTT)</option>
                         <option value="NVGT">Gián tiếp (NVGT)</option>
                         <option value="CBQL">Quản lý (CBQL)</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label>Trạng thái <span className="text-danger">*</span></label>
+                    <select name="status" value={formData.status || formData.trang_thai || 'Đang làm việc'} onChange={(e) => {
+                        setFormData(prev => ({ ...prev, status: e.target.value, trang_thai: e.target.value }))
+                    }} disabled={!isEditing} required>
+                        <option value="Đang làm việc">Đang làm việc</option>
+                        <option value="Thử việc">Thử việc</option>
+                        <option value="Nghỉ việc">Nghỉ việc</option>
+                        <option value="Tạm nghỉ">Tạm nghỉ</option>
                     </select>
                 </div>
                 <div className="form-group">
@@ -3752,9 +3763,53 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         </div>
     )
 
+    const renderManagementActions = () => {
+        if (!employee) return null
+
+        const isActive = employee.status !== 'Nghỉ việc'
+
+        return (
+            <div className="management-actions" style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#f8f9fa',
+                borderRadius: '10px',
+                border: '1px solid #e9ecef'
+            }}>
+                {isActive ? (
+                    <button
+                        className="btn btn-warning btn-sm"
+                        onClick={() => onDisable && onDisable(employee)}
+                        title="Ngừng hoạt động"
+                    >
+                        <i className="fas fa-ban"></i> Ngừng hoạt động
+                    </button>
+                ) : (
+                    <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => onActivate && onActivate(employee)}
+                        title="Kích hoạt"
+                    >
+                        <i className="fas fa-check"></i> Kích hoạt
+                    </button>
+                )}
+                <button
+                    className="btn btn-info btn-sm"
+                    onClick={() => onResetPassword && onResetPassword(employee)}
+                    title="Reset mật khẩu về mặc định"
+                >
+                    <i className="fas fa-key"></i> Reset mật khẩu
+                </button>
+            </div>
+        )
+    }
+
     return (
         <div className="employee-detail-container">
             <div className="detail-main" style={{ position: 'relative' }}>
+                {renderManagementActions()}
                 {renderActions()}
                 <div className="detail-form-area">
                     {activeSection === 'ly_lich' && renderLyLich()}

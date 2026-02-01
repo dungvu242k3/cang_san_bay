@@ -1,0 +1,89 @@
+.reports-page {
+    padding: 30px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.reports-header {
+    margin-bottom: 30px;
+}
+
+.reports-header h1 {
+    font-size: 2rem;
+    color: #212529;
+    margin: 0 0 8px 0;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.reports-header p {
+    color: #6c757d;
+    margin: 0;
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.report-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease;
+}
+
+.report-card:hover {
+    transform: translateY(-4px);
+}
+
+.report-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5rem;
+}
+
+.report-info h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.report-info p {
+    color: #6c757d;
+    margin: 4px 0 0 0;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 100px 20px;
+    color: #6c757d;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
