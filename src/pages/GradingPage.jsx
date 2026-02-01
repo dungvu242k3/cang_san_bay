@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import EmployeeDetail from '../components/EmployeeDetail';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import './GradingPage.css'; // Dedicated styles
 
 function GradingPage() {
+    const { user } = useAuth()
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
     const [loading, setLoading] = useState(true)
@@ -15,8 +17,8 @@ function GradingPage() {
     const detailRef = useRef(null)
 
     useEffect(() => {
-        loadEmployees()
-    }, [])
+        if (user) loadEmployees()
+    }, [user])
 
     useEffect(() => {
         filterEmployees()
@@ -31,10 +33,18 @@ function GradingPage() {
     const loadEmployees = async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('employee_profiles')
-                .select('*')
-                .order('created_at', { ascending: true })
+            let query = supabase.from('employee_profiles').select('*');
+
+            // Apply role filter
+            if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+                query = query.eq('department', user.dept_scope)
+            } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
+                query = query.eq('team', user.team_scope)
+            } else if (user?.role_level === 'STAFF') {
+                query = query.eq('employee_code', user.employee_code)
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: true })
 
             if (error) throw error
 

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import EmployeeDetail from '../components/EmployeeDetail'
 import ProfileMenu from '../components/ProfileMenu'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import './Employees.css'
 
 function Employees() {
+    const { user } = useAuth()
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
     const [loading, setLoading] = useState(true)
@@ -19,8 +21,8 @@ function Employees() {
     const detailRef = useRef(null)
 
     useEffect(() => {
-        loadEmployees()
-    }, [])
+        if (user) loadEmployees()
+    }, [user])
 
     useEffect(() => {
         filterEmployees()
@@ -35,9 +37,20 @@ function Employees() {
     const loadEmployees = async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
+            let query = supabase
                 .from('employee_profiles')
                 .select('*, user_roles(role_level)')
+
+            // Apply strict server-side filtering if not admin
+            if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+                query = query.eq('department', user.dept_scope)
+            } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
+                query = query.eq('team', user.team_scope)
+            } else if (user?.role_level === 'STAFF') {
+                query = query.eq('employee_code', user.employee_code)
+            }
+
+            const { data, error } = await query
 
             if (error) throw error
 

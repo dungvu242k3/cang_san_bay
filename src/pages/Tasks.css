@@ -519,6 +519,19 @@ textarea.form-control-premium {
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Quick Action Buttons per item */
+.btn-xs {
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 4px;
+}
+
+.fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 .custom-range::-webkit-slider-thumb {
@@ -530,4 +543,147 @@ textarea.form-control-premium {
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
     border: 2px solid #fff;
+}
+
+/* Premium Action Pills */
+.action-pill {
+    border: none;
+    border-radius: 30px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.action-pill:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.action-pill:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.action-pill-primary {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    color: white;
+}
+
+.action-pill-success {
+    background: linear-gradient(135deg, #198754, #157347);
+    color: white;
+}
+
+.action-pill-danger {
+    background: #fff;
+    color: #dc3545;
+    border: 1px solid #f8d7da;
+}
+
+.action-pill-danger:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.action-pill-light {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.action-pill-light:hover {
+    background: #e9ecef;
+    color: var(--primary);
+}
+
+.action-column-premium {
+    background: linear-gradient(to right, #ffffff, #f8fbff);
+    border-left: 1px solid rgba(13, 110, 253, 0.05) !important;
+    position: relative;
+}
+
+.action-column-premium::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: var(--primary);
+    opacity: 0.3;
+    border-radius: 2px;
+}
+
+/* Uniform Task Actions */
+.btn-task-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-task-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-task-action-primary {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.btn-task-action-primary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-task-action-success {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.btn-task-action-success:hover {
+    background: #198754;
+    color: white;
+}
+
+.btn-task-action-danger {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.btn-task-action-danger:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-task-action-light {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.btn-task-action-light:hover {
+    background: #e9ecef;
+    color: var(--text-main);
+}
+
+.action-uniform-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
 }

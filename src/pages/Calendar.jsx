@@ -72,17 +72,58 @@ export default function CalendarPage() {
     const fetchAllEvents = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Calendar Events
-            const { data: calendarEvents } = await supabase.from('events').select('*');
+            const myCode = user?.employee_code;
+            const myDept = user?.dept_scope || myProfile?.department;
+            const myTeam = user?.team_scope || myProfile?.team;
+            const myRole = user?.role_level || 'STAFF';
 
-            // 2. Fetch Tasks (Due Date)
-            const { data: tasks } = await supabase.from('tasks').select('id, title, due_date, status').not('due_date', 'is', null);
+            // 1. Fetch Calendar Events with Scope Filtering
+            let eventQuery = supabase.from('events').select('*');
+            if (myRole === 'STAFF') {
+                eventQuery = eventQuery.or(`created_by.eq.${myCode},scope.eq.COMPANY`);
+            } else if (myRole === 'TEAM_LEADER' && myTeam) {
+                eventQuery = eventQuery.or(`created_by.eq.${myCode},scope.eq.COMPANY,scope.eq.UNIT`);
+                // Actually UNIT might be Dept. Let's assume UNIT filter is based on creator's team or dept.
+            } else if (myRole === 'DEPT_HEAD' && myDept) {
+                eventQuery = eventQuery.or(`created_by.eq.${myCode},scope.eq.COMPANY,scope.eq.UNIT,scope.eq.OFFICE`);
+            }
+            const { data: calendarEvents } = await eventQuery;
 
-            // 3. Fetch Leaves (Approved)
-            const { data: leaves } = await supabase.from('employee_leaves').select('*').eq('status', 'Đã duyệt');
+            // 2. Fetch Tasks (Apply Privacy)
+            let taskQuery = supabase.from('tasks').select('id, title, due_date, status, created_by, task_assignments(*)').not('due_date', 'is', null);
+            const { data: rawTasks } = await taskQuery;
 
-            // 4. Fetch Birthdays
-            const { data: profiles } = await supabase.from('employee_profiles').select('employee_code, first_name, last_name, date_of_birth').not('date_of_birth', 'is', null);
+            const tasks = (rawTasks || []).filter(t => {
+                if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(myRole)) return true;
+                const assignments = t.task_assignments || [];
+                const isCreator = t.created_by === myCode;
+                const isAssigned = assignments.some(a =>
+                    (a.assignee_type === 'PERSON' && a.assignee_code === myCode) ||
+                    (a.assignee_type === 'DEPARTMENT' && a.assignee_code === myDept)
+                );
+                if (isCreator || isAssigned) return true;
+                if (myRole === 'DEPT_HEAD' && myDept) {
+                    return assignments.some(a => a.assignee_code === myDept);
+                }
+                return false;
+            });
+
+            // 3. Fetch Leaves (Filter by Role)
+            let leaveQuery = supabase.from('employee_leaves').select('*').eq('status', 'Đã duyệt');
+            if (myRole === 'STAFF') {
+                leaveQuery = leaveQuery.eq('employee_code', myCode);
+            } else if (myRole === 'DEPT_HEAD' && myDept) {
+                const { data: deptEmps } = await supabase.from('employee_profiles').select('employee_code').eq('department', myDept);
+                leaveQuery = leaveQuery.in('employee_code', deptEmps.map(e => e.employee_code));
+            }
+            const { data: leaves } = await leaveQuery;
+
+            // 4. Fetch Birthdays (Filter by Dept for privacy)
+            let profileQuery = supabase.from('employee_profiles').select('employee_code, first_name, last_name, date_of_birth, department').not('date_of_birth', 'is', null);
+            if (myRole === 'STAFF' || myRole === 'TEAM_LEADER' || myRole === 'DEPT_HEAD') {
+                profileQuery = profileQuery.eq('department', myDept);
+            }
+            const { data: profiles } = await profileQuery;
 
             const formattedEvents = [];
 

@@ -68,18 +68,43 @@ export default function LeavesPage() {
     }, [showModal, myProfile]);
 
     const fetchEmployees = async () => {
-        const { data } = await supabase.from('employee_profiles').select('employee_code, first_name, last_name');
+        let query = supabase.from('employee_profiles').select('employee_code, first_name, last_name, department, team');
+
+        // Filter dropdown based on role
+        if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+            query = query.eq('department', user.dept_scope);
+        } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
+            query = query.eq('team', user.team_scope);
+        } else if (user?.role_level === 'STAFF') {
+            query = query.eq('employee_code', user.employee_code);
+        }
+
+        const { data } = await query;
         if (data) setEmployees(data);
     };
 
     const fetchLeaves = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Leaves
-            const { data: leavesData, error: leavesError } = await supabase
-                .from('employee_leaves')
-                .select('*')
-                .order('created_at', { ascending: false });
+            // 1. Fetch Leaves with role-based filtering
+            let query = supabase.from('employee_leaves').select('*');
+
+            if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+                // To filter leaves by department, we might need a join or a subquery. 
+                // Since leave table only has employee_code, we use a subquery/join logic or filter after fetching profiles.
+                // For simplicity and security, let's fetch profiles in the dept first.
+                const { data: deptEmps } = await supabase.from('employee_profiles').select('employee_code').eq('department', user.dept_scope);
+                const codes = deptEmps.map(e => e.employee_code);
+                query = query.in('employee_code', codes);
+            } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
+                const { data: teamEmps } = await supabase.from('employee_profiles').select('employee_code').eq('team', user.team_scope);
+                const codes = teamEmps.map(e => e.employee_code);
+                query = query.in('employee_code', codes);
+            } else if (user?.role_level === 'STAFF') {
+                query = query.eq('employee_code', user.employee_code);
+            }
+
+            const { data: leavesData, error: leavesError } = await query.order('created_at', { ascending: false });
 
             if (leavesError) throw leavesError;
 
