@@ -45,26 +45,48 @@ function Settings() {
             const { data: empData } = await supabase
                 .from('employee_profiles')
                 .select('employee_code, first_name, last_name, department, team, group_name, current_position')
-                .order('last_name', { ascending: true })
                 .range(0, 5000)
 
-            // 2. Fetch Assigned Roles
+            // 2. Fetch Assigned Roles (Source of truth for sorting)
             const { data: roleData } = await supabase.from('user_roles').select('*')
 
             // 3. Fetch Matrix
             const { data: matrixData } = await supabase.from('rbac_matrix').select('*')
 
-            setEmployees(empData || [])
-
+            // Build Roles Map First
             const rMap = {}
             if (roleData) roleData.forEach(r => { rMap[r.employee_code] = r })
             setRolesMap(rMap)
             setMatrix(matrixData || [])
 
-            const uniqueDepts = [...new Set(empData.map(e => e.department).filter(Boolean))].sort()
-            const uniqueTeams = [...new Set(empData.map(e => e.team).filter(Boolean))].sort()
-            setDepartments(uniqueDepts)
-            setTeams(uniqueTeams)
+            // Hierarchical Sorting Logic using rMap
+            const roleOrder = {
+                'SUPER_ADMIN': 1,
+                'BOARD_DIRECTOR': 2,
+                'DEPT_HEAD': 3,
+                'TEAM_LEADER': 4,
+                'STAFF': 5
+            }
+
+            const sortedData = (empData || []).sort((a, b) => {
+                const levelA = rMap[a.employee_code]?.role_level || 'STAFF'
+                const levelB = rMap[b.employee_code]?.role_level || 'STAFF'
+
+                if (levelA !== levelB) {
+                    return (roleOrder[levelA] || 99) - (roleOrder[levelB] || 99)
+                }
+                // If same level, sort by last name
+                return (a.last_name || '').localeCompare(b.last_name || '')
+            })
+
+            setEmployees(sortedData)
+
+            if (empData) {
+                const uniqueDepts = [...new Set(empData.map(e => e.department).filter(Boolean))].sort()
+                const uniqueTeams = [...new Set(empData.map(e => e.team).filter(Boolean))].sort()
+                setDepartments(uniqueDepts)
+                setTeams(uniqueTeams)
+            }
 
             setLoading(false)
         } catch (err) {
@@ -90,9 +112,23 @@ function Settings() {
     }
 
     const handleUpdateMatrix = async (roleLevel, moduleKey, field, value) => {
+        if (roleLevel === 'SUPER_ADMIN') return // Always full access for super admin
+
+        // 1. Optimistic Update
+        const oldMatrix = [...matrix]
+        const newMatrix = [...matrix]
+        const idx = newMatrix.findIndex(m => m.role_level === roleLevel && m.permission_key === moduleKey)
+
+        if (idx > -1) {
+            newMatrix[idx] = { ...newMatrix[idx], [field]: value }
+        } else {
+            newMatrix.push({ role_level: roleLevel, permission_key: moduleKey, [field]: value })
+        }
+        setMatrix(newMatrix)
+
         try {
             setSaving(`${roleLevel}-${moduleKey}`)
-            const existing = matrix.find(m => m.role_level === roleLevel && m.permission_key === moduleKey)
+            const existing = oldMatrix.find(m => m.role_level === roleLevel && m.permission_key === moduleKey)
 
             const payload = {
                 role_level: roleLevel,
@@ -106,8 +142,52 @@ function Settings() {
                 : await supabase.from('rbac_matrix').insert([payload])
 
             if (error) throw error
+            setSaving(null)
+        } catch (err) {
+            setMatrix(oldMatrix) // Revert on failure
+            console.error(err)
+            setSaving(null)
+        }
+    }
 
-            // Refetch or update local state
+    const handleBatchUpdate = async (type, id, value) => {
+        if (type === 'column' && id === 'SUPER_ADMIN') return
+
+        const confirmMsg = value ? `Cấp toàn bộ quyền?` : `Gỡ bỏ toàn bộ quyền?`
+        if (!window.confirm(confirmMsg)) return
+
+        setSaving(`batch-${id}`)
+        try {
+            const updates = []
+            if (type === 'column') {
+                MODULES.forEach(mod => {
+                    updates.push({
+                        role_level: id,
+                        permission_key: mod.key,
+                        can_view: value,
+                        can_edit: value,
+                        can_delete: value,
+                        updated_at: new Date().toISOString()
+                    })
+                })
+            } else {
+                ROLE_OPTIONS.filter(r => r.value !== 'SUPER_ADMIN').forEach(role => {
+                    updates.push({
+                        role_level: role.value,
+                        permission_key: id,
+                        can_view: value,
+                        can_edit: value,
+                        can_delete: value,
+                        updated_at: new Date().toISOString()
+                    })
+                })
+            }
+
+            const { error } = await supabase
+                .from('rbac_matrix')
+                .upsert(updates, { onConflict: 'role_level,permission_key' })
+
+            if (error) throw error
             const { data: newMatrix } = await supabase.from('rbac_matrix').select('*')
             setMatrix(newMatrix)
             setSaving(null)
@@ -227,23 +307,46 @@ function Settings() {
                                 <thead>
                                     <tr>
                                         <th>Module / Role</th>
-                                        {ROLE_OPTIONS.map(role => <th key={role.value}>{role.label}</th>)}
+                                        {ROLE_OPTIONS.map(role => (
+                                            <th key={role.value}>
+                                                <div className="th-batch">
+                                                    {role.label}
+                                                    {role.value !== 'SUPER_ADMIN' && (
+                                                        <div className="batch-btns">
+                                                            <button title="Chọn hết" onClick={() => handleBatchUpdate('column', role.value, true)}><i className="fas fa-check-double"></i></button>
+                                                            <button title="Bỏ hết" onClick={() => handleBatchUpdate('column', role.value, false)}><i className="fas fa-times"></i></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {MODULES.map(mod => (
                                         <tr key={mod.key}>
-                                            <td className="mod-label">{mod.label}</td>
+                                            <td className="mod-label">
+                                                <div className="td-batch">
+                                                    <span>{mod.label}</span>
+                                                    <div className="batch-btns">
+                                                        <button title="Chọn hết" onClick={() => handleBatchUpdate('row', mod.key, true)}><i className="fas fa-check-double"></i></button>
+                                                        <button title="Bỏ hết" onClick={() => handleBatchUpdate('row', mod.key, false)}><i className="fas fa-times"></i></button>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             {ROLE_OPTIONS.map(role => {
                                                 const rule = matrix.find(m => m.role_level === role.value && m.permission_key === mod.key)
-                                                const isSaving = saving === `${role.value}-${mod.key}`
+                                                const isSaving = saving === `${role.value}-${mod.key}` || saving === `batch-${role.value}` || saving === `batch-${mod.key}`
+                                                const isSuper = role.value === 'SUPER_ADMIN'
+
                                                 return (
-                                                    <td key={role.value} className="matrix-cell">
+                                                    <td key={role.value} className={`matrix-cell ${isSuper ? 'cell-locked' : ''}`}>
                                                         <div className="check-group">
                                                             <label title="Xem">
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={rule?.can_view || false}
+                                                                    disabled={isSuper}
+                                                                    checked={isSuper ? true : (rule?.can_view || false)}
                                                                     onChange={(e) => handleUpdateMatrix(role.value, mod.key, 'can_view', e.target.checked)}
                                                                 />
                                                                 <span>V</span>
@@ -251,7 +354,8 @@ function Settings() {
                                                             <label title="Sửa">
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={rule?.can_edit || false}
+                                                                    disabled={isSuper}
+                                                                    checked={isSuper ? true : (rule?.can_edit || false)}
                                                                     onChange={(e) => handleUpdateMatrix(role.value, mod.key, 'can_edit', e.target.checked)}
                                                                 />
                                                                 <span>E</span>
@@ -259,7 +363,8 @@ function Settings() {
                                                             <label title="Xóa">
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={rule?.can_delete || false}
+                                                                    disabled={isSuper}
+                                                                    checked={isSuper ? true : (rule?.can_delete || false)}
                                                                     onChange={(e) => handleUpdateMatrix(role.value, mod.key, 'can_delete', e.target.checked)}
                                                                 />
                                                                 <span>D</span>

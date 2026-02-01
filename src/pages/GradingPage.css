@@ -1,0 +1,157 @@
+.grading-page-container {
+    display: flex;
+    height: calc(100vh - 100px);
+    background: #f0f2f5;
+    overflow: hidden;
+}
+
+/* Sidebar Styling */
+.grading-sidebar {
+    width: 300px;
+    /* Reduced from 380px for a cleaner look */
+    min-width: 300px;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+}
+
+.grading-sidebar-header {
+    padding: 12px 15px;
+    background: #1976d2;
+    /* Changed from green to primary blue */
+    color: white;
+}
+
+.grading-sidebar-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.sidebar-toolbar {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    background: #fafafa;
+}
+
+.sidebar-search {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-search input,
+.sidebar-search select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.sidebar-stats {
+    padding: 8px 15px;
+    font-size: 0.8rem;
+    color: #666;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.employee-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.employee-item:hover {
+    background: #f5f9ff;
+}
+
+.employee-item.active {
+    background: #e3f2fd;
+    border-left: 4px solid #007bff;
+    padding-left: 11px;
+}
+
+.item-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.item-code {
+    font-size: 0.8rem;
+    color: #888;
+    background: #eee;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.item-sub {
+    font-size: 0.85rem;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+}
+
+.item-badge {
+    font-size: 0.75rem;
+    background: #e1f5fe;
+    color: #0288d1;
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+
+/* Main Content Styling */
+.grading-main-content {
+    flex: 1;
+    overflow-y: auto;
+    background: #fff;
+    position: relative;
+}
+
+.grading-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+}
+
+.grading-empty-state i {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    opacity: 0.3;
+}
+
+/* Custom styles for EmployeeDetail when in grading mode */
+.grading-main-content .employee-detail-container {
+    padding: 0;
+}
+
+.grading-main-content .detail-main {
+    box-shadow: none;
+    border: none;
+}

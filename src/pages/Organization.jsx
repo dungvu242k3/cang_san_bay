@@ -17,17 +17,47 @@ function Organization() {
             setLoading(true)
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('id, employee_code, first_name, last_name, department, team, group_name, current_position, avatar_url')
-                .order('department', { ascending: true })
-                .range(0, 5000)
+                .select('id, employee_code, first_name, last_name, department, team, current_position, avatar_url, user_roles(role_level)')
 
             if (error) throw error
-            setEmployees(data || [])
+
+            const roleOrder = {
+                'SUPER_ADMIN': 1,
+                'BOARD_DIRECTOR': 2,
+                'DEPT_HEAD': 3,
+                'TEAM_LEADER': 4,
+                'STAFF': 5
+            }
+
+            const sortedData = (data || []).sort((a, b) => {
+                const levelA = a.user_roles?.[0]?.role_level || 'STAFF'
+                const levelB = b.user_roles?.[0]?.role_level || 'STAFF'
+                if (levelA !== levelB) {
+                    return (roleOrder[levelA] || 99) - (roleOrder[levelB] || 99)
+                }
+                return (a.department || '').localeCompare(b.department || '')
+            })
+
+            setEmployees(sortedData || [])
+
+            // Expand all by default
+            const depts = [...new Set((sortedData || []).map(e => e.department || 'Khác'))]
+            const expanded = {}
+            depts.forEach(d => expanded[d] = true)
+            setExpandedDepts(expanded)
+
             setLoading(false)
         } catch (err) {
             console.error("Error loading employees:", err)
             setLoading(false)
         }
+    }
+
+    const toggleAll = (show) => {
+        const depts = [...new Set(employees.map(e => e.department || 'Khác'))]
+        const expanded = {}
+        depts.forEach(d => expanded[d] = show)
+        setExpandedDepts(expanded)
     }
 
     const toggleDept = (dept) => {
@@ -63,14 +93,24 @@ function Organization() {
                     <h1><i className="fas fa-sitemap"></i> Sơ đồ tổ chức</h1>
                     <p>Danh sách nhân sự phân cấp theo phòng ban và đội</p>
                 </div>
-                <div className="org-search">
-                    <i className="fas fa-search"></i>
-                    <input
-                        type="text"
-                        placeholder="Tìm nhân viên theo tên hoặc mã..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="header-actions">
+                    <div className="org-search">
+                        <i className="fas fa-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Tìm nhân viên theo tên hoặc mã..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="view-controls">
+                        <button className="btn-control" onClick={() => toggleAll(true)} title="Expand All">
+                            <i className="fas fa-expand-arrows-alt"></i> Mở rộng hết
+                        </button>
+                        <button className="btn-control" onClick={() => toggleAll(false)} title="Collapse All">
+                            <i className="fas fa-compress-arrows-alt"></i> Thu gọn hết
+                        </button>
+                    </div>
                 </div>
             </div>
 

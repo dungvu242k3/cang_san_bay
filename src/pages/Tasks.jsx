@@ -59,11 +59,11 @@ function Tasks() {
     }
 
     const loadDictionaries = async () => {
-        const { data } = await supabase.from('employee_profiles').select('id, employee_code, first_name, last_name, department')
+        const { data } = await supabase.from('employee_profiles').select('employee_code, first_name, last_name, department')
         if (data) {
             const emps = data.map(e => ({
                 code: e.employee_code,
-                name: `${e.last_name} ${e.first_name}`,
+                name: `${e.last_name} ${e.first_name}`.trim(),
                 dept: e.department
             }))
             setEmployees(emps)

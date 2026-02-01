@@ -37,12 +37,25 @@ function Employees() {
             setLoading(true)
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('*')
-                .order('created_at', { ascending: true })
+                .select('*, user_roles(role_level)')
 
             if (error) throw error
 
-            const mappedData = (data || []).map(profile => ({
+            const roleOrder = {
+                'SUPER_ADMIN': 1,
+                'BOARD_DIRECTOR': 2,
+                'DEPT_HEAD': 3,
+                'TEAM_LEADER': 4,
+                'STAFF': 5
+            }
+
+            const sortedData = (data || []).sort((a, b) => {
+                const levelA = a.user_roles?.[0]?.role_level || 'STAFF'
+                const levelB = b.user_roles?.[0]?.role_level || 'STAFF'
+                return (roleOrder[levelA] || 99) - (roleOrder[levelB] || 99)
+            })
+
+            const mappedData = sortedData.map(profile => ({
                 id: profile.id,
                 employeeId: profile.employee_code || '',
                 ho_va_ten: (profile.last_name || '') + ' ' + (profile.first_name || ''),

@@ -220,3 +220,70 @@
     font-size: 0.8rem;
     margin-top: 5px;
 }
+
+/* Batch Controls */
+.th-batch,
+.td-batch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.td-batch {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.batch-btns {
+    display: flex;
+    gap: 5px;
+}
+
+.batch-btns button {
+    background: #f1f3f5;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #495057;
+}
+
+.batch-btns button:hover {
+    background: #e9ecef;
+    border-color: #ced4da;
+    color: #212529;
+}
+
+.batch-btns button[title="Chọn hết"]:hover {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.batch-btns button[title="Bỏ hết"]:hover {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Locked State */
+.cell-locked {
+    background: #fdfdfd;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.cell-locked input {
+    cursor: not-allowed;
+}
+
+.matrix-table tr:hover td {
+    background-color: #fbfcfd;
+}
+
+@media (max-width: 1024px) {
+    .matrix-grid-wrapper {
+        overflow-x: auto;
+    }
+}

@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
     const fetchUserRole = async () => {
         try {
             setLoading(true)
-            const loggedInCode = 'ADMIN'
+            const loggedInCode = localStorage.getItem('userCode') || 'ADMIN'
 
             // 1. Fetch Profile
             const { data: profile } = await supabase
@@ -70,7 +70,11 @@ export function AuthProvider({ children }) {
             loading,
             checkPermission,
             checkAction,
-            refreshUser: fetchUserRole
+            refreshUser: fetchUserRole,
+            switchUser: (code) => {
+                localStorage.setItem('userCode', code)
+                fetchUserRole()
+            }
         }}>
             {children}
         </AuthContext.Provider>

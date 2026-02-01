@@ -2343,8 +2343,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <tr>
                                     <th style={{ width: '50%' }}>Tiêu chí đánh giá</th>
                                     <th style={{ width: '10%', textAlign: 'center' }}>Max</th>
-                                    <th style={{ width: '15%', textAlign: 'center' }}>Tự ĐG</th>
-                                    <th style={{ width: '15%', textAlign: 'center' }}>QL ĐG</th>
+                                    <th className="col-self" style={{ width: '15%', textAlign: 'center' }}>Tự ĐG</th>
+                                    <th className="col-supervisor" style={{ width: '15%', textAlign: 'center' }}>QL ĐG</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2352,8 +2352,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <tr className="grading-section-header section-negative">
                                     <td>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
                                     <td className="text-center">20</td>
-                                    <td className="text-center text-danger font-weight-bold">{selfTotals.scoreA}</td>
-                                    <td className="text-center text-danger font-weight-bold">{supervisorTotals.scoreA}</td>
+                                    <td className="text-center text-danger font-weight-bold col-self">{selfTotals.scoreA}</td>
+                                    <td className="text-center text-danger font-weight-bold col-supervisor">{supervisorTotals.scoreA}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'A').items.map(item => (
                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
@@ -2361,7 +2361,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                             {item.id} {item.title}
                                         </td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                        <td className="text-center">
+                                        <td className="text-center col-self">
                                             {!item.isHeader && (
                                                 <input
                                                     type="number"
@@ -2372,7 +2372,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 />
                                             )}
                                         </td>
-                                        <td className="text-center">
+                                        <td className="text-center col-supervisor">
                                             {!item.isHeader && (
                                                 <input
                                                     type="number"
@@ -2390,8 +2390,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <tr className="grading-section-header section-positive">
                                     <td>B. KHUNG ĐIỂM ĐẠT</td>
                                     <td className="text-center">80</td>
-                                    <td className="text-center text-success font-weight-bold">{selfTotals.scoreB}</td>
-                                    <td className="text-center text-success font-weight-bold">{supervisorTotals.scoreB}</td>
+                                    <td className="text-center text-success font-weight-bold col-self">{selfTotals.scoreB}</td>
+                                    <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'B').items.map(item => (
                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
@@ -2399,7 +2399,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                             {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
                                         </td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                        <td className="text-center">
+                                        <td className="text-center col-self">
                                             {!item.isHeader && (
                                                 <input
                                                     type="number"
@@ -2411,7 +2411,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 />
                                             )}
                                         </td>
-                                        <td className="text-center">
+                                        <td className="text-center col-supervisor">
                                             {!item.isHeader && (
                                                 <input
                                                     type="number"
@@ -2430,8 +2430,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <tr className="grading-section-header section-bonus">
                                     <td>C. KHUNG ĐIỂM CỘNG</td>
                                     <td className="text-center">15</td>
-                                    <td className="text-center text-primary font-weight-bold">{selfTotals.scoreC}</td>
-                                    <td className="text-center text-primary font-weight-bold">{supervisorTotals.scoreC}</td>
+                                    <td className="text-center text-primary font-weight-bold col-self">{selfTotals.scoreC}</td>
+                                    <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'C').items.map(item => (
                                     <tr key={item.id} className="grading-item-row">
@@ -2439,7 +2439,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                             {item.id} {item.title}
                                         </td>
                                         <td className="text-center">{item.range}</td>
-                                        <td className="text-center">
+                                        <td className="text-center col-self">
                                             <input
                                                 type="number"
                                                 className="grading-input"
@@ -2449,7 +2449,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 disabled={isGradingLocked}
                                             />
                                         </td>
-                                        <td className="text-center">
+                                        <td className="text-center col-supervisor">
                                             <input
                                                 type="number"
                                                 className="grading-input"

@@ -2,18 +2,18 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 function Header() {
-  const { user, logout } = useAuth()
+  const { user, switchUser } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
-
-  // Determine display name: name -> email -> 'N/A'
-  const displayName = user?.name || user?.email || 'N/A'
-  // Initial for avatar: first letter of name or email
+  // Determine display name: real name -> email -> 'N/A'
+  const displayName = user?.profile?.ho_va_ten || user?.email || 'N/A'
   const initial = displayName.charAt(0).toUpperCase()
+  const currentRoleLabel = user?.role_level === 'SUPER_ADMIN' ? 'Quản trị viên' : user?.role_level || 'Nhân viên'
+
+  const handleLogout = () => {
+    switchUser('ADMIN')
+    alert('Đã reset về tài khoản Admin mặc định')
+  }
 
   return (
     <header className="header">
@@ -39,11 +39,29 @@ function Header() {
         </div>
       </div>
 
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div className="identity-switcher" style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 15px', borderRadius: '30px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
+          <i className="fas fa-user-shield" style={{ color: '#ffd700' }}></i>
+          <span style={{ color: '#fff', opacity: 0.8 }}>Identity (Demo):</span>
+          <select
+            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 'bold', cursor: 'pointer', outline: 'none' }}
+            value={user?.employee_code || 'ADMIN'}
+            onChange={(e) => switchUser(e.target.value)}
+          >
+            <option value="ADMIN" style={{ color: '#000' }}>Admin Hệ Thống (SUPER_ADMIN)</option>
+            <option value="CBA0001" style={{ color: '#000' }}>Nguyễn Anh (Giám đốc)</option>
+            <option value="CBA0004" style={{ color: '#000' }}>Lê Dũng (Trưởng phòng KT)</option>
+            <option value="CBA0016" style={{ color: '#000' }}>Trần Bình (Trưởng phòng KT)</option>
+            <option value="CBA0040" style={{ color: '#000' }}>Bùi Minh (Nhân viên KT)</option>
+          </select>
+        </div>
+      </div>
+
       <div className="user-info" style={{ gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontWeight: '600' }}>{displayName}</div>
-            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</div>
+            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>{currentRoleLabel}</div>
           </div>
           <div style={{
             width: '40px',
