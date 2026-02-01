@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase'
 
 import './EmployeeDetail.css'
 
-const CRITERIA = [
+const CRITERIA_NVTT = [
     {
         section: 'A',
         title: 'KHUNG ĐIỂM TRỪ [A = 20 - 1.1 - 1.2 - 1.3]',
@@ -52,6 +52,18 @@ const CRITERIA = [
         ]
     }
 ]
+
+// TODO: Update specific criteria for NVGT and CBQL when available
+const CRITERIA_NVGT = [...CRITERIA_NVTT]
+const CRITERIA_CBQL = [...CRITERIA_NVTT]
+
+const getCriteria = (templateCode) => {
+    switch (templateCode) {
+        case 'NVGT': return CRITERIA_NVGT
+        case 'CBQL': return CRITERIA_CBQL
+        default: return CRITERIA_NVTT
+    }
+}
 
 const DEFAULT_FORM_DATA = {
     ho_va_ten: '',
@@ -104,6 +116,7 @@ const DEFAULT_FORM_DATA = {
     team: '',
     group_name: '',
     employee_type: 'MB NVCT',
+    score_template_code: 'NVTT', // Default template
     labor_type: '',
     job_title: '',
     date_received_job_title: '',
@@ -156,7 +169,7 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange }) {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true }) => {
     const { user: authUser } = useAuth()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
     const [isEditing, setIsEditing] = useState(false)
@@ -221,6 +234,28 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingHealthInsurance, setEditingHealthInsurance] = useState(null)
     const [editingWorkAccident, setEditingWorkAccident] = useState(null)
     const [editingHealthCheckup, setEditingHealthCheckup] = useState(null)
+
+    // Helper: Get suggested template based on employee type
+    const getSuggestedTemplate = (type) => {
+        const map = {
+            'MB NVCT': 'NVTT',
+            'NVTV': 'NVTT',
+            'NVTT': 'NVTT',
+            'NVGT': 'NVGT',
+            'CBQL': 'CBQL'
+        }
+        return map[type] || 'NVTT'
+    }
+
+    // Handler for Employee Type change with auto-suggest
+    const handleEmployeeTypeChange = (e) => {
+        const newType = e.target.value
+        setFormData(prev => ({
+            ...prev,
+            employee_type: newType,
+            score_template_code: getSuggestedTemplate(newType)
+        }))
+    }
 
     // CRUD Handlers
     // Bank Accounts
@@ -906,7 +941,12 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Grading States
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
+    const [gradingReviewId, setGradingReviewId] = useState(null)
+    const [selfAssessment, setSelfAssessment] = useState({})
+    const [supervisorAssessment, setSupervisorAssessment] = useState({})
+    const [selfComment, setSelfComment] = useState('')
     const [supervisorComment, setSupervisorComment] = useState('')
+    const [isGradingLocked, setIsGradingLocked] = useState(false)
 
     // Initialize data when employee changes
     useEffect(() => {
@@ -930,22 +970,24 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
     }, [activeSection, month, employee])
 
     const calculateTotals = (data) => {
+        const criteria = getCriteria(formData.score_template_code)
+
         let scoreA = 20
-        const sectionA = CRITERIA.find(c => c.section === 'A')
+        const sectionA = criteria.find(c => c.section === 'A')
         sectionA.items.forEach(item => {
             if (!item.isHeader) scoreA -= Number(data[item.id] || 0)
         })
         scoreA = Math.max(0, scoreA)
 
         let scoreB = 0
-        const sectionB = CRITERIA.find(c => c.section === 'B')
+        const sectionB = criteria.find(c => c.section === 'B')
         sectionB.items.forEach(item => {
             if (!item.isHeader) scoreB += Number(data[item.id] || 0)
         })
         scoreB = Math.min(80, scoreB)
 
         let scoreC = 0
-        const sectionC = CRITERIA.find(c => c.section === 'C')
+        const sectionC = criteria.find(c => c.section === 'C')
         sectionC.items.forEach(item => {
             scoreC += Number(data[item.id] || 0)
         })
@@ -1079,6 +1121,7 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
             team: emp.team || '',
             group_name: emp.group_name || '',
             employee_type: emp.employee_type || 'MB NVCT',
+            score_template_code: emp.score_template_code || 'NVTT',
             labor_type: emp.labor_type || '',
             job_title: emp.job_title || '',
             date_received_job_title: emp.date_received_job_title || '',
@@ -1235,45 +1278,48 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
         setIsEditing(false)
     }
 
-    const renderActions = () => (
-        <div className="section-actions" style={{
-            position: 'absolute',
-            top: '8px',
-            right: '15px',
-            zIndex: 100,
-            background: 'rgba(255,255,255,0.5)',
-            padding: '2px 8px',
-            borderRadius: '4px'
-        }}>
-            {!isEditing ? (
-                <button className="btn btn-link primary"
-                    onClick={() => setIsEditing(true)}
-                    style={{ fontSize: '0.8rem', padding: '2px 5px' }}
-                >
-                    <i className="fas fa-edit"></i> Sửa
-                </button>
-            ) : (
-                <div style={{ display: 'flex', gap: '5px' }}>
-                    <button className="btn btn-link warning"
-                        onClick={() => {
-                            setIsEditing(false)
-                            if (employee) loadEmployeeData(employee)
-                            else onCancel()
-                        }}
-                        style={{ fontSize: '0.8rem', padding: '2px 5px' }}
-                    >
-                        <i className="fas fa-times"></i> Hủy
-                    </button>
+    const renderActions = () => {
+        if (!allowEditProfile) return null
+        return (
+            <div className="section-actions" style={{
+                position: 'absolute',
+                top: '8px',
+                right: '15px',
+                zIndex: 100,
+                background: 'rgba(255,255,255,0.5)',
+                padding: '2px 8px',
+                borderRadius: '4px'
+            }}>
+                {!isEditing ? (
                     <button className="btn btn-link primary"
-                        onClick={handleSubmit}
+                        onClick={() => setIsEditing(true)}
                         style={{ fontSize: '0.8rem', padding: '2px 5px' }}
                     >
-                        <i className="fas fa-save"></i> Lưu
+                        <i className="fas fa-edit"></i> Sửa
                     </button>
-                </div>
-            )}
-        </div>
-    )
+                ) : (
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <button className="btn btn-link warning"
+                            onClick={() => {
+                                setIsEditing(false)
+                                if (employee) loadEmployeeData(employee)
+                                else onCancel()
+                            }}
+                            style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                        >
+                            <i className="fas fa-times"></i> Hủy
+                        </button>
+                        <button className="btn btn-link primary"
+                            onClick={handleSubmit}
+                            style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                        >
+                            <i className="fas fa-save"></i> Lưu
+                        </button>
+                    </div>
+                )}
+            </div>
+        )
+    }
 
     const renderSectionMenu = () => (
         <div className="section-menu">
@@ -1839,12 +1885,20 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 </div>
                 <div className="form-group">
                     <label>Loại nhân viên</label>
-                    <select name="employee_type" value={formData.employee_type} onChange={handleChange} disabled={!isEditing}>
-                        <option value="MB NVCT">Nhân viên chính thức (MB NVCT)</option>
+                    <select name="employee_type" value={formData.employee_type} onChange={handleEmployeeTypeChange} disabled={!isEditing}>
+                        <option value="MB NVCT">Nhân viên chính thức (NVCT)</option>
                         <option value="NVGT">Nhân viên gián tiếp (NVGT)</option>
                         <option value="NVTV">Nhân viên thời vụ (NVTV)</option>
                         <option value="NVTT">Nhân viên trực tiếp (NVTT)</option>
                         <option value="CBQL">Cán bộ quản lý (CBQL)</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label>Mẫu chấm điểm</label>
+                    <select name="score_template_code" value={formData.score_template_code} onChange={handleChange} disabled={!isEditing}>
+                        <option value="NVTT">Trực tiếp (NVTT)</option>
+                        <option value="NVGT">Gián tiếp (NVGT)</option>
+                        <option value="CBQL">Quản lý (CBQL)</option>
                     </select>
                 </div>
                 <div className="form-group">
@@ -2245,15 +2299,32 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderGrading = () => {
         // Derived state for calculations
-        const selfTotals = calculateTotals(selfAssessment)
-        const supervisorTotals = calculateTotals(supervisorAssessment)
+        const criteria = getCriteria(formData.score_template_code)
+
+        // Ensure states are initialized
+        const currentSelf = selfAssessment || {}
+        const currentSupervisor = supervisorAssessment || {}
+
+        const selfTotals = calculateTotals(currentSelf)
+        const supervisorTotals = calculateTotals(currentSupervisor)
         const selfGrade = getGrade(selfTotals.total)
         const supervisorGrade = getGrade(supervisorTotals.total)
 
         return (
             <div className="section-content">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3>Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                    <div>
+                        <h3 style={{ marginBottom: '5px' }}>Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                        <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                            Mẫu chấm điểm: <span className="badge badge-info">{
+                                {
+                                    'NVTT': 'Nhân viên trực tiếp (NVTT)',
+                                    'NVGT': 'Nhân viên gián tiếp (NVGT)',
+                                    'CBQL': 'Cán bộ quản lý (CBQL)'
+                                }[formData.score_template_code || 'NVTT'] || formData.score_template_code
+                            }</span>
+                        </div>
+                    </div>
                     <input
                         type="month"
                         value={month}
@@ -2283,7 +2354,7 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td className="text-center text-danger font-weight-bold">{selfTotals.scoreA}</td>
                                 <td className="text-center text-danger font-weight-bold">{supervisorTotals.scoreA}</td>
                             </tr>
-                            {CRITERIA.find(c => c.section === 'A').items.map(item => (
+                            {criteria.find(c => c.section === 'A').items.map(item => (
                                 <tr key={item.id}>
                                     <td style={{ paddingLeft: item.isHeader ? '10px' : '30px', fontWeight: item.isHeader ? 'bold' : 'normal' }}>
                                         {item.id} {item.title}
@@ -2323,7 +2394,7 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td className="text-center text-success font-weight-bold">{selfTotals.scoreB}</td>
                                 <td className="text-center text-success font-weight-bold">{supervisorTotals.scoreB}</td>
                             </tr>
-                            {CRITERIA.find(c => c.section === 'B').items.map(item => (
+                            {criteria.find(c => c.section === 'B').items.map(item => (
                                 <tr key={item.id}>
                                     <td style={{ paddingLeft: item.isHeader ? '10px' : '30px', fontWeight: item.isHeader ? 'bold' : 'normal' }}>
                                         {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
@@ -2365,7 +2436,7 @@ function EmployeeDetail({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td className="text-center text-primary font-weight-bold">{selfTotals.scoreC}</td>
                                 <td className="text-center text-primary font-weight-bold">{supervisorTotals.scoreC}</td>
                             </tr>
-                            {CRITERIA.find(c => c.section === 'C').items.map(item => (
+                            {criteria.find(c => c.section === 'C').items.map(item => (
                                 <tr key={item.id}>
                                     <td style={{ paddingLeft: '10px' }}>{item.id} {item.title}</td>
                                     <td className="text-center">{item.range}</td>

@@ -1,50 +1,27 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        // Check localStorage on mount
-        const storedUser = localStorage.getItem('hr_user')
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser))
-            } catch (e) {
-                console.error('Failed to parse user from local storage', e)
-                localStorage.removeItem('hr_user')
-            }
-        } else {
-            // Auto-login with default admin user
-            const defaultUser = {
-                id: 1,
-                username: 'admin',
-                ho_va_ten: 'Quản trị viên',
-                role: 'admin'
-            }
-            setUser(defaultUser)
-            localStorage.setItem('hr_user', JSON.stringify(defaultUser))
+    // Luôn luôn có user (Bỏ qua đăng nhập)
+    const [user] = useState({
+        id: 'mock-user-id',
+        email: 'admin@cangsanbay.local',
+        role: 'admin',
+        profile: {
+            employee_code: 'ADMIN',
+            first_name: 'Admin',
+            last_name: 'System',
+            job_title: 'Administrator'
         }
-        setLoading(false)
-    }, [])
+    })
 
-    const login = (userData) => {
-        setUser(userData)
-        localStorage.setItem('hr_user', JSON.stringify(userData))
-    }
-
-    const logout = () => {
-        setUser(null)
-        localStorage.removeItem('hr_user')
-        // creating a simple event to notify other components if needed, or just rely on state
-        window.location.href = '/login'
-    }
+    const login = async () => true
+    const logout = async () => { }
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
-            {!loading && children}
+        <AuthContext.Provider value={{ user, login, logout, loading: false }}>
+            {children}
         </AuthContext.Provider>
     )
 }

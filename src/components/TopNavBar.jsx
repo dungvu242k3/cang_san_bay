@@ -4,9 +4,9 @@ import './TopNavBar.css'
 const navItems = [
     { path: '/dashboard', icon: 'fas fa-chart-line', label: 'Dashboard' },
     { path: '/cong-viec', icon: 'fas fa-briefcase', label: 'Công việc' },
-    { path: '/lich', icon: 'fas fa-calendar-alt', label: 'Lịch' },
+    { path: '/calendar', icon: 'fas fa-calendar-alt', label: 'Lịch' },
     { path: '/cham-diem', icon: 'fas fa-chart-bar', label: 'Chấm điểm' },
-    { path: '/nghi-phep', icon: 'fas fa-umbrella-beach', label: 'Nghỉ phép' },
+    { path: '/leaves', icon: 'fas fa-umbrella-beach', label: 'Nghỉ phép' },
     { path: '/thu-vien', icon: 'fas fa-book', label: 'Thư viện' },
     { path: '/bao-cao', icon: 'fas fa-file-alt', label: 'Báo cáo' },
     { path: '/employees', icon: 'fas fa-user', label: 'Hồ sơ' },
