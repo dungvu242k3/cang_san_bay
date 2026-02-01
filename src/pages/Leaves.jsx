@@ -11,8 +11,20 @@ export default function LeavesPage() {
     const [leaves, setLeaves] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // UI States
     const [showModal, setShowModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [selectedLeaveId, setSelectedLeaveId] = useState(null);
+
     const [myProfile, setMyProfile] = useState(null);
+    const [isCustomLeaveType, setIsCustomLeaveType] = useState(false);
+    const [customLeaveType, setCustomLeaveType] = useState('');
+
+    // Filters
+    const [filterStatus, setFilterStatus] = useState('Chờ duyệt'); // Default pending
+    const [filterDate, setFilterDate] = useState('');
 
     // Form State
     const [newRequest, setNewRequest] = useState({
@@ -44,12 +56,16 @@ export default function LeavesPage() {
             const { data } = await supabase.from('employee_profiles').select('*').or(`email_acv.eq.${user.email},email_personal.eq.${user.email}`).maybeSingle();
             if (data) {
                 setMyProfile(data);
-                if (!newRequest.employee_code) {
-                    setNewRequest(prev => ({ ...prev, employee_code: data.employee_code }));
-                }
             }
         }
     };
+
+    // Auto-suggest current user when modal opens
+    useEffect(() => {
+        if (showModal && myProfile) {
+            setNewRequest(prev => ({ ...prev, employee_code: myProfile.employee_code }));
+        }
+    }, [showModal, myProfile]);
 
     const fetchEmployees = async () => {
         const { data } = await supabase.from('employee_profiles').select('employee_code, first_name, last_name');
@@ -107,26 +123,30 @@ export default function LeavesPage() {
 
     const handleCreate = async () => {
         try {
-            // Allow selecting employee if Admin/No profile, or default to selected
             const targetCode = newRequest.employee_code || myProfile?.employee_code;
-
             if (!targetCode) return alert('Vui lòng chọn nhân viên!');
 
-            // Calculate days
             const start = moment(newRequest.from_date);
             const end = moment(newRequest.to_date);
             const days = end.diff(start, 'days') + 1;
 
             if (days <= 0) return alert('Ngày kết thúc phải sau ngày bắt đầu!');
 
+            // Determine Leave Type
+            let finalLeaveType = newRequest.leave_type;
+            if (newRequest.leave_type === 'Other') {
+                if (!customLeaveType.trim()) return alert('Vui lòng nhập loại nghỉ phép!');
+                finalLeaveType = customLeaveType.trim();
+            }
+
             const payload = {
                 employee_code: targetCode,
-                leave_type: newRequest.leave_type,
+                leave_type: finalLeaveType,
                 from_date: newRequest.from_date,
                 to_date: newRequest.to_date,
                 leave_days: days,
                 reason: newRequest.reason,
-                status: 'Chờ duyệt' // Default
+                status: 'Chờ duyệt'
             };
 
             const { error } = await supabase.from('employee_leaves').insert([payload]);
@@ -134,19 +154,54 @@ export default function LeavesPage() {
 
             alert('Đã gửi đơn xin nghỉ thành công!');
             setShowModal(false);
+            setCustomLeaveType(''); // Reset custom
+            setIsCustomLeaveType(false);
             fetchLeaves();
-            // Reset form
-            setNewRequest({ ...newRequest, reason: '' });
+            setNewRequest({ ...newRequest, reason: '', leave_type: 'Nghỉ phép năm' });
 
         } catch (error) {
             alert('Lỗi tạo đơn: ' + error.message);
         }
     };
 
+    const handleApprove = async (id) => {
+        if (!window.confirm('Bạn có chắc muốn CHẤP THUẬN đơn này?')) return;
+        try {
+            const { error } = await supabase.from('employee_leaves').update({ status: 'Đã duyệt' }).eq('id', id);
+            if (error) throw error;
+            fetchLeaves();
+        } catch (error) {
+            alert('Lỗi: ' + error.message);
+        }
+    };
+
+    const initiateReject = (id) => {
+        setSelectedLeaveId(id);
+        setRejectReason('');
+        setShowRejectModal(true);
+    };
+
+    const handleReject = async () => {
+        if (!rejectReason.trim()) return alert('Vui lòng nhập lý do từ chối!');
+        try {
+            const { error } = await supabase.from('employee_leaves')
+                .update({
+                    status: 'Từ chối',
+                    note: rejectReason // Save reason to note or a new column if exists. Using note for now.
+                })
+                .eq('id', selectedLeaveId);
+
+            if (error) throw error;
+            setShowRejectModal(false);
+            fetchLeaves();
+        } catch (error) {
+            alert('Lỗi: ' + error.message);
+        }
+    };
+
     const handleExport = () => {
         if (leaves.length === 0) return alert('Không có dữ liệu để xuất!');
 
-        // Prepare export data
         const exportData = leaves.map(l => ({
             'Mã NV': l.employee_code,
             'Họ và tên': l.employee_name,
@@ -161,24 +216,51 @@ export default function LeavesPage() {
         const worksheet = XLSX.utils.json_to_sheet(exportData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Leaves");
-
-        // Generate buffer
         XLSX.writeFile(workbook, `NghiPhep_${moment().format('YYYYMMDD')}.xlsx`);
     };
 
+    // Filter Logic
+    const filteredLeaves = leaves.filter(l => {
+        const matchStatus = filterStatus === 'Dauet' ? true : // Special 'All' value?? No, let's use '' for All
+            filterStatus ? l.status === filterStatus : true;
+
+        const matchDate = filterDate ? (
+            moment(l.from_date).isSame(filterDate, 'day') ||
+            moment(l.to_date).isSame(filterDate, 'day')
+        ) : true;
+
+        return matchStatus && matchDate;
+    });
+
+    // Grouping Logic (Sort by date then Group by Date String)
+    const groupedLeaves = {};
+    filteredLeaves.forEach(l => {
+        const dateKey = moment(l.from_date).format('DD/MM/YYYY');
+        if (!groupedLeaves[dateKey]) groupedLeaves[dateKey] = [];
+        groupedLeaves[dateKey].push(l);
+    });
+
+    const sortedDates = Object.keys(groupedLeaves).sort((a, b) =>
+        moment(b, 'DD/MM/YYYY').diff(moment(a, 'DD/MM/YYYY'))
+    );
+
+
     return (
         <div className="leaves-page-container fade-in p-4">
-            {/* Premium Header */}
+            {/* Header */}
             <div className="leaves-header">
                 <div className="leaves-title">
-                    <h2>
-                        <i className="fas fa-plane-departure"></i> Quản lý Nghỉ phép
-                    </h2>
+                    <h2><i className="fas fa-plane-departure"></i> Quản lý Nghỉ phép</h2>
                     <p className="leaves-subtitle">Theo dõi ngày nghỉ và duyệt đơn từ</p>
                 </div>
-                <button className="btn-create-leave" onClick={() => setShowModal(true)}>
-                    <i className="fas fa-plus"></i> Tạo đơn nghỉ
-                </button>
+                <div className="header-actions">
+                    <button className="btn-export-excel shadow-sm" onClick={handleExport}>
+                        <i className="fas fa-file-excel"></i> Xuất Excel
+                    </button>
+                    <button className="btn-create-leave" onClick={() => setShowModal(true)}>
+                        <i className="fas fa-plus"></i> Tạo đơn nghỉ
+                    </button>
+                </div>
             </div>
 
             {/* Dashboard Cards */}
@@ -212,11 +294,28 @@ export default function LeavesPage() {
                 </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="d-flex justify-content-end mb-3">
-                <button className="btn-export-excel shadow-sm" onClick={handleExport}>
-                    <i className="fas fa-file-excel"></i> Xuất Excel
-                </button>
+            {/* Action Bar & Filters */}
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="filter-container mb-0">
+                    <select
+                        className="filter-select"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                        <option value="Chờ duyệt">⏳ Chờ duyệt (Mặc định)</option>
+                        <option value="Đã duyệt">✅ Đã duyệt</option>
+                        <option value="Từ chối">❌ Từ chối</option>
+                        <option value="">📋 Tất cả</option>
+                    </select>
+
+                    <input
+                        type="date"
+                        className="filter-date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        placeholder="Lọc theo ngày"
+                    />
+                </div>
             </div>
 
             {/* List Table */}
@@ -232,28 +331,61 @@ export default function LeavesPage() {
                             <th>Số ngày</th>
                             <th>Lý do</th>
                             <th>Trạng thái</th>
+                            <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {leaves.map(leave => (
-                            <tr key={leave.id}>
-                                <td className="font-weight-bold">{leave.employee_code}</td>
-                                <td style={{ fontWeight: '600', color: '#2d3748' }}>{leave.employee_name}</td>
-                                <td>{leave.leave_type}</td>
-                                <td>{moment(leave.from_date).format('DD/MM/YYYY')}</td>
-                                <td>{moment(leave.to_date).format('DD/MM/YYYY')}</td>
-                                <td>{leave.leave_days}</td>
-                                <td>{leave.reason}</td>
-                                <td>
-                                    <span className={`badge-status status-${leave.status === 'Đã duyệt' ? 'approved' : leave.status === 'Từ chối' ? 'rejected' : 'pending'}`}>
-                                        {leave.status}
-                                    </span>
-                                </td>
-                            </tr>
+                        {sortedDates.map(dateKey => (
+                            <>
+                                <tr key={`header-${dateKey}`} className="group-header-row">
+                                    <td colSpan="9">
+                                        <i className="far fa-calendar-alt mr-2"></i> {dateKey}
+                                    </td>
+                                </tr>
+                                {groupedLeaves[dateKey].map(leave => (
+                                    <tr key={leave.id}>
+                                        <td className="font-weight-bold">{leave.employee_code}</td>
+                                        <td style={{ fontWeight: '600', color: '#2d3748' }}>{leave.employee_name}</td>
+                                        <td>{leave.leave_type}</td>
+                                        <td>{moment(leave.from_date).format('DD/MM/YYYY')}</td>
+                                        <td>{moment(leave.to_date).format('DD/MM/YYYY')}</td>
+                                        <td>{leave.leave_days}</td>
+                                        <td>{leave.reason}</td>
+                                        <td>
+                                            <span className={`badge-status status-${leave.status.toLowerCase().replace(/ /g, '-')}`}>
+                                                {leave.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {leave.status === 'Chờ duyệt' && (
+                                                <div className="d-flex">
+                                                    <button
+                                                        className="btn-action-approve"
+                                                        title="Duyệt"
+                                                        onClick={() => handleApprove(leave.id)}
+                                                    >
+                                                        <i className="fas fa-check"></i>
+                                                    </button>
+                                                    <button
+                                                        className="btn-action-reject"
+                                                        title="Từ chối"
+                                                        onClick={() => initiateReject(leave.id)}
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </>
                         ))}
-                        {leaves.length === 0 && (
+
+                        {sortedDates.length === 0 && (
                             <tr>
-                                <td colSpan="8" className="text-center p-5 text-muted">Chưa có dữ liệu nghỉ phép</td>
+                                <td colSpan="9" className="text-center p-5 text-muted">
+                                    {filterStatus === 'Chờ duyệt' ? 'Không có đơn chờ duyệt nào' : 'Không tìm thấy dữ liệu'}
+                                </td>
                             </tr>
                         )}
                     </tbody>
@@ -300,13 +432,28 @@ export default function LeavesPage() {
                                     <select
                                         className="form-control-premium"
                                         value={newRequest.leave_type}
-                                        onChange={e => setNewRequest({ ...newRequest, leave_type: e.target.value })}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setNewRequest({ ...newRequest, leave_type: val });
+                                            setIsCustomLeaveType(val === 'Other');
+                                        }}
                                     >
                                         <option value="Nghỉ phép năm">🏖️ Nghỉ phép năm</option>
-                                        <option value="Nghỉ ốm">u002795; Nghỉ ốm</option>
+                                        <option value="Nghỉ ốm">💊 Nghỉ ốm</option>
                                         <option value="Nghỉ không lương">💸 Nghỉ không lương</option>
                                         <option value="Nghỉ chế độ">👶 Nghỉ chế độ (Thai sản/Cưới hỏi)</option>
+                                        <option value="Other">➕ Khác (Nhập thủ công)</option>
                                     </select>
+                                    {isCustomLeaveType && (
+                                        <input
+                                            type="text"
+                                            className="form-control-premium mt-2"
+                                            placeholder="Nhập loại nghỉ phép..."
+                                            value={customLeaveType}
+                                            onChange={(e) => setCustomLeaveType(e.target.value)}
+                                            autoFocus
+                                        />
+                                    )}
                                 </div>
                             </div>
                             <div className="row mb-4">
@@ -344,6 +491,43 @@ export default function LeavesPage() {
                             <button className="btn-secondary-premium" onClick={() => setShowModal(false)}>Hủy</button>
                             <button className="btn-primary-premium" onClick={handleCreate}>
                                 <i className="fas fa-paper-plane mr-2"></i> Gửi đơn
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Reason Modal */}
+            {showRejectModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 1070, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="modal-content-premium" style={{ width: '400px' }}>
+                        <div className="modal-header-premium bg-danger text-white">
+                            <div className="modal-title text-white">
+                                <i className="fas fa-exclamation-triangle text-white"></i>
+                                <span>Lý do từ chối</span>
+                            </div>
+                            <button className="btn-close-modal text-white" onClick={() => setShowRejectModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="modal-body-premium">
+                            <label className="form-label-premium">Vui lòng nhập lý do:</label>
+                            <textarea
+                                className="form-control-premium"
+                                rows="3"
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                placeholder="VD: Không đủ nhân sự..."
+                                autoFocus
+                            ></textarea>
+                        </div>
+                        <div className="modal-footer-premium">
+                            <button className="btn-secondary-premium" onClick={() => setShowRejectModal(false)}>Hủy</button>
+                            <button className="btn btn-danger rounded-pill px-4" onClick={handleReject}>
+                                <i className="fas fa-times-circle mr-2"></i> Từ chối
                             </button>
                         </div>
                     </div>

@@ -481,3 +481,131 @@
     height: 16px;
     cursor: default;
 }
+
+/* ========================================= */
+/*       GRADING PAGE PROFESSIONAL UI        */
+/* ========================================= */
+
+/* Grading Table Layout */
+.grading-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.grading-table {
+    width: 100%;
+    border-collapse: separate;
+    /* Required for border-radius on rows/cells if needed, though collapse is easier for borders */
+    border-collapse: collapse;
+    /* Sticking to collapse for clean grid */
+    font-family: 'Inter', sans-serif;
+}
+
+.grading-table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    padding: 12px 16px;
+    border-bottom: 2px solid #dee2e6;
+    letter-spacing: 0.5px;
+}
+
+/* Grading Sections (A, B, C) */
+.grading-section-header td {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    border-top: 2px solid #fff;
+    /* Gap effect */
+}
+
+.section-negative {
+    /* Section A */
+    background: #fff3cd !important;
+    background: linear-gradient(90deg, #fff3cd 0%, #ffecb5 100%) !important;
+    color: #856404;
+}
+
+.section-positive {
+    /* Section B */
+    background: #d4edda !important;
+    background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%) !important;
+    color: #155724;
+}
+
+.section-bonus {
+    /* Section C */
+    background: #cce5ff !important;
+    background: linear-gradient(90deg, #cce5ff 0%, #b8daff 100%) !important;
+    color: #004085;
+}
+
+/* Group Headers */
+.grading-group-header td {
+    background-color: #fcfcfc;
+    font-weight: 600;
+    color: #333;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* Item Rows */
+.grading-item-row td {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    color: #555;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.grading-item-row:hover {
+    background-color: #fafafa;
+}
+
+/* ROUNDED INPUTS - The User Request */
+input.grading-input {
+    width: 60px !important;
+    /* Fixed width for score inputs */
+    margin: 0 auto;
+    display: block;
+    padding: 6px 0;
+    text-align: center;
+    border: 1px solid #ced4da !important;
+    border-radius: 20px !important;
+    /* Rounded corners */
+    background: #fff !important;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+input.grading-input:focus {
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    outline: 0;
+    transform: scale(1.05);
+    /* Subtle pop effect */
+}
+
+input.grading-input:disabled {
+    background: #e9ecef !important;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #dee2e6 !important;
+    transform: none;
+}
+
+/* Remove spin buttons from number input */
+input.grading-input::-webkit-outer-spin-button,
+input.grading-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input.grading-input[type=number] {
+    -moz-appearance: textfield;
+}
