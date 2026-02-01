@@ -10,6 +10,10 @@ const GradingPage = lazy(() => import('./pages/GradingPage'))
 const Tasks = lazy(() => import('./pages/Tasks'))
 const CalendarPage = lazy(() => import('./pages/Calendar'))
 const LeavesPage = lazy(() => import('./pages/Leaves'))
+const Organization = lazy(() => import('./pages/Organization'))
+const SettingsPage = lazy(() => import('./pages/Settings'))
+
+
 
 function App() {
   return (
@@ -26,6 +30,10 @@ function App() {
                   <Route path="/cong-viec" element={<Tasks />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/leaves" element={<LeavesPage />} />
+                  <Route path="/to-chuc" element={<Organization />} />
+                  <Route path="/cai-dat" element={<SettingsPage />} />
+
+
                 </Routes>
               </Layout>
             } />
