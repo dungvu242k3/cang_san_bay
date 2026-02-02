@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import './TeamDiscussion.css'
@@ -18,9 +18,9 @@ function TeamDiscussion() {
             setMyTeam(user.profile.team)
             loadMessages()
             loadTeamMembers()
-            
+
             const unsubscribe = subscribeToMessages()
-            
+
             return () => {
                 if (unsubscribe) unsubscribe()
             }
@@ -44,7 +44,7 @@ function TeamDiscussion() {
                 .from('team_discussions')
                 .select(`
                     *,
-                    employee_profiles:sender_code (
+                    employee_profiles!fk_team_discussion_sender (
                         employee_code,
                         first_name,
                         last_name,
@@ -237,7 +237,7 @@ function TeamDiscussion() {
                             {messages.map((msg) => {
                                 const sender = msg.employee_profiles
                                 const isMyMessage = msg.sender_code === user?.employee_code
-                                const senderName = sender 
+                                const senderName = sender
                                     ? `${sender.last_name || ''} ${sender.first_name || ''}`.trim() || sender.employee_code
                                     : msg.sender_code
 

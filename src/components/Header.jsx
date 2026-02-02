@@ -76,10 +76,10 @@ function Header() {
           <i className="fas fa-user-shield"></i>
           <span className="label">Identity (Demo):</span>
           <select
-            value={user?.employee_code || 'ADMIN'}
+            value={user?.employee_code || ''}
             onChange={(e) => switchUser(e.target.value)}
           >
-            <option value="ADMIN">Admin Hệ Thống (SUPER_ADMIN)</option>
+            <option value="">-- Chọn Identity --</option>
             {demoUsers.map(u => (
               <option key={u.employee_code} value={u.employee_code}>
                 {u.last_name} {u.first_name} ({u.current_position || 'Nhân viên'})

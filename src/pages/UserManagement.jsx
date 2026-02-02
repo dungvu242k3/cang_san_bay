@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../services/supabase'
 import './UserManagement.css'
 
 function UserManagement() {
@@ -34,6 +34,7 @@ function UserManagement() {
                     department,
                     team,
                     password,
+                    current_position,
                     user_roles(role_level)
                 `)
                 .order('employee_code')
@@ -42,14 +43,57 @@ function UserManagement() {
 
             // Check if employees have password set (has account)
             const employeesWithAuth = (data || []).map(emp => {
+                // Infer role if not explicitly set in user_roles
+                let role = emp.user_roles?.[0]?.role_level
+
+                if (!role) {
+                    const pos = emp.current_position || ''
+                    if (['Giám đốc', 'Phó giám đốc'].includes(pos)) {
+                        role = 'BOARD_DIRECTOR'
+                    } else if (['Trưởng phòng', 'Phó trưởng phòng'].includes(pos)) {
+                        role = 'DEPT_HEAD'
+                    } else if (['Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ'].includes(pos)) {
+                        role = 'TEAM_LEADER'
+                    } else {
+                        role = 'STAFF'
+                    }
+                }
+
                 return {
                     ...emp,
                     hasAccount: !!emp.password, // Check if password exists
                     authInfo: emp.password ? {
                         hasPassword: true
                     } : null,
-                    role: emp.user_roles?.[0]?.role_level || 'STAFF'
+                    role: role
                 }
+            })
+
+            // Sort by role priority
+            const roleOrder = {
+                'SUPER_ADMIN': 1,
+                'BOARD_DIRECTOR': 2,
+                'DEPT_HEAD': 3,
+                'TEAM_LEADER': 4,
+                'STAFF': 5
+            }
+
+            employeesWithAuth.sort((a, b) => {
+                const orderA = roleOrder[a.role] || 99
+                const orderB = roleOrder[b.role] || 99
+
+                if (orderA !== orderB) {
+                    return orderA - orderB
+                }
+
+                // Tie-breaker for same role: 'Giám đốc' comes before 'Phó giám đốc'
+                const posA = (a.current_position || '').toLowerCase()
+                const posB = (b.current_position || '').toLowerCase()
+
+                if (posA.includes('phó') && !posB.includes('phó')) return 1
+                if (!posA.includes('phó') && posB.includes('phó')) return -1
+
+                return 0
             })
 
             setEmployees(employeesWithAuth)
@@ -165,7 +209,7 @@ function UserManagement() {
     }
 
     const filteredEmployees = employees.filter(emp => {
-        const matchesSearch = 
+        const matchesSearch =
             emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
             `${emp.last_name} ${emp.first_name}`.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesRole = !filterRole || emp.role === filterRole
@@ -175,7 +219,7 @@ function UserManagement() {
     const getRoleLabel = (role) => {
         const labels = {
             'SUPER_ADMIN': 'Siêu quản trị',
-            'BOARD_DIRECTOR': 'Ban giám đốc',
+            'BOARD_DIRECTOR': 'Giám đốc',
             'DEPT_HEAD': 'Trưởng phòng',
             'TEAM_LEADER': 'Đội trưởng',
             'STAFF': 'Nhân viên'
@@ -261,7 +305,7 @@ function UserManagement() {
                                     </td>
                                     <td>
                                         <span className={`role-badge role-${emp.role.toLowerCase()}`}>
-                                            {getRoleLabel(emp.role)}
+                                            {emp.current_position || getRoleLabel(emp.role)}
                                         </span>
                                     </td>
                                     <td>

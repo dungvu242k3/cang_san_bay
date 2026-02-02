@@ -51,25 +51,8 @@ export function AuthProvider({ children }) {
         try {
             setLoading(true)
 
-            // Special handling for ADMIN demo user
-            if (employeeCode === 'ADMIN') {
-                const adminUser = {
-                    id: 'admin-mock-id',
-                    email: 'admin@cangsanbay.local',
-                    employee_code: 'ADMIN',
-                    role_level: 'SUPER_ADMIN',
-                    permissions: [],
-                    profile: {
-                        ho_va_ten: 'Admin Hệ Thống',
-                        first_name: 'Hệ Thống',
-                        last_name: 'Admin',
-                        avatar_url: null
-                    }
-                }
-                setUser(adminUser)
-                setLoading(false)
-                return
-            }
+            // Special handling removed - Fetch from DB
+
 
             console.log('🔍 [Login Flow] Fetching user data...')
             console.log('   👤 Employee code:', employeeCode)
@@ -106,7 +89,26 @@ export function AuthProvider({ children }) {
             }
 
             // 3. Fetch Dynamic Matrix for this Role Level from rbac_matrix table
-            const userLevel = roleData?.role_level || 'STAFF'
+            let userLevel = roleData?.role_level
+            let deptScope = roleData?.dept_scope
+            let teamScope = roleData?.team_scope
+
+            // Fallback: Infer role from profile if not in user_roles DB
+            if (!userLevel) {
+                const pos = profile.current_position || ''
+                if (['Giám đốc', 'Phó giám đốc'].includes(pos)) {
+                    userLevel = 'BOARD_DIRECTOR'
+                } else if (['Trưởng phòng', 'Phó trưởng phòng'].includes(pos)) {
+                    userLevel = 'DEPT_HEAD'
+                    deptScope = profile.department // Auto-assign scope
+                } else if (['Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ'].includes(pos)) {
+                    userLevel = 'TEAM_LEADER'
+                    teamScope = profile.team // Auto-assign scope
+                } else {
+                    userLevel = 'STAFF'
+                }
+                console.log(`   ⚠️ Role not in DB. Inferred '${userLevel}' from position '${pos}'`)
+            }
             console.log('   🔐 Role level:', userLevel)
 
             const { data: permissionMatrix, error: matrixError } = await supabase
@@ -125,8 +127,8 @@ export function AuthProvider({ children }) {
                 email: profile.email_acv || `${employeeCode}@cangsanbay.local`,
                 employee_code: profile.employee_code,
                 role_level: userLevel,
-                dept_scope: roleData?.dept_scope,
-                team_scope: roleData?.team_scope,
+                dept_scope: deptScope,
+                team_scope: teamScope,
                 permissions: permissionMatrix || [], // Store full matrix here
                 profile: {
                     ...profile,
@@ -158,14 +160,8 @@ export function AuthProvider({ children }) {
 
         const code = employeeCode.trim().toUpperCase()
 
-        // Special handling for ADMIN login
-        if (code === 'ADMIN' && password === '123456') { // Default password check
-            // Skip DB check
-            console.log('✅ [Login] ADMIN bypass active')
-            localStorage.setItem('currentEmployeeCode', code)
-            await fetchUserRole(code) // This also has bypass
-            return { success: true }
-        }
+        // Special handling removed - Check DB
+
 
         // 1. Fetch employee profile with password
         const { data: profile, error: profileError } = await supabase
