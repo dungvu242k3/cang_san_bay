@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import './Login.css'
 
@@ -39,7 +39,7 @@ function Login() {
             }
 
             await login(employeeCode.trim().toUpperCase(), password)
-            
+
             const from = location.state?.from?.pathname || '/dashboard'
             navigate(from, { replace: true })
         } catch (err) {
@@ -57,18 +57,11 @@ function Login() {
         <div className="login-page">
             <div className="login-container">
                 <div className="login-header">
-                    <div className="logo">
-                        <i className="fas fa-plane-departure"></i>
+                    <div className="logo-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+                        <img src="/logo-acv-standard.png" alt="ACV Logo" style={{ height: '80px', width: 'auto', marginBottom: '15px' }} />
+                        <h2 style={{ margin: 0, color: '#fff', fontWeight: '800', fontSize: '1.4rem', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>CẢNG HÀNG KHÔNG</h2>
+                        <span style={{ fontSize: '0.9rem', color: '#fdb813', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Quốc Tế</span>
                     </div>
-                    <h1>Hệ thống Quản lý Nhân sự</h1>
-                    <p style={{ 
-                        color: '#2a5298', 
-                        fontWeight: '600',
-                        fontSize: '1.1rem',
-                        letterSpacing: '1px'
-                    }}>
-                        CẢNG HÀNG KHÔNG QUỐC TẾ
-                    </p>
                 </div>
 
                 <form className="login-form" onSubmit={handleLogin}>

@@ -35,13 +35,16 @@ function GradingPage() {
             setLoading(true)
             let query = supabase.from('employee_profiles').select('*');
 
-            // Apply role filter
-            if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+            // Apply role filter (Secure by Default)
+            if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level)) {
+                // View All - No filter applied
+            } else if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
                 query = query.eq('department', user.dept_scope)
             } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
                 query = query.eq('team', user.team_scope)
-            } else if (user?.role_level === 'STAFF') {
-                query = query.eq('employee_code', user.employee_code)
+            } else {
+                // Default: STAFF and fallback for any missing scope -> View Self Only
+                query = query.eq('employee_code', user?.employee_code)
             }
 
             const { data, error } = await query.order('created_at', { ascending: true })

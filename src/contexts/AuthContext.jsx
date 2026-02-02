@@ -37,7 +37,11 @@ export function AuthProvider({ children }) {
         // Check for existing session from localStorage
         const savedEmployeeCode = localStorage.getItem('currentEmployeeCode')
         if (savedEmployeeCode) {
-            fetchUserRole(savedEmployeeCode)
+            fetchUserRole(savedEmployeeCode).catch(err => {
+                console.warn("Session restore failed, clearing:", err)
+                localStorage.removeItem('currentEmployeeCode')
+                setUser(null)
+            })
         } else {
             setLoading(false)
         }
@@ -46,6 +50,26 @@ export function AuthProvider({ children }) {
     const fetchUserRole = async (employeeCode) => {
         try {
             setLoading(true)
+
+            // Special handling for ADMIN demo user
+            if (employeeCode === 'ADMIN') {
+                const adminUser = {
+                    id: 'admin-mock-id',
+                    email: 'admin@cangsanbay.local',
+                    employee_code: 'ADMIN',
+                    role_level: 'SUPER_ADMIN',
+                    permissions: [],
+                    profile: {
+                        ho_va_ten: 'Admin Hệ Thống',
+                        first_name: 'Hệ Thống',
+                        last_name: 'Admin',
+                        avatar_url: null
+                    }
+                }
+                setUser(adminUser)
+                setLoading(false)
+                return
+            }
 
             console.log('🔍 [Login Flow] Fetching user data...')
             console.log('   👤 Employee code:', employeeCode)
@@ -75,10 +99,10 @@ export function AuthProvider({ children }) {
                 .from('user_roles')
                 .select('*')
                 .eq('employee_code', employeeCode)
-                .single()
+                .maybeSingle()
 
             if (roleError) {
-                console.warn('⚠️ [Login Flow] Role not found, using default STAFF:', roleError)
+                console.warn('⚠️ [Login Flow] Role error:', roleError)
             }
 
             // 3. Fetch Dynamic Matrix for this Role Level from rbac_matrix table
@@ -134,6 +158,15 @@ export function AuthProvider({ children }) {
 
         const code = employeeCode.trim().toUpperCase()
 
+        // Special handling for ADMIN login
+        if (code === 'ADMIN' && password === '123456') { // Default password check
+            // Skip DB check
+            console.log('✅ [Login] ADMIN bypass active')
+            localStorage.setItem('currentEmployeeCode', code)
+            await fetchUserRole(code) // This also has bypass
+            return { success: true }
+        }
+
         // 1. Fetch employee profile with password
         const { data: profile, error: profileError } = await supabase
             .from('employee_profiles')
@@ -188,9 +221,14 @@ export function AuthProvider({ children }) {
             },
             login,
             logout,
-            switchUser: (code) => {
-                localStorage.setItem('currentEmployeeCode', code)
-                fetchUserRole(code)
+            switchUser: async (code) => {
+                try {
+                    await fetchUserRole(code)
+                    localStorage.setItem('currentEmployeeCode', code)
+                } catch (err) {
+                    console.error("Switch failed:", err)
+                    alert(`Lỗi: Không thể chuyển sang user ${code}. User có thể không tồn tại.`)
+                }
             }
         }}>
             {children}

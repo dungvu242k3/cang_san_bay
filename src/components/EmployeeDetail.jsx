@@ -1225,92 +1225,83 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             }
             console.log('Fetching sub-data for empCode:', empCode)
 
-            // Parallel fetch all data using Promise.all for better performance
-            const [
-                familyResult,
-                bankResult,
-                contractResult,
-                passportResult,
-                salaryResult,
-                jobSalaryResult,
-                allowanceResult,
-                incomeResult,
-                leaveResult,
-                appointmentResult,
-                journalResult,
-                specResult,
-                certResult,
-                intTrainResult,
-                rewardResult,
-                disciplineResult,
-                hiResult,
-                accidentResult,
-                checkupResult
-            ] = await Promise.all([
-                // Family members
+            // Parallel fetch all data using Promise.allSettled for better resilience
+            const results = await Promise.allSettled([
+                // Family members [0]
                 supabase.from('family_members').select('*').eq('employee_code', empCode),
-                // Bank Accounts
+                // Bank Accounts [1]
                 supabase.from('employee_bank_accounts').select('*').eq('employee_code', empCode),
-                // Labor Contracts (3.0)
+                // Labor Contracts [2]
                 supabase.from('labor_contracts').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
-                // Passports
+                // Passports [3]
                 supabase.from('employee_passports').select('*').eq('employee_code', empCode),
-                // Salaries (3.1)
+                // Salaries [4]
                 supabase.from('employee_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
-                // Job Salaries (3.2)
+                // Job Salaries [5]
                 supabase.from('employee_job_salaries').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
-                // Allowances (3.3)
+                // Allowances [6]
                 supabase.from('employee_allowances').select('*').eq('employee_code', empCode).order('effective_date', { ascending: false }),
-                // Other Incomes (3.4)
+                // Other Incomes [7]
                 supabase.from('employee_other_incomes').select('*').eq('employee_code', empCode).order('date_incurred', { ascending: false }),
-                // Leaves (4.1)
+                // Leaves [8]
                 supabase.from('employee_leaves').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
-                // Appointments (4.2)
+                // Appointments [9]
                 supabase.from('employee_appointments').select('*').eq('employee_code', empCode).order('applied_date', { ascending: false }),
-                // Work Journals (4.3)
+                // Work Journals [10]
                 supabase.from('employee_work_journals').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
-                // Training Specializations (5.1)
+                // Training Specializations [11]
                 supabase.from('employee_training_specializations').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
-                // Certificates (5.2)
+                // Certificates [12]
                 supabase.from('employee_certificates').select('*').eq('employee_code', empCode).order('issue_date', { ascending: false }),
-                // Internal Trainings (5.3)
+                // Internal Trainings [13]
                 supabase.from('employee_internal_trainings').select('*').eq('employee_code', empCode).order('from_date', { ascending: false }),
-                // Rewards (6.1)
+                // Rewards [14]
                 supabase.from('employee_rewards').select('*').eq('employee_code', empCode).order('reward_date', { ascending: false }),
-                // Disciplines (6.2)
+                // Disciplines [15]
                 supabase.from('employee_disciplines').select('*').eq('employee_code', empCode).order('signed_date', { ascending: false }),
-                // Health Insurance (7.1)
+                // Health Insurance [16]
                 supabase.from('employee_health_insurance').select('*').eq('employee_code', empCode).maybeSingle(),
-                // Work Accidents (7.2)
+                // Work Accidents [17]
                 supabase.from('employee_work_accidents').select('*').eq('employee_code', empCode).order('accident_date', { ascending: false }),
-                // Health Checkups (7.3)
+                // Health Checkups [18]
                 supabase.from('employee_health_checkups').select('*').eq('employee_code', empCode).order('checkup_date', { ascending: false })
             ])
 
+            // Helper to get data or empty
+            const getData = (index, defaultVal = []) => {
+                const res = results[index]
+                if (res.status === 'fulfilled' && !res.value.error) {
+                    return res.value.data || defaultVal
+                }
+                if (res.status === 'rejected' || res.value.error) {
+                    console.warn(`Fetch failed for index ${index}:`, res.reason || res.value.error)
+                }
+                return defaultVal
+            }
+
             // Set all data states
-            if (familyResult.data) setFamilyMembers(familyResult.data)
-            if (bankResult.data) setBankAccounts(bankResult.data)
-            if (contractResult.data) setLaborContracts(contractResult.data)
-            if (passportResult.data) setPassports(passportResult.data)
-            if (salaryResult.data) setSalaries(salaryResult.data)
-            if (jobSalaryResult.data) setJobSalaries(jobSalaryResult.data)
-            if (allowanceResult.data) setAllowances(allowanceResult.data)
-            if (incomeResult.data) setOtherIncomes(incomeResult.data)
-            if (leaveResult.data) setLeaves(leaveResult.data)
-            if (appointmentResult.data) setAppointments(appointmentResult.data)
-            if (journalResult.data) setWorkJournals(journalResult.data)
-            if (specResult.data) setTrainingSpecializations(specResult.data)
-            if (certResult.data) setCertificates(certResult.data)
-            if (intTrainResult.data) setInternalTrainings(intTrainResult.data)
-            if (rewardResult.data) setRewards(rewardResult.data)
-            if (disciplineResult.data) setDisciplines(disciplineResult.data)
-            setHealthInsurance(hiResult.data || null)
-            if (accidentResult.data) setWorkAccidents(accidentResult.data)
-            if (checkupResult.data) setHealthCheckups(checkupResult.data)
+            setFamilyMembers(getData(0))
+            setBankAccounts(getData(1))
+            setLaborContracts(getData(2))
+            setPassports(getData(3))
+            setSalaries(getData(4))
+            setJobSalaries(getData(5))
+            setAllowances(getData(6))
+            setOtherIncomes(getData(7))
+            setLeaves(getData(8))
+            setAppointments(getData(9))
+            setWorkJournals(getData(10))
+            setTrainingSpecializations(getData(11))
+            setCertificates(getData(12))
+            setInternalTrainings(getData(13))
+            setRewards(getData(14))
+            setDisciplines(getData(15))
+            setHealthInsurance(getData(16, null)) // Single object or null
+            setWorkAccidents(getData(17))
+            setHealthCheckups(getData(18))
         }
         fetchFamily()
     }
-
     const handleChange = (e) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
@@ -2503,6 +2494,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         const selfGrade = getGrade(selfTotals.total)
         const supervisorGrade = getGrade(supervisorTotals.total)
 
+        // Permission Logic
+        const isSelf = authUser?.employee_code === formData.employeeId
+        const isAdmin = authUser?.role_level === 'SUPER_ADMIN'
+
+        // Allow Admin to edit everything, otherwise enforce separation
+        const disableSelf = isGradingLocked || (!isSelf && !isAdmin)
+        const disableSupervisor = isGradingLocked || (isSelf && !isAdmin)
+
         return (
             <div className="section-content">
                 <div className="section-header-modern">
@@ -2563,7 +2562,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                     className="grading-input"
                                                     value={selfAssessment[item.id] || ''}
                                                     onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                    disabled={isGradingLocked}
+                                                    disabled={disableSelf}
                                                 />
                                             )}
                                         </td>
@@ -2574,7 +2573,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                     className="grading-input"
                                                     value={supervisorAssessment[item.id] || ''}
                                                     onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                    disabled={isGradingLocked}
+                                                    disabled={disableSupervisor}
                                                 />
                                             )}
                                         </td>
@@ -2602,7 +2601,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                     value={selfAssessment[item.id] || ''}
                                                     onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
                                                     min="0" max="10"
-                                                    disabled={isGradingLocked}
+                                                    disabled={disableSelf}
                                                 />
                                             )}
                                         </td>
@@ -2614,7 +2613,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                     value={supervisorAssessment[item.id] || ''}
                                                     onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
                                                     min="0" max="10"
-                                                    disabled={isGradingLocked}
+                                                    disabled={disableSupervisor}
                                                 />
                                             )}
                                         </td>
@@ -2641,7 +2640,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 value={selfAssessment[item.id] || ''}
                                                 onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
                                                 min="0" max="15"
-                                                disabled={isGradingLocked}
+                                                disabled={disableSelf}
                                             />
                                         </td>
                                         <td className="text-center col-supervisor">
@@ -2651,7 +2650,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 value={supervisorAssessment[item.id] || ''}
                                                 onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
                                                 min="0" max="15"
-                                                disabled={isGradingLocked}
+                                                disabled={disableSupervisor}
                                             />
                                         </td>
                                     </tr>
@@ -2697,7 +2696,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 rows={3}
                                 value={selfComment}
                                 onChange={e => setSelfComment(e.target.value)}
-                                disabled={isGradingLocked}
+                                disabled={disableSelf}
                                 style={{ width: '100%' }}
                             />
                         </div>
@@ -2710,7 +2709,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 rows={3}
                                 value={supervisorComment}
                                 onChange={e => setSupervisorComment(e.target.value)}
-                                disabled={isGradingLocked}
+                                disabled={disableSupervisor}
                                 style={{ width: '100%' }}
                             />
                         </div>
