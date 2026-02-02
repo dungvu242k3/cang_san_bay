@@ -148,15 +148,43 @@ function Settings() {
                 updated_at: new Date().toISOString()
             }
 
-            const { error } = existing
-                ? await supabase.from('rbac_matrix').update(payload).eq('id', existing.id)
-                : await supabase.from('rbac_matrix').insert([payload])
+            let result
+            if (existing && existing.id) {
+                result = await supabase
+                    .from('rbac_matrix')
+                    .update(payload)
+                    .eq('id', existing.id)
+                    .select()
+                    .single()
+            } else {
+                result = await supabase
+                    .from('rbac_matrix')
+                    .insert([payload])
+                    .select()
+                    .single()
+            }
+
+            const { data: savedRecord, error } = result
 
             if (error) throw error
+
+            // Update state with real ID from DB to prevent future "undefined id" errors
+            setMatrix(prev => {
+                const updated = [...prev]
+                const targetIdx = updated.findIndex(m => m.role_level === roleLevel && m.permission_key === moduleKey)
+                if (targetIdx > -1) {
+                    updated[targetIdx] = savedRecord
+                } else {
+                    updated.push(savedRecord)
+                }
+                return updated
+            })
+
             setSaving(null)
         } catch (err) {
             setMatrix(oldMatrix) // Revert on failure
             console.error(err)
+            alert('Lỗi lưu quyền: ' + err.message)
             setSaving(null)
         }
     }
@@ -266,7 +294,7 @@ function Settings() {
     }
 
     // Get departments that don't have leave settings yet
-    const availableDepartments = departments.filter(dept => 
+    const availableDepartments = departments.filter(dept =>
         !leaveSettings.some(setting => setting.department === dept)
     )
 

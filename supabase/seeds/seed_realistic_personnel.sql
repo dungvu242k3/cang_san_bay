@@ -1,6 +1,7 @@
 -- ==========================================================
--- SCRIPT: KHÔI PHỤC TOÀN DIỆN & PHÂN CẤP ĐA DẠNG (V13)
+-- SCRIPT: KHÔI PHỤC TOÀN DIỆN & PHÂN CẤP ĐA DẠNG (V14)
 -- Dọn dẹp sạch sẽ 7 bảng và nạp 50 nhân sự + Đầy đủ các Đội chuyên biệt
+-- Khôi phục đầy đủ các cột cho employee_profiles từ bản migration đúng nhất.
 -- ==========================================================
 
 -- 1. XOÁ TOÀN BỘ CẤU TRÚC VÀ DỮ LIỆU CŨ
@@ -12,30 +13,100 @@ DROP TABLE IF EXISTS public.user_roles CASCADE;
 DROP TABLE IF EXISTS public.rbac_matrix CASCADE;
 DROP TABLE IF EXISTS public.employee_profiles CASCADE;
 
--- 2. TẠO BẢNG HỒ SƠ NHÂN VIÊN
+-- 2. TẠO BẢNG HỒ SƠ NHÂN VIÊN (BẢN ĐẦY ĐỦ NHẤT)
 CREATE TABLE public.employee_profiles (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    employee_code TEXT UNIQUE NOT NULL,
-    first_name TEXT,
-    last_name TEXT,
-    gender TEXT,
-    date_of_birth DATE,
-    department TEXT,
-    team TEXT,
-    group_name TEXT,
-    current_position TEXT DEFAULT 'Nhân viên',
-    email_acv TEXT,
-    email_personal TEXT,
-    phone TEXT,
-    avatar_url TEXT,
-    join_date DATE DEFAULT CURRENT_DATE,
+    employee_code TEXT UNIQUE NOT NULL, -- Mã nhân viên
+    card_number TEXT, -- Số thẻ
+    avatar_url TEXT, -- Avatar
+    last_name TEXT NOT NULL, -- Họ
+    first_name TEXT NOT NULL, -- Tên
+    gender TEXT CHECK (gender IN ('Nam', 'Nữ', 'Khác')), -- Giới tính
+    date_of_birth DATE, -- Ngày sinh
+    nationality TEXT DEFAULT 'Việt Nam', -- Quốc tịch
+    place_of_birth TEXT, -- Nơi sinh
+    ethnicity TEXT DEFAULT 'Kinh', -- Dân tộc
+    religion TEXT DEFAULT 'Không', -- Tôn giáo
+    education_level TEXT CHECK (education_level IN ('10/12', '11/12', '12/12', '8/10', '9/10', '10/10', 'Khác')), -- Trình độ văn hoá
+    training_form TEXT CHECK (training_form IN ('Phổ Thông', 'Bổ túc', 'Khác')), -- Hình thức đào tạo
+    marital_status_code INTEGER CHECK (marital_status_code IN (1, 2, 3, 4)), -- Tình trạng hôn nhân (1: Độc thân, 2: Kết hôn, 3: Ly hôn, 4: Khác)
+    academic_level_code TEXT CHECK (academic_level_code IN ('DH', 'CD', 'TS', 'TC', '12', 'Khác')), -- Trình độ học vấn
+    
+    -- 1.2 Thông tin liên hệ (Contact Info)
+    permanent_address TEXT, -- Địa chỉ thường trú
+    temporary_address TEXT, -- Nơi đăng ký tạm trú
+    hometown TEXT, -- Quê quán
+    phone TEXT, -- Điện thoại
+    email_acv TEXT, -- Email ACV
+    email_personal TEXT, -- Email cá nhân
+    relative_phone TEXT, -- Số điện thoại người thân
+    relative_relation TEXT CHECK (relative_relation IN ('Vợ-chồng', 'Bố-Mẹ', 'Anh-em', 'Con-Cháu', 'Khác')), -- Quan hệ
+    
+    -- 1.3 Thông tin công việc (Work Info)
+    decision_number TEXT, -- Số QĐ
+    join_date DATE DEFAULT CURRENT_DATE, -- Ngày vào làm
+    official_date DATE, -- Ngày thành NVCT
+    job_position TEXT, -- Vị trí công việc
+    department TEXT, -- Phòng
+    team TEXT, -- Đội
+    group_name TEXT, -- Tổ
+    employee_type TEXT CHECK (employee_type IN ('MB NVCT', 'NVGT', 'NVTV', 'NVTT', 'CBQL')) DEFAULT 'MB NVCT', -- Loại nhân viên
+    labor_type TEXT, -- Loại lao động
+    job_title TEXT, -- Chức danh công việc
+    date_received_job_title DATE, -- Ngày nhận chức danh
+    current_position TEXT CHECK (current_position IN ('Giám đốc', 'Phó giám đốc', 'Trưởng phòng', 'Phó trưởng phòng', 'Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ', 'Quản trị viên', 'Nhân viên', 'Khác')) DEFAULT 'Nhân viên', -- Chức vụ hiện tại
+    appointment_date DATE, -- Ngày bổ nhiệm
+    concurrent_position TEXT, -- Chức vụ kiêm nhiệm
+    concurrent_job_title TEXT, -- Chức danh kiêm nhiệm
+    concurrent_start_date DATE, -- Thời gian kiêm nhiệm từ ngày
+    concurrent_end_date DATE, -- Thời gian kiêm nhiệm đến ngày
+    leave_calculation_type TEXT CHECK (leave_calculation_type IN ('Có cộng dồn', 'Không cộng dồn')) DEFAULT 'Có cộng dồn', -- Đối tượng tính phép
+    
+    -- 1.5 Hồ sơ Đảng (Party Records)
+    is_party_member BOOLEAN DEFAULT false, -- Là Đảng viên (checkbox)
+    party_card_number TEXT, -- Số thẻ Đảng viên
+    party_join_date DATE, -- Ngày kết nạp
+    party_official_date DATE, -- Ngày chính thức
+    party_position TEXT, -- Chức vụ Đảng
+    party_activity_location TEXT, -- Nơi sinh hoạt
+    political_education_level TEXT, -- Trình độ chính trị
+    party_notes TEXT, -- Ghi chú
+    
+    -- 1.6 Đoàn thanh niên (Youth Union)
+    is_youth_union_member BOOLEAN DEFAULT false, -- Là Đoàn thanh niên (checkbox)
+    youth_union_card_number TEXT, -- Thẻ Đoàn viên
+    youth_union_join_date DATE, -- Ngày vào Đoàn
+    youth_union_join_location TEXT, -- Nơi vào Đoàn
+    youth_union_position TEXT, -- Chức vụ Đoàn
+    youth_union_activity_location TEXT, -- Nơi sinh hoạt Đoàn
+    youth_union_notes TEXT, -- Ghi chú
+    
+    -- 1.7 Công Đoàn (Trade Union)
+    is_trade_union_member BOOLEAN DEFAULT false, -- Là Công đoàn (checkbox)
+    trade_union_card_number TEXT, -- Thẻ Công Đoàn
+    trade_union_join_date DATE, -- Ngày vào Công đoàn
+    trade_union_position TEXT, -- Chức vụ Công đoàn
+    trade_union_activity_location TEXT, -- Nơi sinh hoạt Công đoàn
+    trade_union_notes TEXT, -- Ghi chú
+
+    -- Legal info
+    identity_card_number TEXT,
+    identity_card_issue_date DATE,
+    identity_card_issue_place TEXT,
+    tax_code TEXT,
+    health_insurance_number TEXT,
+    health_insurance_issue_date DATE,
+    health_insurance_place TEXT,
+    social_insurance_number TEXT,
+    social_insurance_issue_date DATE,
+    unemployment_insurance_number TEXT,
+    unemployment_insurance_issue_date DATE,
+    
+    -- Other
+    score_template_code TEXT DEFAULT 'NVTT',
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    nationality TEXT DEFAULT 'Việt Nam',
-    education_level TEXT,
-    hometown TEXT,
-    is_party_member BOOLEAN DEFAULT false,
-    score_template_code TEXT DEFAULT 'NVTT'
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. TẠO BẢNG PHÂN QUYỀN

@@ -280,7 +280,6 @@ function Employees() {
                 team: formData.team || null,
                 group_name: formData.group_name || null,
                 employee_type: formData.employee_type || 'MB NVCT',
-                score_template_code: formData.score_template_code || 'NVTT',
                 labor_type: formData.labor_type || null,
                 job_title: formData.job_title || null,
                 date_received_job_title: formData.date_received_job_title || null,
@@ -361,7 +360,7 @@ function Employees() {
                         .map(b => b.toString(16).padStart(2, '0'))
                         .join('')
                 }
-                
+
                 const hashedPassword = await hashPassword('123456')
                 dbPayload.password = hashedPassword
 
@@ -542,8 +541,8 @@ function Employees() {
                     <div className="panel-header">
                         <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
                         <div className="panel-actions">
-                            <button 
-                                className="btn btn-secondary btn-sm" 
+                            <button
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => navigate('/import-nhan-vien')}
                                 style={{ marginRight: '8px' }}
                             >

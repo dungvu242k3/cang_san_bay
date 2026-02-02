@@ -1,15 +1,32 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../services/supabase'
 import './Header.css'
 
 function Header({ onMenuToggle }) {
   const { user, switchUser, logout } = useAuth()
   const navigate = useNavigate()
+  const [demoUsers, setDemoUsers] = useState([])
+
+  useEffect(() => {
+    const fetchDemoUsers = async () => {
+      const { data } = await supabase
+        .from('employee_profiles')
+        .select('employee_code, first_name, last_name, current_position, job_title')
+        .limit(10)
+
+      if (data && data.length > 0) {
+        setDemoUsers(data)
+      }
+    }
+    fetchDemoUsers()
+  }, [])
 
   // Determine display name: real name -> email -> 'N/A'
   const displayName = user?.profile?.ho_va_ten || user?.email || 'N/A'
   const initial = displayName.charAt(0).toUpperCase()
-  
+
   const getRoleLabel = (roleLevel) => {
     const roleMap = {
       'SUPER_ADMIN': 'Quản trị viên',
@@ -51,13 +68,13 @@ function Header({ onMenuToggle }) {
       >
         <i className="fas fa-bars"></i>
       </button>
-      <div className="logo" onClick={() => navigate('/dashboard')}>
-        <div className="logo-icon">
-          <i className="fas fa-plane-departure"></i>
-        </div>
-        <div className="logo-text">
-          <h1>CẢNG HÀNG KHÔNG</h1>
-          <span className="subtitle">Quốc Tế</span>
+      <div className="logo" onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+        <img src="/logo-acv-standard.png" alt="ACV Logo" className="logo-img" style={{ height: '50px', width: 'auto', marginRight: '10px' }} />
+        <div className="logo-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', color: '#fff' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: '900', lineHeight: '1.2', textTransform: 'uppercase' }}>Cảng hàng không</div>
+          <div style={{ fontSize: '0.9rem', fontWeight: '900', lineHeight: '1.2', textTransform: 'uppercase' }}>Quốc tế Cát Bi</div>
+          <div style={{ width: '100%', height: '2px', backgroundColor: '#fff', margin: '4px 0 2px 0' }}></div>
+          <div style={{ fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cat Bi International Airport</div>
         </div>
       </div>
 
@@ -66,14 +83,15 @@ function Header({ onMenuToggle }) {
           <i className="fas fa-user-shield"></i>
           <span className="label">Identity (Demo):</span>
           <select
-            value={user?.employee_code || 'ADMIN'}
+            value={user?.employee_code || ''}
             onChange={(e) => switchUser(e.target.value)}
           >
-            <option value="ADMIN">Admin Hệ Thống (SUPER_ADMIN)</option>
-            <option value="CBA0001">Nguyễn Anh (Giám đốc)</option>
-            <option value="CBA0004">Lê Dũng (Trưởng phòng KT)</option>
-            <option value="CBA0016">Trần Bình (Trưởng phòng KT)</option>
-            <option value="CBA0040">Bùi Minh (Nhân viên KT)</option>
+            <option value="">-- Chọn Identity --</option>
+            {demoUsers.map(u => (
+              <option key={u.employee_code} value={u.employee_code}>
+                {u.last_name} {u.first_name} ({u.current_position || 'Nhân viên'})
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -88,8 +106,8 @@ function Header({ onMenuToggle }) {
           </div>
           <div className="user-avatar">
             {user?.profile?.avatar_url ? (
-              <img 
-                src={user.profile.avatar_url} 
+              <img
+                src={user.profile.avatar_url}
                 alt="Avatar"
               />
             ) : (

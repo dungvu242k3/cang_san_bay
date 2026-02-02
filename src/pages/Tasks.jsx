@@ -700,6 +700,7 @@ function Tasks() {
             const { error } = await supabase.from('tasks').update(updates).eq('id', task.id)
             if (error) throw error
             loadTasks()
+            if (showModal) setShowModal(false)
         } catch (err) { alert('Lỗi: ' + err.message) }
     }
 

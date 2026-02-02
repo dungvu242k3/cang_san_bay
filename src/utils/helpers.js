@@ -37,6 +37,25 @@ export const formatDateDisplay = (dateStr) => {
   }
 }
 
+// Display date as MM/YYYY
+export const formatMonthYearDisplay = (dateStr) => {
+  if (!dateStr) return '-'
+  try {
+    // If it's already MM/YYYY
+    if (String(dateStr).includes('/') && String(dateStr).split('/').length === 2) return dateStr
+
+    // If YYYY-MM-DD
+    const parts = String(dateStr).split('-')
+    if (parts.length >= 2) {
+      // Return MM/YYYY
+      return `${parts[1]}/${parts[0]}`
+    }
+    return dateStr
+  } catch (e) {
+    return dateStr
+  }
+}
+
 export const normalizeString = (str) => {
   if (!str) return ''
   return str.normalize('NFD')
@@ -93,7 +112,7 @@ export const mapUserToApp = (user) => {
     noi_cap: user.identity_issue_place || '', // New column
     dia_chi_thuong_tru: user.address || '',
     que_quan: user.hometown || '',
-    ngay_sinh: user.dob || '',
+    ngay_sinh: user.date_of_birth || user.dob || '',
     gioi_tinh: user.gender || '',
     tinh_trang_hon_nhan: user.marital_status || '',
     avatarDataUrl: user.avatar_url || '',
@@ -147,7 +166,7 @@ export const mapAppToUser = (data) => {
     identity_issue_place: data.noi_cap || '',
     address: data.dia_chi_thuong_tru || '',
     hometown: data.que_quan || '',
-    dob: formatDateForDB(data.ngay_sinh),
+    date_of_birth: formatDateForDB(data.ngay_sinh),
     gender: data.gioi_tinh || '',
     marital_status: data.tinh_trang_hon_nhan || '',
     avatar_url: data.avatarDataUrl || data.avatarUrl || data.avatar || '',

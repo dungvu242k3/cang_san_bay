@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
-import { supabase } from '../services/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../services/supabase'
 import './EmployeeImport.css'
 
 function EmployeeImport() {
@@ -16,7 +16,37 @@ function EmployeeImport() {
     const [importResult, setImportResult] = useState(null)
     const fileInputRef = useRef(null)
 
-    const requiredFields = ['employee_code', 'last_name', 'first_name', 'email_acv', 'department', 'status', 'score_template_code']
+    // Chỉ yêu cầu: Mã NV + Tên (hoặc Họ tên đầy đủ). Email không bắt buộc.
+    const requiredFields = ['employee_code', 'department']
+
+    // Helper: Convert Excel date (serial or string) to YYYY-MM-DD
+    const processExcelDate = (value) => {
+        if (!value) return null
+        // If it's a JS Date object
+        if (value instanceof Date) {
+            return value.toISOString().split('T')[0]
+        }
+        // If it's a number (Excel serial date)
+        if (typeof value === 'number') {
+            // Excel starts from 1900-01-01 (approx 25569 days before 1970-01-01)
+            // Adjust for leap year bug in Excel 1900 if needed, usually this formula works for modern files
+            const date = new Date(Math.round((value - 25569) * 86400 * 1000))
+            return !isNaN(date) ? date.toISOString().split('T')[0] : null
+        }
+        // If it's a string
+        if (typeof value === 'string') {
+            const trimmed = value.trim()
+            if (!trimmed) return null
+            // Check DD/MM/YYYY
+            if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+                const [d, m, y] = trimmed.split('/')
+                return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+            }
+            // Check YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+        }
+        return null
+    }
 
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0]
@@ -75,92 +105,214 @@ function EmployeeImport() {
             }
 
             // First row is header
-            const headers = jsonData[0].map(h => (h || '').toString().trim().toLowerCase())
+            // Normalize headers: lowercase, remove extra spaces
+            const headers = jsonData[0].map(h => (h || '').toString().trim().toLowerCase().replace(/\s+/g, ' '))
             const dataRows = jsonData.slice(1)
 
-            // Map headers to database columns
+            // Extended Header Map for Real Data
             const headerMap = {
+                // Identity
                 'mã nhân viên': 'employee_code',
                 'mã nv': 'employee_code',
                 'employee_code': 'employee_code',
+                'họ tên': 'full_name',
+                'họ và tên': 'full_name',
                 'họ': 'last_name',
-                'last_name': 'last_name',
                 'tên': 'first_name',
-                'first_name': 'first_name',
-                'email': 'email_acv',
-                'email_acv': 'email_acv',
+                'ngày tháng năm sinh': 'date_of_birth',
+                'ngày sinh': 'date_of_birth',
+                'giới tính': 'gender',
+                'dân tộc': 'ethnicity',
+                'tôn giáo': 'religion',
+                'số cccd': 'identity_card_number',
+                'cmnd/cccd': 'identity_card_number',
+                'ngày cấp cccd': 'identity_card_issue_date',
+                'ngày cấp': 'identity_card_issue_date',
+                'nơi cấp cccd': 'identity_card_issue_place',
+                'nơi cấp': 'identity_card_issue_place',
+                'nơi sinh': 'place_of_birth',
+                'quê quán': 'hometown',
+
+                // Contact
+                'email acv': 'email_acv',
                 'email doanh nghiệp': 'email_acv',
+                'email': 'email_personal', // If "Email ACV" exists, "Email" is personal
+                'số điện thoại': 'phone',
+                'sđt': 'phone',
+                'hộ khẩu': 'permanent_address',
+                'hộ khẩu thường trú': 'permanent_address',
+                'địa chỉ': 'temporary_address',
+                'địa chỉ liên hệ': 'temporary_address',
+
+                // Job & System
                 'phòng ban': 'department',
-                'department': 'department',
+                'phòng/ban': 'department',
                 'đội': 'team',
-                'team': 'team',
+                'tổ/đội': 'team',
+                'chức danh đầy đủ': 'job_title',
+                'chức danh': 'job_title',
+                'chức vụ/chức danh chính quyền': 'current_position',
+                'ngày vào làm việc tại tct': 'join_date',
+                'ngày vào làm': 'join_date',
+                'ngày chính thức': 'official_date',
+
+                // Insurance & Party
+                'mã số bhxh': 'social_insurance_number',
+                'mã số thẻ bhyt': 'health_insurance_number',
+                'chức vụ đảng': 'party_position',
+                'số thẻ đảng': 'party_card_number',
+                'ngày kết nạp': 'party_join_date',
+                'ngày chính thức đảng': 'party_official_date', // Ngày chính thức trong Đảng
+                'lý luận chính trị': 'political_education_level',
+
+                // Salary (Basic) & Contracts
+                'ngạch lương cdcb': 'salary_scale',
+                'bậc lương cdcb': 'salary_level',
+                'hệ số cdcb': 'salary_coefficient',
+                'mức lương': 'basic_salary',
+                'tổng lương đóng bhxh': 'social_insurance_salary',
+                // Contracts
+                'số hđlđ': 'contract_number',
+                'số hợp đồng': 'contract_number',
+                'loại hđlđ': 'contract_type',
+                'loại hợp đồng': 'contract_type',
+                'thời gian ký': 'contract_signed_date',
+                'ngày ký': 'contract_signed_date',
+                'thời hạn đến': 'contract_expiration_date',
+                'ngày hết hạn': 'contract_expiration_date',
+
+                // Bank Accounts
+                'số tk ngân hàng': 'bank_account_number',
+                'số tài khoản': 'bank_account_number',
+                'stk': 'bank_account_number',
+                'mở tại': 'bank_name',
+                'ngân hàng': 'bank_name',
+
+                // Advanced Job & Allowances (Mapped to 'note' or specific tables later if available)
+                'phụ cấp lương': 'allowance_salary',
+                'phụ cấp pccc + atvslđ': 'allowance_pccc_atvsld',
+                'thời gian tính nâng bậc lương kế tiếp': 'next_salary_raise_date',
+                'thời gian xét thâm niên vượt khung': 'seniority_review_date',
+                'ngạch lương hqcv': 'hqcv_scale',
+                'hệ số hqcv': 'hqcv_coefficient',
+                'mức lương hqcv': 'hqcv_salary',
+                'thời gian áp dụng hqcv': 'hqcv_effective_date',
+                'số người phụ thuộc': 'number_of_dependents',
+                'phụ cấp atvsv (% lương ttv)': 'allowance_atvsv_percent',
+                'phụ cấp pccc\n(% lương ttv)': 'allowance_pccc_percent',
+                'pc chức vụ': 'allowance_position',
+                'thâm niên vk (% lương cdcb)': 'allowance_seniority_vk_percent',
+                'phụ cấp lương cấp tổ/ca ((% lương cdcb)': 'allowance_team_percent',
+                'các khoản bổ sung': 'additional_income',
+                'ngày bắt đầu độc hại': 'toxic_date_start',
+                'điều kiện lao động': 'labor_condition',
+                'mức hưởng độc hại': 'toxic_level',
+                'số tiền/công độc hại': 'toxic_amount_per_shift',
+                'thời điểm đơn vị bắt đầu đóng bhxh': 'social_insurance_start_date',
+                'thời điểm đơn vị kết thúc đóng bhxh': 'social_insurance_end_date',
+
+                // Education & Skills (Map to Note)
+                'trình độ chuyên môn': 'education_qualification',
+                'bằng cấp chứng chỉ': 'certificates',
+                'ngoại ngữ': 'foreign_language',
+                'tin học': 'computer_skill',
+
+                // Config & Misc
                 'trạng thái': 'status',
-                'status': 'status',
                 'mã template điểm': 'score_template_code',
-                'score_template_code': 'score_template_code',
-                'template': 'score_template_code'
+                'ghi chú': 'note'
             }
 
-            const mappedHeaders = headers.map(h => headerMap[h] || h)
             const validatedData = []
             const validationErrors = []
 
             dataRows.forEach((row, index) => {
-                const rowNum = index + 2 // +2 because index is 0-based and we skip header
+                const rowNum = index + 2
                 const rowData = {}
                 const rowErrors = []
+
+                // Skip completely empty rows
+                const hasAnyData = row.some(cell => cell && cell.toString().trim() !== '')
+                if (!hasAnyData) return
+
+                // Map row data FIRST to check for employee_code
+                headers.forEach((header, colIndex) => {
+                    const dbField = headerMap[header]
+                    if (dbField) {
+                        let val = row[colIndex]
+                        rowData[dbField] = val !== undefined ? val : ''
+                    }
+                })
+
+                // Skip rows without employee_code (header rows, sub-headers, etc.)
+                if (!rowData.employee_code || rowData.employee_code.toString().trim() === '') {
+                    return // Bỏ qua dòng không có Mã NV
+                }
+
+                // Skip rows where employee_code is just a small number (like 1, 2, 3... - header STT)
+                const codeVal = rowData.employee_code.toString().trim()
+                if (/^\d{1,2}$/.test(codeVal) && parseInt(codeVal) < 100) {
+                    return // Bỏ qua dòng có Mã NV là số nhỏ (header STT)
+                }
+
+                // Re-map with proper date handling
+                rowData._mapped = true
 
                 // Map row data
                 headers.forEach((header, colIndex) => {
                     const dbField = headerMap[header]
                     if (dbField) {
-                        rowData[dbField] = row[colIndex] || ''
+                        let val = row[colIndex]
+                        // Handle Date conversions - Add contract dates & toxic dates
+                        if (['date_of_birth', 'join_date', 'official_date', 'identity_card_issue_date',
+                            'party_join_date', 'party_official_date', 'contract_signed_date',
+                            'contract_expiration_date', 'toxic_date_start', 'social_insurance_start_date',
+                            'social_insurance_end_date', 'next_salary_raise_date', 'seniority_review_date',
+                            'hqcv_effective_date'].includes(dbField)) {
+                            val = processExcelDate(val)
+                        }
+                        rowData[dbField] = val !== undefined ? val : ''
                     }
                 })
 
-                // Validate required fields
+                // Logic: Name Splitting
+                if (rowData.full_name && (!rowData.last_name || !rowData.first_name)) {
+                    const parts = rowData.full_name.toString().trim().split(' ')
+                    rowData.first_name = parts.pop()
+                    rowData.last_name = parts.join(' ')
+                }
+
+                // Defaults
+                if (!rowData.status) rowData.status = 'Đang làm việc'
+                if (!rowData.score_template_code) rowData.score_template_code = 'NVTT'
+                if (rowData.party_position || rowData.party_card_number) rowData.is_party_member = true
+
+                // Validate required
                 requiredFields.forEach(field => {
-                    if (!rowData[field] || rowData[field].toString().trim() === '') {
+                    let hasValue = false
+                    if (field === 'last_name' || field === 'first_name') {
+                        // Accept if full_name parsed correctly
+                        hasValue = rowData.first_name || rowData.last_name
+                    } else {
+                        hasValue = rowData[field] && rowData[field].toString().trim() !== ''
+                    }
+
+                    if (!hasValue) {
                         rowErrors.push({
                             row: rowNum,
-                            column: headers.findIndex(h => headerMap[h] === field) + 1,
                             field: field,
-                            message: `Thiếu trường bắt buộc: ${field}`
+                            message: `Thiếu ${field} (hoặc lấy từ họ tên)`
                         })
                     }
                 })
 
-                // Validate employee_code format (CBA + 4 digits)
-                if (rowData.employee_code) {
-                    const code = rowData.employee_code.toString().trim().toUpperCase()
-                    // Format chuẩn: CBA + 4 chữ số (ví dụ: CBA0001, CBA0004)
-                    if (!/^CBA\d{4}$/.test(code)) {
-                        rowErrors.push({
-                            row: rowNum,
-                            column: headers.findIndex(h => headerMap[h] === 'employee_code') + 1,
-                            field: 'employee_code',
-                            message: 'Mã nhân viên phải có format: CBA + 4 chữ số (VD: CBA0001, CBA0004)'
-                        })
-                    }
-                }
-
-                // Validate email format
-                if (rowData.email_acv && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rowData.email_acv)) {
-                    rowErrors.push({
-                        row: rowNum,
-                        column: headers.findIndex(h => headerMap[h] === 'email_acv') + 1,
-                        field: 'email_acv',
-                        message: 'Email không đúng định dạng'
-                    })
-                }
+                // Validate Employee Code - Không kiểm tra gì, chấp nhận mọi format
 
                 if (rowErrors.length > 0) {
+                    // Treat warnings carefully. For now, push all errors.
                     validationErrors.push(...rowErrors)
                 } else {
-                    validatedData.push({
-                        ...rowData,
-                        _rowNum: rowNum
-                    })
+                    validatedData.push({ ...rowData, _rowNum: rowNum })
                 }
             })
 
@@ -201,59 +353,181 @@ function EmployeeImport() {
 
             for (const row of previewData) {
                 try {
-                    // Check if employee already exists
-                    const { data: existing } = await supabase
-                        .from('employee_profiles')
-                        .select('employee_code')
-                        .eq('employee_code', row.employee_code.toString().trim().toUpperCase())
-                        .single()
-
-                    if (existing) {
-                        failCount++
-                        failDetails.push({
-                            row: row._rowNum,
-                            employee_code: row.employee_code,
-                            message: 'Mã nhân viên đã tồn tại'
-                        })
-                        continue
-                    }
-
                     // Prepare data
                     const nameParts = (row.first_name || '').trim().split(' ')
                     const firstName = nameParts.pop() || ''
                     const lastName = (row.last_name || '').trim() + (nameParts.length > 0 ? ' ' + nameParts.join(' ') : '')
 
+                    // Normalize current_position to valid DB values
+                    const validPositions = ['Giám đốc', 'Phó giám đốc', 'Trưởng phòng', 'Phó trưởng phòng', 'Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ', 'Khác']
+                    const rawPosition = row.current_position?.toString().trim() || ''
+                    const normalizedPosition = validPositions.includes(rawPosition) ? rawPosition : (rawPosition ? 'Khác' : null)
+
                     const employeeData = {
                         employee_code: row.employee_code.toString().trim().toUpperCase(),
                         first_name: firstName,
                         last_name: lastName || row.last_name || '',
-                        email_acv: row.email_acv?.toString().trim() || null,
+                        status: row.status?.toString().trim() || 'Đang làm việc',
                         department: row.department?.toString().trim() || null,
                         team: row.team?.toString().trim() || null,
-                        status: row.status?.toString().trim() || 'Đang làm việc',
-                        score_template_code: row.score_template_code?.toString().trim() || 'NVTT'
+                        score_template_code: row.score_template_code?.toString().trim() || 'NVTT',
+
+                        // Contact & Personal
+                        email_acv: row.email_acv?.toString().trim() || null,
+                        email_personal: row.email_personal || null,
+                        phone: row.phone || null,
+                        gender: row.gender || null,
+                        date_of_birth: row.date_of_birth || null,
+                        ethnicity: row.ethnicity || 'Kinh',
+                        religion: row.religion || 'Không',
+                        place_of_birth: row.place_of_birth || null,
+                        hometown: row.hometown || null,
+                        permanent_address: row.permanent_address || null,
+                        temporary_address: row.temporary_address || null,
+
+                        // ID & Insurance
+                        identity_card_number: row.identity_card_number || null,
+                        identity_card_issue_date: row.identity_card_issue_date || null,
+                        identity_card_issue_place: row.identity_card_issue_place || null,
+                        social_insurance_number: row.social_insurance_number || null,
+                        health_insurance_number: row.health_insurance_number || null,
+
+                        // Job & Political
+                        job_title: row.job_title || null,
+                        current_position: normalizedPosition,
+                        join_date: row.join_date || null,
+                        official_date: row.official_date || null, // Job official date
+
+                        // Political
+                        political_education_level: row.political_education_level || null,
+                        is_party_member: row.is_party_member || false,
+                        party_position: row.party_position || null,
+                        party_card_number: row.party_card_number || null,
+                        party_join_date: row.party_join_date || null,
+                        party_official_date: row.party_official_date || null,
+                        note: row.note || null
                     }
 
-                    // Hash default password
-                    const hashPassword = async (password) => {
-                        const encoder = new TextEncoder()
-                        const data = encoder.encode(password)
-                        const hash = await crypto.subtle.digest('SHA-256', data)
-                        return Array.from(new Uint8Array(hash))
-                            .map(b => b.toString(16).padStart(2, '0'))
-                            .join('')
-                    }
-                    
-                    const hashedPassword = await hashPassword('123456')
-                    employeeData.password = hashedPassword
+                    // Append extended info to note if columns don't exist in DB yet
+                    const extendedInfo = [
+                        row.allowance_salary ? `Phụ cấp lương: ${row.allowance_salary}` : null,
+                        row.allowance_pccc_atvsld ? `PC PCCC+ATVSLĐ: ${row.allowance_pccc_atvsld}` : null,
+                        row.next_salary_raise_date ? `Nâng bậc lương tiếp: ${row.next_salary_raise_date}` : null,
+                        row.toxic_level ? `Độc hại: ${row.toxic_level}` : null,
+                        row.additional_income ? `Các khoản NS: ${row.additional_income}` : null
+                    ].filter(Boolean).join('. ');
 
-                    // Insert employee
+                    if (extendedInfo) {
+                        employeeData.note = (employeeData.note ? employeeData.note + '. ' : '') + extendedInfo
+                    }
+
+                    // Insert employee (ignore if already exists)
                     const { error: insertError } = await supabase
                         .from('employee_profiles')
-                        .insert([employeeData])
+                        .insert([employeeData], { onConflict: 'ignore' })
 
                     if (insertError) {
-                        throw insertError
+                        // If duplicate key error, skip to related tables
+                        if (insertError.code === '23505') {
+                            console.log(`Employee ${employeeData.employee_code} already exists, skipping...`)
+                        } else {
+                            throw insertError
+                        }
+                    }
+
+                    // Insert Salary (If data exists) - ignore errors
+                    if (row.salary_scale || row.salary_coefficient || row.basic_salary || row.number_of_dependents) {
+                        try {
+                            const salaryPayload = {
+                                employee_code: employeeData.employee_code,
+                                salary_scale: row.salary_scale || null,
+                                salary_level: row.salary_level || null,
+                                salary_coefficient: row.salary_coefficient?.toString().replace(',', '.') || null,
+                                basic_salary: row.basic_salary?.toString().replace(/\D/g, '') || 0,
+                                social_insurance_salary: row.social_insurance_salary?.toString().replace(/\D/g, '') || 0,
+                                number_of_dependents: parseInt(row.number_of_dependents) || 0,
+                                effective_date: row.join_date || row.official_date || new Date().toISOString().split('T')[0],
+                                is_active: true,
+                                note: 'Import từ Excel'
+                            }
+                            await supabase.from('employee_salaries').insert([salaryPayload])
+                        } catch (e) {
+                            console.warn(`Salary insert failed for ${employeeData.employee_code}:`, e.message)
+                        }
+                    }
+
+                    // Insert Bank Account (If data exists) - ignore errors
+                    if (row.bank_account_number) {
+                        try {
+                            const bankPayload = {
+                                employee_code: employeeData.employee_code,
+                                bank_name: row.bank_name || null,
+                                account_number: row.bank_account_number?.toString().trim(),
+                                account_name: row.full_name || (employeeData.last_name + ' ' + employeeData.first_name).toUpperCase(),
+                                note: 'Import từ Excel'
+                            }
+                            await supabase.from('employee_bank_accounts').insert([bankPayload])
+                        } catch (e) {
+                            console.warn(`Bank insert failed for ${employeeData.employee_code}:`, e.message)
+                        }
+                    }
+
+                    // Insert Labor Contract (If data exists) - ignore errors
+                    if (row.contract_number) {
+                        try {
+                            const contractPayload = {
+                                employee_code: employeeData.employee_code,
+                                contract_number: row.contract_number?.toString().trim(),
+                                contract_type: row.contract_type || 'Khai báo Import',
+                                signed_date: row.contract_signed_date || employeeData.join_date,
+                                effective_date: row.contract_signed_date || employeeData.join_date,
+                                expiration_date: row.contract_expiration_date || null,
+                                note: 'Import từ Excel'
+                            }
+                            await supabase.from('labor_contracts').insert([contractPayload])
+                        } catch (e) {
+                            console.warn(`Contract insert failed for ${employeeData.employee_code}:`, e.message)
+                        }
+                    }
+
+                    // Insert Certificates / Knowledge (Skills)
+                    const certsToInsert = []
+
+                    if (row.education_qualification) {
+                        certsToInsert.push({
+                            employee_code: employeeData.employee_code,
+                            certificate_name: 'Trình độ chuyên môn',
+                            level: row.education_qualification,
+                            note: 'Import từ Excel'
+                        })
+                    }
+                    if (row.certificates) {
+                        certsToInsert.push({
+                            employee_code: employeeData.employee_code,
+                            certificate_name: 'Bằng cấp/Chứng chỉ',
+                            level: row.certificates,
+                            note: 'Import từ Excel'
+                        })
+                    }
+                    if (row.foreign_language) {
+                        certsToInsert.push({
+                            employee_code: employeeData.employee_code,
+                            certificate_name: 'Ngoại ngữ',
+                            level: row.foreign_language,
+                            note: 'Import từ Excel'
+                        })
+                    }
+                    if (row.computer_skill) {
+                        certsToInsert.push({
+                            employee_code: employeeData.employee_code,
+                            certificate_name: 'Tin học',
+                            level: row.computer_skill,
+                            note: 'Import từ Excel'
+                        })
+                    }
+
+                    if (certsToInsert.length > 0) {
+                        await supabase.from('employee_certificates').insert(certsToInsert)
                     }
 
                     successCount++

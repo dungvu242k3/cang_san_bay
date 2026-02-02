@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx'; // Basic export support
 import { useAuth } from '../contexts/AuthContext';
 import '../pages/Calendar.css'; // Reuse premium modal styles
@@ -361,7 +361,7 @@ export default function LeavesPage() {
                     </thead>
                     <tbody>
                         {sortedDates.map(dateKey => (
-                            <>
+                            <Fragment key={dateKey}>
                                 <tr key={`header-${dateKey}`} className="group-header-row">
                                     <td colSpan="9">
                                         <i className="far fa-calendar-alt mr-2"></i> {dateKey}
@@ -403,7 +403,7 @@ export default function LeavesPage() {
                                         </td>
                                     </tr>
                                 ))}
-                            </>
+                            </Fragment>
                         ))}
 
                         {sortedDates.length === 0 && (
