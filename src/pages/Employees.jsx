@@ -797,6 +797,7 @@ function Employees() {
                             onDelete={handleDeleteEmployee}
                             onResetPassword={handleResetPassword}
                             canManage={true}
+                            onSelectEmployee={setSelectedEmployee}
                         />
                     </div>
                 </div >

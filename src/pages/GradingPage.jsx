@@ -47,7 +47,7 @@ function GradingPage() {
                 setIsMobileMenuOpen(false)
             }
         }
-        
+
         checkMobile()
         window.addEventListener('resize', checkMobile)
         return () => window.removeEventListener('resize', checkMobile)
@@ -144,7 +144,7 @@ function GradingPage() {
         <div className="grading-page-container">
             {/* MOBILE OVERLAY */}
             {isMobileMenuOpen && (
-                <div 
+                <div
                     className="mobile-overlay"
                     onClick={() => setIsMobileMenuOpen(false)}
                 ></div>
@@ -154,7 +154,7 @@ function GradingPage() {
             <div className={`grading-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
                 <div className="grading-sidebar-header">
                     <h2><i className="fas fa-list-ul"></i> Danh sách nhân sự</h2>
-                    <button 
+                    <button
                         className="mobile-close-btn"
                         onClick={() => setIsMobileMenuOpen(false)}
                         aria-label="Close menu"
@@ -236,6 +236,7 @@ function GradingPage() {
                             onCancel={() => { }}
                             onSectionChange={() => { }}
                             onOpenEmployeeSelector={handleOpenEmployeeSelector}
+                            onSelectEmployee={setSelectedEmployee}
                         />
                     </div>
                 ) : (
@@ -246,7 +247,7 @@ function GradingPage() {
                         <h3>Chọn nhân viên để chấm điểm</h3>
                         <p>Chọn nhân viên từ danh sách bên trái để bắt đầu chấm điểm</p>
                         {isMobile && (
-                            <button 
+                            <button
                                 className="btn-select-employee"
                                 onClick={() => setIsMobileMenuOpen(true)}
                             >

@@ -171,7 +171,7 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector }) => {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee }) => {
     const { user: authUser } = useAuth()
     const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
@@ -238,6 +238,34 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingHealthInsurance, setEditingHealthInsurance] = useState(null)
     const [editingWorkAccident, setEditingWorkAccident] = useState(null)
     const [editingHealthCheckup, setEditingHealthCheckup] = useState(null)
+
+    // Grading Tabs State
+    const [activeGradingTab, setActiveGradingTab] = useState('grading') // 'grading', 'my_score', 'approval'
+    const [myScoreData, setMyScoreData] = useState({
+        id: null,
+        selfAssessment: {},
+        supervisorAssessment: {},
+        selfComment: '',
+        supervisorComment: '',
+        isLocked: false,
+        loading: false
+    })
+    const [approvalList, setApprovalList] = useState([])
+    const [approvalSearchTerm, setApprovalSearchTerm] = useState('')
+    const [approvalFilterStatus, setApprovalFilterStatus] = useState('ALL') // 'ALL', 'PENDING', 'COMPLETED', 'NOT_STARTED'
+
+    // My Score History State
+    const [myScoreViewMode, setMyScoreViewMode] = useState('LIST') // 'LIST' | 'DETAIL'
+    const [myScoreHistory, setMyScoreHistory] = useState([])
+    const [myScoreYearFilter, setMyScoreYearFilter] = useState(new Date().getFullYear())
+
+    // Reset Grading Tab when switching employees
+    useEffect(() => {
+        if (employee) {
+            setActiveGradingTab('grading')
+            setMyScoreViewMode('LIST')
+        }
+    }, [employee])
 
     // Helper: Get suggested template based on employee type
     const getSuggestedTemplate = (type) => {
@@ -1082,6 +1110,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     }
 
     const loadGradingData = async () => {
+        console.log('🔄 loadGradingData triggered', {
+            empId: employee?.employeeId,
+            month,
+            activeGradingTab
+        })
         if (!employee || !employee.employeeId) return
 
         try {
@@ -1091,6 +1124,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 .eq('employee_code', employee.employeeId)
                 .eq('month', month)
                 .maybeSingle()
+
+            console.log('🔄 loadGradingData result:', { data, error })
 
             if (data) {
                 setGradingReviewId(data.id)
@@ -1110,6 +1145,199 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             console.error("Error loading grading:", err)
         }
     }
+
+    // Effect for Grading Tabs
+    useEffect(() => {
+        if (activeSection === 'grading') {
+            if (activeGradingTab === 'my_score') {
+                if (myScoreViewMode === 'DETAIL') {
+                    loadMyGradingData()
+                } else {
+                    loadMyScoreHistory()
+                }
+            } else if (activeGradingTab === 'approval') {
+                loadApprovalList()
+            } else {
+                // Default 'grading' tab
+                loadGradingData()
+            }
+        }
+    }, [activeSection, activeGradingTab, month, myScoreViewMode, myScoreYearFilter, employee?.employeeId])
+
+    const loadMyScoreHistory = async () => {
+        if (!authUser || !authUser.employee_code) return
+
+        try {
+            // Get all months of the selected year
+            const startYear = `${myScoreYearFilter}-01`
+            const endYear = `${myScoreYearFilter}-12`
+
+            const { data, error } = await supabase
+                .from('performance_reviews')
+                .select('*')
+                .eq('employee_code', authUser.employee_code)
+                .gte('month', startYear)
+                .lte('month', endYear)
+                .order('month', { ascending: true })
+
+            if (error) throw error
+
+            setMyScoreHistory(data || [])
+        } catch (err) {
+            console.error("Error loading history:", err)
+        }
+    }
+
+    const loadMyGradingData = async () => {
+        if (!authUser || !authUser.employee_code) return
+        setMyScoreData(prev => ({ ...prev, loading: true }))
+        try {
+            const { data, error } = await supabase
+                .from('performance_reviews')
+                .select('*')
+                .eq('employee_code', authUser.employee_code)
+                .eq('month', month)
+                .maybeSingle()
+
+            if (data) {
+                setMyScoreData({
+                    id: data.id,
+                    selfAssessment: data.self_assessment || {},
+                    supervisorAssessment: data.supervisor_assessment || {},
+                    selfComment: data.self_comment || '',
+                    supervisorComment: data.supervisor_comment || '',
+                    isLocked: true, // Data exists
+                    loading: false
+                })
+            } else {
+                setMyScoreData(prev => ({
+                    ...prev,
+                    id: null,
+                    selfAssessment: {},
+                    supervisorAssessment: {},
+                    selfComment: '',
+                    supervisorComment: '',
+                    isLocked: false,
+                    loading: false
+                }))
+            }
+        } catch (err) {
+            console.error("Error loading my grading:", err)
+            setMyScoreData(prev => ({ ...prev, loading: false }))
+        }
+    }
+
+    const loadApprovalList = async () => {
+        if (!authUser) return
+
+        try {
+            // STAFF sees nothing in Approval Tab
+            if (authUser.role_level === 'STAFF') {
+                setApprovalList([])
+                return
+            }
+
+            let query = supabase.from('employee_profiles').select('id, employee_code, first_name, last_name, department, job_position, status, avatar_url')
+
+            // Apply scope based on role
+            if (authUser.role_level === 'DEPT_HEAD') {
+                if (authUser.dept_scope) {
+                    query = query.eq('department', authUser.dept_scope)
+                }
+            } else if (authUser.role_level === 'TEAM_LEADER') {
+                if (authUser.team_scope) {
+                    query = query.eq('team', authUser.team_scope)
+                }
+            }
+            // SUPER_ADMIN / BOARD_DIRECTOR -> No filter (See all)
+
+            query = query.neq('status', 'Nghỉ việc')
+
+            const { data, error } = await query
+            if (error) throw error
+
+            // Optimization: Fetch reviews for all these employees for current month
+            const empCodes = (data || []).map(e => e.employee_code).filter(Boolean)
+            let reviews = []
+            if (empCodes.length > 0) {
+                const { data: revs } = await supabase.from('performance_reviews').select('employee_code, id, self_total_score, supervisor_total_score, self_grade, supervisor_grade').in('employee_code', empCodes).eq('month', month)
+                reviews = revs || []
+            }
+
+            const merged = (data || []).map(emp => {
+                const rev = reviews.find(r => r.employee_code === emp.employee_code)
+                let status = 'Chưa đánh giá'
+                let badgeClass = 'secondary'
+
+                if (rev) {
+                    if (rev.supervisor_total_score) {
+                        status = 'Đã hoàn thành'
+                        badgeClass = 'success'
+                    } else if (rev.self_total_score) {
+                        status = 'Cần duyệt'
+                        badgeClass = 'warning'
+                    } else {
+                        status = 'Đang đánh giá'
+                        badgeClass = 'info'
+                    }
+                }
+
+                return {
+                    ...emp,
+                    reviewStatus: status,
+                    badgeClass,
+                    reviewId: rev?.id,
+                    selfGrade: rev?.self_grade,
+                    supervisorGrade: rev?.supervisor_grade
+                }
+            })
+
+            // Sort: Cần duyệt -> Đang đánh giá -> Chưa đánh giá -> Đã hoàn thành
+            const score = { 'Cần duyệt': 1, 'Đang đánh giá': 2, 'Chưa đánh giá': 3, 'Đã hoàn thành': 4 }
+            merged.sort((a, b) => (score[a.reviewStatus] || 9) - (score[b.reviewStatus] || 9))
+
+            setApprovalList(merged)
+
+        } catch (err) {
+            console.error("Error loading approval list:", err)
+        }
+    }
+
+    const saveGradingDataInternal = async (targetEmpCode, svData, spData, svComment, spComment, existingId) => {
+        const selfTotals = calculateTotals(svData)
+        const supervisorTotals = calculateTotals(spData)
+
+        const payload = {
+            employee_code: targetEmpCode,
+            month,
+            self_assessment: svData,
+            supervisor_assessment: spData,
+            self_comment: svComment,
+            supervisor_comment: spComment,
+            self_total_score: selfTotals.total,
+            self_grade: getGrade(selfTotals.total),
+            supervisor_total_score: supervisorTotals.total,
+            supervisor_grade: getGrade(supervisorTotals.total)
+        }
+
+        // Save to DB logic (Upsert-ish)
+        let result
+        if (existingId) {
+            result = await supabase.from('performance_reviews').update(payload).eq('id', existingId).select()
+        } else {
+            // Try insert users logic
+            result = await supabase.from('performance_reviews').insert([payload]).select()
+            if (result.error && result.error.code === '23505') {
+                // Retry update
+                const { data: exist } = await supabase.from('performance_reviews').select('id').eq('employee_code', targetEmpCode).eq('month', month).maybeSingle()
+                if (exist) {
+                    result = await supabase.from('performance_reviews').update(payload).eq('id', exist.id).select()
+                }
+            }
+        }
+        return result
+    }
+
 
     const handleGradingSave = async () => {
         if (!employee || !employee.employeeId) {
@@ -1151,7 +1379,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 result = await supabase
                     .from('performance_reviews')
                     .insert([payload])
-                
+
                 // If insert fails due to unique constraint, try to find and update existing record
                 if (result.error && result.error.code === '23505') {
                     // UNIQUE constraint violation - record already exists
@@ -1161,7 +1389,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                         .eq('employee_code', employee.employeeId)
                         .eq('month', month)
                         .maybeSingle()
-                    
+
                     if (existing) {
                         setGradingReviewId(existing.id)
                         result = await supabase
@@ -1184,6 +1412,26 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         } catch (e) {
             console.error('Error saving grading:', e)
             alert('Lỗi khi lưu: ' + (e.message || 'Đã xảy ra lỗi không xác định'))
+        }
+    }
+
+    const handleMyGradingSave = async () => {
+        try {
+            if (!authUser || !authUser.employee_code) return
+            const result = await saveGradingDataInternal(
+                authUser.employee_code,
+                myScoreData.selfAssessment,
+                myScoreData.supervisorAssessment,
+                myScoreData.selfComment,
+                myScoreData.supervisorComment,
+                myScoreData.id
+            )
+            if (result.error) throw result.error
+            alert('Đã lưu điểm của tôi thành công!')
+            loadMyGradingData()
+        } catch (e) {
+            console.error(e)
+            alert('Lỗi lưu điểm của tôi: ' + e.message)
         }
     }
 
@@ -2227,29 +2475,29 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         // Default departments if not loaded yet
         const defaultDepartments = ['Ban Giám đốc', 'Văn phòng', 'Phòng Kỹ thuật', 'Phòng Khai thác', 'Đội An ninh', 'Đội Dịch vụ', 'Phòng Điều hành sân bay', 'Phòng Kỹ thuật hạ tầng', 'Phòng Phục vụ mặt đất', 'Phòng Tài chính - Kế hoạch']
         const departments = availableDepartments.length > 0 ? availableDepartments : defaultDepartments
-        
+
         const currentDept = formData.department || formData.bo_phan || ''
         const isCustomDept = currentDept && !departments.includes(currentDept)
-        
+
         return (
             <div className="section-content">
                 <h3>Thông tin khác</h3>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-                
+
                 <div className="grid-2">
                     <div className="form-group">
                         <label>Phòng ban <span className="text-danger">*</span></label>
-                        <select 
-                            name="department" 
-                            value={isCustomDept ? '' : currentDept} 
+                        <select
+                            name="department"
+                            value={isCustomDept ? '' : currentDept}
                             onChange={(e) => {
-                                setFormData(prev => ({ 
-                                    ...prev, 
+                                setFormData(prev => ({
+                                    ...prev,
                                     department: e.target.value,
                                     bo_phan: e.target.value
                                 }))
-                            }} 
-                            disabled={!isEditing} 
+                            }}
+                            disabled={!isEditing}
                             required
                         >
                             <option value="">-- Chọn phòng ban --</option>
@@ -2257,14 +2505,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <option key={dept} value={dept}>{dept}</option>
                             ))}
                         </select>
-                        <input 
-                            type="text" 
-                            name="department_custom" 
+                        <input
+                            type="text"
+                            name="department_custom"
                             placeholder="Hoặc nhập phòng ban khác..."
                             value={isCustomDept ? currentDept : ''}
                             onChange={(e) => {
-                                setFormData(prev => ({ 
-                                    ...prev, 
+                                setFormData(prev => ({
+                                    ...prev,
                                     department: e.target.value,
                                     bo_phan: e.target.value
                                 }))
@@ -2273,25 +2521,25 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             style={{ marginTop: '8px' }}
                         />
                     </div>
-                    
+
                     <div className="form-group">
                         <label>Vị trí công việc</label>
-                        <input 
-                            type="text" 
-                            name="job_position" 
-                            value={formData.job_position || ''} 
-                            onChange={handleChange} 
+                        <input
+                            type="text"
+                            name="job_position"
+                            value={formData.job_position || ''}
+                            onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="Ví dụ: Nhân viên, Trưởng phòng..."
                         />
                     </div>
-                    
+
                     <div className="form-group">
                         <label>Chức vụ hiện tại</label>
-                        <select 
-                            name="current_position" 
-                            value={formData.current_position || 'Khác'} 
-                            onChange={handleChange} 
+                        <select
+                            name="current_position"
+                            value={formData.current_position || 'Khác'}
+                            onChange={handleChange}
                             disabled={!isEditing}
                         >
                             <option value="Giám đốc">Giám đốc</option>
@@ -2308,48 +2556,48 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <option value="Khác">Khác</option>
                         </select>
                     </div>
-                    
+
                     <div className="form-group">
                         <label>Đội</label>
-                        <input 
-                            type="text" 
-                            name="team" 
-                            value={formData.team || ''} 
-                            onChange={handleChange} 
+                        <input
+                            type="text"
+                            name="team"
+                            value={formData.team || ''}
+                            onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="Ví dụ: Đội Kỹ thuật HT..."
                         />
                     </div>
-                    
+
                     <div className="form-group">
                         <label>Tổ</label>
-                        <input 
-                            type="text" 
-                            name="group_name" 
-                            value={formData.group_name || ''} 
-                            onChange={handleChange} 
+                        <input
+                            type="text"
+                            name="group_name"
+                            value={formData.group_name || ''}
+                            onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="Tên tổ..."
                         />
                     </div>
-                    
+
                     <div className="form-group">
                         <label>Chức danh công việc</label>
-                        <input 
-                            type="text" 
-                            name="job_title" 
-                            value={formData.job_title || ''} 
-                            onChange={handleChange} 
+                        <input
+                            type="text"
+                            name="job_title"
+                            value={formData.job_title || ''}
+                            onChange={handleChange}
                             disabled={!isEditing}
                             placeholder="Chức danh..."
                         />
                     </div>
                 </div>
-                
-                <div style={{ 
-                    marginTop: '20px', 
-                    padding: '15px', 
-                    background: '#f8f9fa', 
+
+                <div style={{
+                    marginTop: '20px',
+                    padding: '15px',
+                    background: '#f8f9fa',
                     borderRadius: '8px',
                     border: '1px solid #e9ecef'
                 }}>
@@ -2722,55 +2970,329 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         </div>
     )
 
-    const renderGrading = () => {
-        // Derived state for calculations
-        const criteria = getCriteria(formData.score_template_code)
-
-        // Ensure states are initialized
-        const currentSelf = selfAssessment || {}
-        const currentSupervisor = supervisorAssessment || {}
-
-        const selfTotals = calculateTotals(currentSelf)
-        const supervisorTotals = calculateTotals(currentSupervisor)
-        const selfGrade = getGrade(selfTotals.total)
-        const supervisorGrade = getGrade(supervisorTotals.total)
-
-        // Permission Logic
-        const isSelf = authUser?.employee_code === formData.employeeId
-        const isAdmin = authUser?.role_level === 'SUPER_ADMIN'
-
-        // Allow Admin to edit everything, otherwise enforce separation
-        const disableSelf = isGradingLocked || (!isSelf && !isAdmin)
-        const disableSupervisor = isGradingLocked || (isSelf && !isAdmin)
+    const renderMyScoreHistory = () => {
+        // Generate months for the selected year
+        const months = Array.from({ length: 12 }, (_, i) => {
+            const m = i + 1
+            const monthStr = `${myScoreYearFilter}-${m.toString().padStart(2, '0')}`
+            const review = myScoreHistory.find(r => r.month === monthStr)
+            return { month: monthStr, review }
+        })
 
         return (
             <div className="section-content">
                 <div className="section-header-modern">
+                    <h3><i className="fas fa-history"></i> Lịch sử đánh giá - Năm {myScoreYearFilter}</h3>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <select
+                            className="form-control"
+                            style={{ width: 'auto', height: '32px', fontSize: '0.85rem' }}
+                            value={myScoreYearFilter}
+                            onChange={(e) => setMyScoreYearFilter(parseInt(e.target.value))}
+                        >
+                            {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                        <button className="btn btn-secondary btn-sm" onClick={() => loadMyScoreHistory()}>
+                            <i className="fas fa-sync"></i> Làm mới
+                        </button>
+                    </div>
+                </div>
+
+                <div className="table-wrapper">
+                    <table className="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tháng</th>
+                                <th className="text-center">Tự chấm</th>
+                                <th className="text-center">QL chấm</th>
+                                <th className="text-center">Xếp loại</th>
+                                <th className="text-center">Trạng thái</th>
+                                <th className="text-right">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {months.map(item => {
+                                const { review } = item
+                                const isMonthPassed = new Date(item.month) < new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                                let status = 'Chưa đánh giá'
+                                let badge = 'secondary'
+
+                                if (review) {
+                                    if (review.supervisor_total_score) {
+                                        status = 'Hoàn thành'
+                                        badge = 'success'
+                                    } else if (review.self_total_score) {
+                                        status = 'Đang chờ duyệt'
+                                        badge = 'warning'
+                                    } else {
+                                        status = 'Đã lưu nháp'
+                                        badge = 'info'
+                                    }
+                                }
+
+                                return (
+                                    <tr key={item.month} style={{ cursor: 'pointer' }} onClick={() => {
+                                        setMonth(item.month)
+                                        setMyScoreViewMode('DETAIL')
+                                    }}>
+                                        <td>Tháng {item.month.split('-')[1]}</td>
+                                        <td className="text-center text-primary font-weight-bold">{review ? review.self_total_score : '-'}</td>
+                                        <td className="text-center text-success font-weight-bold">{review ? review.supervisor_total_score : '-'}</td>
+                                        <td className="text-center">
+                                            {review && review.supervisor_grade ? <span className="badge badge-primary">{review.supervisor_grade}</span> : '-'}
+                                        </td>
+                                        <td className="text-center"><span className={`badge badge-${badge}`}>{status}</span></td>
+                                        <td className="text-right">
+                                            <button className="btn btn-sm btn-outline-primary" onClick={(e) => {
+                                                e.stopPropagation()
+                                                setMonth(item.month)
+                                                setMyScoreViewMode('DETAIL')
+                                            }}>
+                                                <i className="fas fa-edit"></i> {review ? 'Chi tiết' : 'Tạo mới'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )
+    }
+
+    const renderGradingApproval = () => {
+        // Filter logic
+        const filteredApprovalList = approvalList.filter(emp => {
+            const matchName = !approvalSearchTerm ||
+                (emp.last_name + ' ' + emp.first_name).toLowerCase().includes(approvalSearchTerm.toLowerCase()) ||
+                (emp.employee_code && emp.employee_code.toLowerCase().includes(approvalSearchTerm.toLowerCase()))
+
+            const matchStatus = approvalFilterStatus === 'ALL' ||
+                (approvalFilterStatus === 'PENDING' && emp.reviewStatus === 'Cần duyệt') ||
+                (approvalFilterStatus === 'COMPLETED' && emp.reviewStatus === 'Đã hoàn thành') ||
+                (approvalFilterStatus === 'NOT_STARTED' && emp.reviewStatus === 'Chưa đánh giá')
+
+            return matchName && matchStatus
+        })
+
+        return (
+            <div className="section-content">
+                <div className="section-header-modern">
+                    <h3><i className="fas fa-check-double"></i> Danh sách cần duyệt - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                            type="month"
+                            value={month}
+                            onChange={(e) => setMonth(e.target.value)}
+                            className="form-control"
+                            style={{ width: 'auto', height: '34px', fontSize: '0.85rem', margin: 0 }}
+                        />
+                        <div style={{ position: 'relative', height: '34px' }}>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Tìm tên hoặc mã NV..."
+                                value={approvalSearchTerm}
+                                onChange={(e) => setApprovalSearchTerm(e.target.value)}
+                                style={{ height: '34px', width: '200px', fontSize: '0.85rem', paddingLeft: '30px', margin: 0 }}
+                            />
+                            <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '0.8rem', pointerEvents: 'none' }}></i>
+                        </div>
+                        <select
+                            className="form-control"
+                            value={approvalFilterStatus}
+                            onChange={(e) => setApprovalFilterStatus(e.target.value)}
+                            style={{ width: 'auto', height: '34px', fontSize: '0.85rem', margin: 0 }}
+                        >
+                            <option value="ALL">Tất cả trạng thái</option>
+                            <option value="PENDING">Cần duyệt</option>
+                            <option value="COMPLETED">Đã hoàn thành</option>
+                            <option value="NOT_STARTED">Chưa đánh giá</option>
+                        </select>
+                        <button className="btn btn-secondary btn-sm" onClick={() => loadApprovalList()} style={{ height: '34px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <i className="fas fa-sync"></i> Làm mới
+                        </button>
+                    </div>
+                </div>
+
+                <div className="table-wrapper">
+                    <table className="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mã NV</th>
+                                <th>Họ Tên</th>
+                                <th>Phòng ban</th>
+                                <th>Trạng thái</th>
+                                <th>Điểm tự chấm</th>
+                                <th>Điểm quản lý</th>
+                                <th style={{ width: '50px' }}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredApprovalList.length > 0 ? filteredApprovalList.map(emp => (
+                                <tr key={emp.employee_code} style={{ cursor: 'pointer' }} onClick={() => {
+                                    if (onSelectEmployee) {
+                                        onSelectEmployee({ ...emp, employeeId: emp.employee_code })
+                                        setActiveGradingTab('grading')
+                                    } else {
+                                        alert("Chức năng chọn nhân viên chưa được cấu hình đúng.")
+                                    }
+                                }}>
+                                    <td>{emp.employee_code}</td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            {emp.avatar_url && <img src={emp.avatar_url} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />}
+                                            {emp.last_name} {emp.first_name}
+                                        </div>
+                                    </td>
+                                    <td>{emp.department}</td>
+                                    <td><span className={`badge badge-${emp.badgeClass}`}>{emp.reviewStatus}</span></td>
+                                    <td className="text-center">{emp.reviewStatus !== 'Chưa đánh giá' ? emp.selfGrade : '-'}</td>
+                                    <td className="text-center">{emp.supervisorGrade || '-'}</td>
+                                    <td><i className="fas fa-chevron-right"></i></td>
+                                </tr>
+                            )) : <tr><td colSpan="7" className="text-center">Không tìm thấy kết quả phù hợp</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )
+    }
+
+    const renderGrading = () => {
+        const renderTabs = () => (
+            <div className="grading-tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #ddd', paddingBottom: '10px' }}>
+                <button
+                    className={`btn ${activeGradingTab === 'grading' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setActiveGradingTab('grading')}
+                >
+                    <i className="fas fa-user-edit"></i> Chấm điểm ({formData.ho_va_ten})
+                </button>
+                <button
+                    className={`btn ${activeGradingTab === 'my_score' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => {
+                        setActiveGradingTab('my_score')
+                        setMyScoreViewMode('LIST')
+                    }}
+                >
+                    <i className="fas fa-star"></i> Điểm của tôi
+                </button>
+                <button
+                    className={`btn ${activeGradingTab === 'approval' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setActiveGradingTab('approval')}
+                >
+                    <i className="fas fa-list-check"></i> Cần duyệt
+                </button>
+            </div>
+        )
+
+        if (activeGradingTab === 'approval') {
+            return (
+                <div className="section-content">
+                    {renderTabs()}
+                    {renderGradingApproval().props.children}
+                </div>
+            )
+        }
+
+        if (activeGradingTab === 'my_score' && myScoreViewMode === 'LIST') {
+            return (
+                <div className="section-content">
+                    {renderTabs()}
+                    {renderMyScoreHistory().props.children}
+                </div>
+            )
+        }
+
+        const isMyScore = activeGradingTab === 'my_score'
+        const headerTitle = isMyScore ? 'Điểm của tôi' : 'Chấm điểm'
+
+        let svData, setSvData, spData, setSpData, svCommentData, setSvCommentData, spCommentData, setSpCommentData, isLockedData
+        let targetEmpCode, targetName, targetTemplate
+
+        if (isMyScore) {
+            svData = myScoreData.selfAssessment
+            spData = myScoreData.supervisorAssessment
+            svCommentData = myScoreData.selfComment
+            spCommentData = myScoreData.supervisorComment
+            isLockedData = myScoreData.isLocked || myScoreData.loading
+
+            targetEmpCode = authUser.employee_code
+            targetName = authUser.profile?.ho_va_ten || ''
+            targetTemplate = 'NVTT'
+        } else {
+            svData = selfAssessment
+            spData = supervisorAssessment
+            svCommentData = selfComment
+            spCommentData = supervisorComment
+            isLockedData = isGradingLocked
+
+            targetEmpCode = formData.employeeId
+            targetName = formData.ho_va_ten
+            targetTemplate = formData.score_template_code
+        }
+
+        const criteria = getCriteria(targetTemplate || 'NVTT')
+        const selfTotals = calculateTotals(svData)
+        const supervisorTotals = calculateTotals(spData)
+        const selfGrade = getGrade(selfTotals.total)
+        const supervisorGrade = getGrade(supervisorTotals.total)
+
+        const isSelf = authUser?.employee_code === targetEmpCode
+        const isAdmin = authUser?.role_level === 'SUPER_ADMIN'
+
+        // Enforce Flow: Employee must grade first
+        const hasSelfGraded = !!svData && Object.keys(svData).length > 0 && selfTotals.total > 0
+
+        const disableSelf = isLockedData || (!isSelf && !isAdmin)
+        // Disable supervisor if (Locked) OR (Is Employee) OR (Employee hasn't graded yet AND Not Admin)
+        const disableSupervisor = isLockedData || (isSelf && !isAdmin) || (!hasSelfGraded && !isAdmin)
+
+        const handleSelfChange = (id, val) => {
+            if (isMyScore) setMyScoreData(prev => ({ ...prev, selfAssessment: { ...prev.selfAssessment, [id]: val } }))
+            else setSelfAssessment(prev => ({ ...prev, [id]: val }))
+        }
+        const handleSupervisorChange = (id, val) => {
+            if (isMyScore) setMyScoreData(prev => ({ ...prev, supervisorAssessment: { ...prev.supervisorAssessment, [id]: val } }))
+            else setSupervisorAssessment(prev => ({ ...prev, [id]: val }))
+        }
+        const handleSelfCommentChange = (val) => {
+            if (isMyScore) setMyScoreData(prev => ({ ...prev, selfComment: val }))
+            else setSelfComment(val)
+        }
+        const handleSupervisorCommentChange = (val) => {
+            if (isMyScore) setMyScoreData(prev => ({ ...prev, supervisorComment: val }))
+            else setSupervisorComment(val)
+        }
+
+        return (
+            <div className="section-content">
+                {renderTabs()}
+                <div className="section-header-modern">
                     <div>
-                        <h3 style={{ marginBottom: '5px' }}><i className="fas fa-star-half-alt"></i> Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                        <h3 style={{ marginBottom: '5px' }}><i className="fas fa-star-half-alt"></i> {isMyScore ? 'Điểm của tôi' : 'Chấm điểm'} - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
                         <div style={{ fontSize: '0.85rem', color: '#666' }}>
                             Mẫu: <span className="badge badge-info" style={{ background: '#e1f5fe', color: '#01579b', border: 'none', padding: '2px 8px' }}>{
                                 {
                                     'NVTT': 'Nhân viên trực tiếp (NVTT)',
                                     'NVGT': 'Nhân viên gián tiếp (NVGT)',
                                     'CBQL': 'Cán bộ quản lý (CBQL)'
-                                }[formData.score_template_code || 'NVTT'] || formData.score_template_code
+                                }[targetTemplate || 'NVTT'] || targetTemplate
                             }</span>
                         </div>
                     </div>
-                    {renderActions(
-                        <input
-                            type="month"
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                            className="form-control"
-                            style={{ width: 'auto', height: '32px', fontSize: '0.85rem' }}
-                        />
-                    )}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        {isMyScore && (
+                            <button className="btn btn-outline-secondary btn-sm" onClick={() => setMyScoreViewMode('LIST')}>
+                                <i className="fas fa-arrow-left"></i> Quay lại
+                            </button>
+                        )}
+                        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-control" style={{ width: 'auto', height: '32px', fontSize: '0.85rem' }} />
+                    </div>
                 </div>
-                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+                <p className="subtitle">{targetEmpCode} - {targetName}</p>
 
-                {/* Detail Table */}
                 <div className="table-wrapper">
                     <div className="grading-table-container">
                         <table className="table grading-table">
@@ -2783,45 +3305,36 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Section A */}
                                 <tr className="grading-section-header section-negative">
                                     <td>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
                                     <td className="text-center">20</td>
                                     <td className="text-center text-danger font-weight-bold col-self">{selfTotals.scoreA}</td>
-                                    <td className="text-center text-danger font-weight-bold col-supervisor">{supervisorTotals.scoreA}</td>
+                                    <td className="text-center text-danger font-weight-bold col-supervisor">
+                                        {supervisorTotals.scoreA}
+                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                (Chờ NV chấm)
+                                            </div>
+                                        )}
+                                    </td>
                                 </tr>
                                 {criteria.find(c => c.section === 'A').items.map(item => (
                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
-                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
-                                            {item.id} {item.title}
-                                        </td>
+                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>{item.id} {item.title}</td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
                                         <td className="text-center col-self">
                                             {!item.isHeader && (
-                                                <input
-                                                    type="number"
-                                                    className="grading-input"
-                                                    value={selfAssessment[item.id] || ''}
-                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                    disabled={disableSelf}
-                                                />
+                                                <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} disabled={disableSelf} />
                                             )}
                                         </td>
                                         <td className="text-center col-supervisor">
                                             {!item.isHeader && (
-                                                <input
-                                                    type="number"
-                                                    className="grading-input"
-                                                    value={supervisorAssessment[item.id] || ''}
-                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                    disabled={disableSupervisor}
-                                                />
+                                                <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} disabled={disableSupervisor} />
                                             )}
                                         </td>
                                     </tr>
                                 ))}
 
-                                {/* Section B */}
                                 <tr className="grading-section-header section-positive">
                                     <td>B. KHUNG ĐIỂM ĐẠT</td>
                                     <td className="text-center">80</td>
@@ -2830,38 +3343,21 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 </tr>
                                 {criteria.find(c => c.section === 'B').items.map(item => (
                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
-                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
-                                            {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
-                                        </td>
+                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>{item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}</td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
                                         <td className="text-center col-self">
                                             {!item.isHeader && (
-                                                <input
-                                                    type="number"
-                                                    className="grading-input"
-                                                    value={selfAssessment[item.id] || ''}
-                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                    min="0" max="10"
-                                                    disabled={disableSelf}
-                                                />
+                                                <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} min="0" max="10" disabled={disableSelf} />
                                             )}
                                         </td>
                                         <td className="text-center col-supervisor">
                                             {!item.isHeader && (
-                                                <input
-                                                    type="number"
-                                                    className="grading-input"
-                                                    value={supervisorAssessment[item.id] || ''}
-                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                    min="0" max="10"
-                                                    disabled={disableSupervisor}
-                                                />
+                                                <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} min="0" max="10" disabled={disableSupervisor} />
                                             )}
                                         </td>
                                     </tr>
                                 ))}
 
-                                {/* Section C */}
                                 <tr className="grading-section-header section-bonus">
                                     <td>C. KHUNG ĐIỂM CỘNG</td>
                                     <td className="text-center">15</td>
@@ -2870,29 +3366,13 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 </tr>
                                 {criteria.find(c => c.section === 'C').items.map(item => (
                                     <tr key={item.id} className="grading-item-row">
-                                        <td className="pl-2">
-                                            {item.id} {item.title}
-                                        </td>
+                                        <td className="pl-2">{item.id} {item.title}</td>
                                         <td className="text-center">{item.range}</td>
                                         <td className="text-center col-self">
-                                            <input
-                                                type="number"
-                                                className="grading-input"
-                                                value={selfAssessment[item.id] || ''}
-                                                onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                min="0" max="15"
-                                                disabled={disableSelf}
-                                            />
+                                            <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} min="0" max="15" disabled={disableSelf} />
                                         </td>
                                         <td className="text-center col-supervisor">
-                                            <input
-                                                type="number"
-                                                className="grading-input"
-                                                value={supervisorAssessment[item.id] || ''}
-                                                onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                min="0" max="15"
-                                                disabled={disableSupervisor}
-                                            />
+                                            <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} min="0" max="15" disabled={disableSupervisor} />
                                         </td>
                                     </tr>
                                 ))}
@@ -2901,7 +3381,6 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     </div>
                 </div>
 
-                {/* Summary Table */}
                 <table className="table table-bordered mb-4" style={{ marginBottom: '20px' }}>
                     <thead className="thead-light">
                         <tr>
@@ -2918,12 +3397,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                         </tr>
                         <tr>
                             <td>Xếp loại</td>
-                            <td className="text-center">
-                                <span className={`badge badge-${['A', 'A1'].includes(selfGrade) ? 'success' : selfGrade === 'B' ? 'primary' : 'warning'}`}>{selfGrade}</span>
-                            </td>
-                            <td className="text-center">
-                                <span className={`badge badge-${['A', 'A1'].includes(supervisorGrade) ? 'success' : supervisorGrade === 'B' ? 'primary' : 'warning'}`}>{supervisorGrade}</span>
-                            </td>
+                            <td className="text-center"><span className={`badge badge-${['A', 'A1'].includes(selfGrade) ? 'success' : selfGrade === 'B' ? 'primary' : 'warning'}`}>{selfGrade}</span></td>
+                            <td className="text-center"><span className={`badge badge-${['A', 'A1'].includes(supervisorGrade) ? 'success' : supervisorGrade === 'B' ? 'primary' : 'warning'}`}>{supervisorGrade}</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -2932,43 +3407,29 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     <div className="col-md-6">
                         <div className="form-group">
                             <label>Giải trình / Ý kiến nhân viên:</label>
-                            <textarea
-                                className="form-control"
-                                rows={3}
-                                value={selfComment}
-                                onChange={e => setSelfComment(e.target.value)}
-                                disabled={disableSelf}
-                                style={{ width: '100%' }}
-                            />
+                            <textarea className="form-control" rows={3} value={svCommentData} onChange={e => handleSelfCommentChange(e.target.value)} disabled={disableSelf} style={{ width: '100%' }} />
                         </div>
                     </div>
                     <div className="col-md-6">
                         <div className="form-group">
                             <label>Ý kiến quản lý:</label>
-                            <textarea
-                                className="form-control"
-                                rows={3}
-                                value={supervisorComment}
-                                onChange={e => setSupervisorComment(e.target.value)}
-                                disabled={disableSupervisor}
-                                style={{ width: '100%' }}
-                            />
+                            <textarea className="form-control" rows={3} value={spCommentData} onChange={e => handleSupervisorCommentChange(e.target.value)} disabled={disableSupervisor} style={{ width: '100%' }} />
                         </div>
                     </div>
                 </div>
 
                 <div className="grading-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                    {isGradingLocked ? (
-                        <button className="btn-premium-outline btn-premium-sm" onClick={() => setIsGradingLocked(false)}>
+                    {isLockedData ? (
+                        <button className="btn-premium-outline btn-premium-sm" onClick={() => isMyScore ? setMyScoreData(prev => ({ ...prev, isLocked: false })) : setIsGradingLocked(false)}>
                             <i className="fas fa-pencil-alt"></i> Sửa
                         </button>
                     ) : (
-                        <button className="btn-premium btn-premium-sm" onClick={() => handleGradingSave()}>
+                        <button className="btn-premium btn-premium-sm" onClick={() => isMyScore ? handleMyGradingSave() : handleGradingSave()}>
                             <i className="fas fa-check"></i> Lưu
                         </button>
                     )}
                 </div>
-            </div>
+            </div >
         )
     }
 
