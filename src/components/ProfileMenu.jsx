@@ -13,7 +13,6 @@ const menuSections = [
             { id: 'ho-so-dang', label: 'Hồ sơ Đảng' },
             { id: 'doan-thanh-nien', label: 'Đoàn thanh niên' },
             { id: 'cong-doan', label: 'Công đoàn' },
-            { id: 'grading', label: 'Chấm điểm (KPI)' },
             { id: 'khac', label: 'Khác' }
         ]
     },

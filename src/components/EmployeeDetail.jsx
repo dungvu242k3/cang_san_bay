@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
+import { formatDateDisplay, formatMonthYearDisplay } from '../utils/helpers'
 
 import './EmployeeDetail.css'
 
@@ -189,6 +190,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingBank, setEditingBank] = useState(null)
     const [editingContract, setEditingContract] = useState(null)
     const [editingPassport, setEditingPassport] = useState(null)
+    const [editingFamilyMember, setEditingFamilyMember] = useState(null)
 
     // Welfare States
     const [salaries, setSalaries] = useState([])
@@ -255,6 +257,50 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             employee_type: newType,
             score_template_code: getSuggestedTemplate(newType)
         }))
+    }
+
+    const handleSaveFamilyMember = async (member) => {
+        if (!member.relationship || !member.first_name || !member.last_name) {
+            alert('Vui lòng nhập đầy đủ: Quan hệ, Họ và Tên')
+            return
+        }
+        try {
+            const payload = {
+                employee_code: employee.employeeId,
+                relationship: member.relationship,
+                first_name: member.first_name,
+                last_name: member.last_name,
+                date_of_birth: member.date_of_birth || null,
+                gender: member.gender,
+                is_dependent: member.is_dependent || false,
+                dependent_from_month: member.is_dependent && member.dependent_from_month ? (member.dependent_from_month.includes('/') ? `${member.dependent_from_month.split('/')[1]}-${member.dependent_from_month.split('/')[0]}-01` : member.dependent_from_month) : null,
+                note: member.note
+            }
+            let res
+            if (member.id) {
+                res = await supabase.from('family_members').update(payload).eq('id', member.id).select()
+            } else {
+                res = await supabase.from('family_members').insert([payload]).select()
+            }
+            if (res.error) throw res.error
+
+            const { data } = await supabase.from('family_members').select('*').eq('employee_code', employee.employeeId)
+            setFamilyMembers(data || [])
+            setEditingFamilyMember(null)
+        } catch (err) {
+            alert('Lỗi lưu thân nhân: ' + err.message)
+        }
+    }
+
+    const handleDeleteFamilyMember = async (id) => {
+        if (!confirm('Bạn có chắc muốn xóa?')) return
+        try {
+            const { error } = await supabase.from('family_members').delete().eq('id', id)
+            if (error) throw error
+            setFamilyMembers(prev => prev.filter(item => item.id !== id))
+        } catch (err) {
+            alert('Lỗi xóa: ' + err.message)
+        }
     }
 
     // CRUD Handlers
@@ -1278,42 +1324,34 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         setIsEditing(false)
     }
 
-    const renderActions = () => {
+    const renderActions = (customAction) => {
         if (!allowEditProfile) return null
         return (
-            <div className="section-actions" style={{
-                position: 'absolute',
-                top: '8px',
-                right: '15px',
-                zIndex: 100,
-                background: 'rgba(255,255,255,0.5)',
-                padding: '2px 8px',
-                borderRadius: '4px'
-            }}>
+            <div className="header-actions">
+                {customAction}
                 {!isEditing ? (
-                    <button className="btn btn-link primary"
+                    <button className="btn-premium-outline btn-premium-sm"
                         onClick={() => setIsEditing(true)}
-                        style={{ fontSize: '0.8rem', padding: '2px 5px' }}
+                        title="Chỉnh sửa hồ sơ"
                     >
-                        <i className="fas fa-edit"></i> Sửa
+                        <i className="fas fa-pencil-alt"></i> Sửa
                     </button>
                 ) : (
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                        <button className="btn btn-link warning"
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn-premium-outline btn-premium-sm"
+                            style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
                             onClick={() => {
                                 setIsEditing(false)
                                 if (employee) loadEmployeeData(employee)
                                 else onCancel()
                             }}
-                            style={{ fontSize: '0.8rem', padding: '2px 5px' }}
                         >
                             <i className="fas fa-times"></i> Hủy
                         </button>
-                        <button className="btn btn-link primary"
+                        <button className="btn-premium btn-premium-sm"
                             onClick={handleSubmit}
-                            style={{ fontSize: '0.8rem', padding: '2px 5px' }}
                         >
-                            <i className="fas fa-save"></i> Lưu
+                            <i className="fas fa-check"></i> Lưu
                         </button>
                     </div>
                 )}
@@ -1326,8 +1364,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="menu-tools">
                 <span className="menu-title">MỤC LỤC</span>
                 <div className="tool-actions">
-                    <button className="btn-tool"><i className="fas fa-file-export"></i> Export</button>
-                    <button className="btn-tool"><i className="fas fa-file-import"></i> Import</button>
+                    <button className="btn-premium-outline btn-premium-sm" style={{ padding: '2px 10px', fontSize: '0.75rem' }}><i className="fas fa-file-export"></i> Export</button>
+                    <button className="btn-premium-outline btn-premium-sm" style={{ padding: '2px 10px', fontSize: '0.75rem' }}><i className="fas fa-file-import"></i> Import</button>
                 </div>
             </div>
             <div className="menu-search">
@@ -1352,7 +1390,6 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             { id: 'ho_so_dang', label: 'Hồ sơ Đảng' },
                             { id: 'doan_thanh_nien', label: 'Đoàn thanh niên' },
                             { id: 'cong_doan', label: 'Công đoàn' },
-                            { id: 'grading', label: 'Chấm điểm' },
                             { id: 'khac', label: 'Khác' },
                         ].filter(item =>
                             item.label.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1392,8 +1429,13 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderThanNhan = () => (
         <div className="section-content" style={{ background: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3>Thân nhân</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-users"></i> Thân nhân</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingFamilyMember({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -1406,15 +1448,16 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <th>Ngày sinh</th>
                             <th>Giới tính</th>
                             <th>Giảm trừ gia cảnh</th>
+                            <th className="text-center">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {familyMembers.length > 0 ? (
                             familyMembers.map((mem, idx) => (
-                                <tr key={idx}>
+                                <tr key={mem.id || idx}>
                                     <td>{mem.relationship}</td>
                                     <td>{`${mem.last_name || ''} ${mem.first_name || ''}`.trim()}</td>
-                                    <td>{mem.date_of_birth}</td>
+                                    <td>{formatDateDisplay(mem.date_of_birth)}</td>
                                     <td>{mem.gender}</td>
                                     <td>
                                         {mem.is_dependent ? (
@@ -1434,7 +1477,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 </span>
                                                 {mem.dependent_from_month && (
                                                     <span style={{ fontSize: '0.7rem', color: '#999' }}>
-                                                        Từ: {mem.dependent_from_month}
+                                                        Từ: {formatMonthYearDisplay(mem.dependent_from_month)}
                                                     </span>
                                                 )}
                                             </div>
@@ -1442,23 +1485,133 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                             <span style={{ color: '#ccc' }}>-</span>
                                         )}
                                     </td>
+                                    <td className="text-center">
+                                        <button className="btn-table-action" onClick={() => setEditingFamilyMember(mem)}>
+                                            <i className="fas fa-pencil-alt"></i>
+                                        </button>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteFamilyMember(mem.id)}>
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="5" className="text-center">Chưa có thông tin thân nhân</td>
+                                <td colSpan="6" className="text-center">Chưa có thông tin thân nhân</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {editingFamilyMember && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ width: '650px', maxWidth: '95%', padding: '0', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div className="modal-header" style={{ background: 'var(--primary)', color: '#fff', padding: '15px 25px' }}>
+                            <h4 style={{ margin: 0, color: '#fff' }}>
+                                <i className={`fas ${editingFamilyMember.id ? 'fa-user-edit' : 'fa-user-plus'}`} style={{ marginRight: '10px' }}></i>
+                                {editingFamilyMember.id ? 'Cập nhật thân nhân' : 'Thêm mới thân nhân'}
+                            </h4>
+                            <button onClick={() => setEditingFamilyMember(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>&times;</button>
+                        </div>
+
+                        <div className="modal-body" style={{ padding: '25px' }}>
+                            <div className="form-section-title">
+                                <i className="fas fa-info-circle"></i> Thông tin cơ bản
+                            </div>
+
+                            <div className="grid-2">
+                                <div className="form-group">
+                                    <label>Họ và tên đệm</label>
+                                    <input type="text" placeholder="Vd: Nguyễn Văn" value={editingFamilyMember.last_name || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, last_name: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Tên</label>
+                                    <input type="text" placeholder="Vd: An" value={editingFamilyMember.first_name || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, first_name: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Mối quan hệ</label>
+                                    <select value={editingFamilyMember.relationship || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, relationship: e.target.value })}>
+                                        <option value="">Chọn quan hệ</option>
+                                        <option value="Cha ruột">Cha ruột</option>
+                                        <option value="Mẹ ruột">Mẹ ruột</option>
+                                        <option value="Vợ">Vợ</option>
+                                        <option value="Chồng">Chồng</option>
+                                        <option value="Con ruột">Con ruột</option>
+                                        <option value="Anh ruột">Anh ruột</option>
+                                        <option value="Chị ruột">Chị ruột</option>
+                                        <option value="Em ruột">Em ruột</option>
+                                        <option value="Anh vợ">Anh vợ</option>
+                                        <option value="Chị vợ">Chị vợ</option>
+                                        <option value="Em vợ">Em vợ</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Giới tính</label>
+                                    <select value={editingFamilyMember.gender || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, gender: e.target.value })}>
+                                        <option value="">Chọn giới tính</option>
+                                        <option value="Nam">Nam</option>
+                                        <option value="Nữ">Nữ</option>
+                                        <option value="Khác">Khác</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Ngày sinh</label>
+                                    <input type="date" value={editingFamilyMember.date_of_birth || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, date_of_birth: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div className="form-section-title" style={{ marginTop: '20px' }}>
+                                <i className="fas fa-hand-holding-usd"></i> Chính sách phụ thuộc
+                            </div>
+
+                            <div className="premium-switch-container">
+                                <div className="switch-label-group">
+                                    <span className="switch-main-label">Giảm trừ gia cảnh</span>
+                                    <span className="switch-sub-label">Đăng ký người phụ thuộc để giảm trừ thuế TNCN</span>
+                                </div>
+                                <label className="premium-switch">
+                                    <input type="checkbox" checked={editingFamilyMember.is_dependent || false} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, is_dependent: e.target.checked })} />
+                                    <span className="premium-slider"></span>
+                                </label>
+                            </div>
+
+                            {editingFamilyMember.is_dependent && (
+                                <div className="form-group" style={{ animation: 'fadeIn 0.3s ease' }}>
+                                    <label>Giảm trừ từ tháng (MM/YYYY)</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <i className="far fa-calendar-alt" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}></i>
+                                        <input type="text" placeholder="Vd: 01/2026" style={{ paddingLeft: '35px' }} value={editingFamilyMember.dependent_from_month || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, dependent_from_month: e.target.value })} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="form-group full-width">
+                                <label>Ghi chú</label>
+                                <textarea rows="2" placeholder="Thêm ghi chú nếu có..." value={editingFamilyMember.note || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, note: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <div className="modal-actions" style={{ padding: '20px 25px', background: '#f9f9f9', borderTop: '1px solid #eee' }}>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingFamilyMember(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveFamilyMember(editingFamilyMember)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 
     const renderDang = () => (
         <div className="section-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3>Hồ sơ Đảng</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-flag"></i> Hồ sơ Đảng</h3>
+                {renderActions()}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -1562,8 +1715,9 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderDoan = () => (
         <div className="section-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3>Đoàn thanh niên</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-star"></i> Đoàn thanh niên</h3>
+                {renderActions()}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -1652,8 +1806,9 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderCongDoan = () => (
         <div className="section-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3>Công đoàn</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-users-cog"></i> Công đoàn</h3>
+                {renderActions()}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -1732,7 +1887,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderLyLich = () => (
         <div className="section-content">
-            <h3>Lý lịch cá nhân</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-user-circle"></i> Lý lịch cá nhân</h3>
+                {renderActions()}
+            </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="grid-2">
@@ -1813,7 +1971,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderLienHe = () => (
         <div className="section-content">
-            <h3>Thông tin liên hệ</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-address-book"></i> Thông tin liên hệ</h3>
+                {renderActions()}
+            </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="grid-2">
                 <div className="form-group">
@@ -1851,7 +2012,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderCongViec = () => (
         <div className="section-content">
-            <h3>Thông tin công việc</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-briefcase"></i> Thông tin công việc</h3>
+                {renderActions()}
+            </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="grid-2">
@@ -1962,7 +2126,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderPhapLyChung = () => (
         <div className="section-content">
-            <h3>Số CCCD - Số BH</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-id-card"></i> Số CCCD - Số BH</h3>
+                {renderActions()}
+            </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="grid-2">
                 {/* CCCD */}
@@ -2023,14 +2190,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderTaiKhoanNganHang = () => (
         <div className="section-content">
-            <h3>Tài khoản cá nhân</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-
-            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingBank({})}>
-                    <i className="fas fa-plus"></i> Thêm tài khoản
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-university"></i> Tài khoản cá nhân</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingBank({})}>
+                        <i className="fas fa-plus"></i> Thêm tài khoản
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="table-wrapper">
                 <table className="table table-bordered">
@@ -2054,10 +2222,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.note}</td>
                                 <td className="text-center">
                                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn btn-sm btn-link" onClick={() => setEditingBank(item)}>
-                                            <i className="fas fa-edit"></i>
+                                        <button className="btn-table-action" onClick={() => setEditingBank(item)}>
+                                            <i className="fas fa-pencil-alt"></i>
                                         </button>
-                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteBank(item.id)}>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteBank(item.id)}>
                                             <i className="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -2093,9 +2261,13 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <label>Ghi chú</label>
                             <input type="text" value={editingBank.note || ''} onChange={e => setEditingBank({ ...editingBank, note: e.target.value })} />
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                            <button className="btn btn-secondary" onClick={() => setEditingBank(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveBank(editingBank)}>Lưu</button>
+                        <div className="modal-actions">
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingBank(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveBank(editingBank)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2105,14 +2277,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderHopDongLaoDong = () => (
         <div className="section-content">
-            <h3>Hợp đồng lao động</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-
-            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingContract({})}>
-                    <i className="fas fa-plus"></i> Thêm hợp đồng
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-file-contract"></i> Hợp đồng lao động</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingContract({})}>
+                        <i className="fas fa-plus"></i> Thêm hợp đồng
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="table-wrapper">
                 <table className="table table-bordered">
@@ -2140,10 +2313,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.note}</td>
                                 <td className="text-center">
                                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn btn-sm btn-link" onClick={() => setEditingContract(item)}>
-                                            <i className="fas fa-edit"></i>
+                                        <button className="btn-table-action" onClick={() => setEditingContract(item)}>
+                                            <i className="fas fa-pencil-alt"></i>
                                         </button>
-                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeleteContract(item.id)}>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteContract(item.id)}>
                                             <i className="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -2193,9 +2366,13 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <textarea rows="2" value={editingContract.note || ''} onChange={e => setEditingContract({ ...editingContract, note: e.target.value })} />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                            <button className="btn btn-secondary" onClick={() => setEditingContract(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveContract(editingContract)}>Lưu</button>
+                        <div className="modal-actions">
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingContract(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveContract(editingContract)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2205,14 +2382,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderHoChieu = () => (
         <div className="section-content">
-            <h3>Hộ chiếu</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-
-            <div style={{ marginBottom: '15px', textAlign: 'right' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingPassport({})}>
-                    <i className="fas fa-plus"></i> Thêm hộ chiếu
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-passport"></i> Hộ chiếu</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingPassport({})}>
+                        <i className="fas fa-plus"></i> Thêm hộ chiếu
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             <div className="table-wrapper">
                 <table className="table table-bordered">
@@ -2238,10 +2416,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.note}</td>
                                 <td className="text-center">
                                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn btn-sm btn-link" onClick={() => setEditingPassport(item)}>
-                                            <i className="fas fa-edit"></i>
+                                        <button className="btn-table-action" onClick={() => setEditingPassport(item)}>
+                                            <i className="fas fa-pencil-alt"></i>
                                         </button>
-                                        <button className="btn btn-sm btn-link text-danger" onClick={() => handleDeletePassport(item.id)}>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeletePassport(item.id)}>
                                             <i className="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -2287,9 +2465,13 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <input type="text" value={editingPassport.note || ''} onChange={e => setEditingPassport({ ...editingPassport, note: e.target.value })} />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                            <button className="btn btn-secondary" onClick={() => setEditingPassport(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSavePassport(editingPassport)}>Lưu</button>
+                        <div className="modal-actions">
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingPassport(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSavePassport(editingPassport)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2312,11 +2494,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <div className="section-header-modern">
                     <div>
-                        <h3 style={{ marginBottom: '5px' }}>Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
-                        <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                            Mẫu chấm điểm: <span className="badge badge-info">{
+                        <h3 style={{ marginBottom: '5px' }}><i className="fas fa-star-half-alt"></i> Chấm điểm - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
+                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
+                            Mẫu: <span className="badge badge-info" style={{ background: '#e1f5fe', color: '#01579b', border: 'none', padding: '2px 8px' }}>{
                                 {
                                     'NVTT': 'Nhân viên trực tiếp (NVTT)',
                                     'NVGT': 'Nhân viên gián tiếp (NVGT)',
@@ -2325,13 +2507,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             }</span>
                         </div>
                     </div>
-                    <input
-                        type="month"
-                        value={month}
-                        onChange={(e) => setMonth(e.target.value)}
-                        className="form-control"
-                        style={{ width: 'auto' }}
-                    />
+                    {renderActions(
+                        <input
+                            type="month"
+                            value={month}
+                            onChange={(e) => setMonth(e.target.value)}
+                            className="form-control"
+                            style={{ width: 'auto', height: '32px', fontSize: '0.85rem' }}
+                        />
+                    )}
                 </div>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -2522,14 +2706,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     </div>
                 </div>
 
-                <div className="mt-4 text-right" style={{ textAlign: 'right' }}>
+                <div className="grading-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
                     {isGradingLocked ? (
-                        <button className="btn btn-warning" onClick={() => setIsGradingLocked(false)}>
-                            <i className="fas fa-edit"></i> Sửa
+                        <button className="btn-premium-outline btn-premium-sm" onClick={() => setIsGradingLocked(false)}>
+                            <i className="fas fa-pencil-alt"></i> Sửa
                         </button>
                     ) : (
-                        <button className="btn btn-primary" onClick={() => handleGradingSave()}>
-                            <i className="fas fa-save"></i> Lưu
+                        <button className="btn-premium btn-premium-sm" onClick={() => handleGradingSave()}>
+                            <i className="fas fa-check"></i> Lưu
                         </button>
                     )}
                 </div>
@@ -2563,7 +2747,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                <h3>Lương cơ bản</h3>
+                <div className="section-header-modern">
+                    <h3><i className="fas fa-money-bill-wave"></i> Lương cơ bản</h3>
+                    {renderActions()}
+                </div>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
                 {/* AREA 1: CURRENT INFO */}
@@ -2594,8 +2781,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Diễn biến lương</h4>
-                    <button className="btn btn-primary btn-sm" onClick={() => setEditingSalary({})}>
+                    <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Diễn biến lương</h4>
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingSalary({})}>
                         <i className="fas fa-plus"></i> Thêm mới
                     </button>
                 </div>
@@ -2629,8 +2816,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         <input type="checkbox" checked={item.is_active || false} disabled />
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn btn-link btn-sm" onClick={() => setEditingSalary(item)}><i className="fas fa-edit"></i></button>
-                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                        <button className="btn-table-action" onClick={() => setEditingSalary(item)}><i className="fas fa-edit"></i></button>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteSalary(item.id)}><i className="fas fa-trash"></i></button>
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -2659,8 +2846,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingSalary.note || ''} onChange={e => setEditingSalary({ ...editingSalary, note: e.target.value })} /></div>
                             </div>
                             <div className="modal-actions">
-                                <button className="btn btn-secondary" onClick={() => setEditingSalary(null)}>Hủy</button>
-                                <button className="btn btn-primary" onClick={() => handleSaveSalary(editingSalary)}>Lưu</button>
+                                <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingSalary(null)}>
+                                    <i className="fas fa-times"></i> Hủy
+                                </button>
+                                <button className="btn-premium btn-premium-sm" onClick={() => handleSaveSalary(editingSalary)}>
+                                    <i className="fas fa-check"></i> Lưu
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2676,7 +2867,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                <h3>Lương theo vị trí công việc</h3>
+                <div className="section-header-modern">
+                    <h3><i className="fas fa-hand-holding-usd"></i> Lương theo vị trí công việc</h3>
+                    {renderActions()}
+                </div>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
                 {/* AREA 1: CURRENT INFO */}
@@ -2708,8 +2902,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Diễn biến lương theo vị trí</h4>
-                    <button className="btn btn-primary btn-sm" onClick={() => setEditingJobSalary({})}>
+                    <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Diễn biến lương theo vị trí</h4>
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingJobSalary({})}>
                         <i className="fas fa-plus"></i> Thêm mới
                     </button>
                 </div>
@@ -2741,8 +2935,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         {item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"><i className="fas fa-file-pdf"></i></a> : '-'}
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn btn-link btn-sm" onClick={() => setEditingJobSalary(item)}><i className="fas fa-edit"></i></button>
-                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteJobSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                        <button className="btn-table-action" onClick={() => setEditingJobSalary(item)}><i className="fas fa-pencil-alt"></i></button>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteJobSalary(item.id)}><i className="fas fa-trash"></i></button>
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -2766,8 +2960,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingJobSalary.note || ''} onChange={e => setEditingJobSalary({ ...editingJobSalary, note: e.target.value })} /></div>
                             </div>
                             <div className="modal-actions">
-                                <button className="btn btn-secondary" onClick={() => setEditingJobSalary(null)}>Hủy</button>
-                                <button className="btn btn-primary" onClick={() => handleSaveJobSalary(editingJobSalary)}>Lưu</button>
+                                <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingJobSalary(null)}>
+                                    <i className="fas fa-times"></i> Hủy
+                                </button>
+                                <button className="btn-premium btn-premium-sm" onClick={() => handleSaveJobSalary(editingJobSalary)}>
+                                    <i className="fas fa-check"></i> Lưu
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2783,7 +2981,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                <h3>Phụ cấp</h3>
+                <div className="section-header-modern">
+                    <h3><i className="fas fa-coins"></i> Phụ cấp</h3>
+                    {renderActions()}
+                </div>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
                 {/* AREA 1: CURRENT INFO */}
@@ -2812,8 +3013,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Bảng diễn biến phụ cấp</h4>
-                    <button className="btn btn-primary btn-sm" onClick={() => setEditingAllowance({})}>
+                    <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Bảng diễn biến phụ cấp</h4>
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingAllowance({})}>
                         <i className="fas fa-plus"></i> Thêm phụ cấp
                     </button>
                 </div>
@@ -2843,8 +3044,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         <input type="checkbox" checked={item.is_active || false} disabled />
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn btn-link btn-sm" onClick={() => setEditingAllowance(item)}><i className="fas fa-edit"></i></button>
-                                        <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteAllowance(item.id)}><i className="fas fa-trash"></i></button>
+                                        <button className="btn-table-action" onClick={() => setEditingAllowance(item)}><i className="fas fa-pencil-alt"></i></button>
+                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteAllowance(item.id)}><i className="fas fa-trash"></i></button>
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -2867,8 +3068,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingAllowance.note || ''} onChange={e => setEditingAllowance({ ...editingAllowance, note: e.target.value })} /></div>
                             </div>
                             <div className="modal-actions">
-                                <button className="btn btn-secondary" onClick={() => setEditingAllowance(null)}>Hủy</button>
-                                <button className="btn btn-primary" onClick={() => handleSaveAllowance(editingAllowance)}>Lưu</button>
+                                <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingAllowance(null)}>
+                                    <i className="fas fa-times"></i> Hủy
+                                </button>
+                                <button className="btn-premium btn-premium-sm" onClick={() => handleSaveAllowance(editingAllowance)}>
+                                    <i className="fas fa-check"></i> Lưu
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2880,13 +3085,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 3.4 Thu nhập khác
     const renderThuNhapKhac = () => (
         <div className="section-content">
-            <h3>Thu nhập khác</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingOtherIncome({})}>
-                    <i className="fas fa-plus"></i> Thêm thu nhập
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-chart-line"></i> Thu nhập khác</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingOtherIncome({})}>
+                        <i className="fas fa-plus"></i> Thêm thu nhập
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -2908,8 +3115,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{Number(item.tax_amount).toLocaleString('vi-VN')}</td>
                                 <td>{item.applied_month}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingOtherIncome(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteOtherIncome(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingOtherIncome(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteOtherIncome(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="6" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -2930,8 +3137,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingOtherIncome.note || ''} onChange={e => setEditingOtherIncome({ ...editingOtherIncome, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingOtherIncome(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveOtherIncome(editingOtherIncome)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingOtherIncome(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveOtherIncome(editingOtherIncome)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2942,13 +3153,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 4.1 Nghỉ phép
     const renderNghiPhep = () => (
         <div className="section-content">
-            <h3>Nghỉ phép</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingLeave({})}>
-                    <i className="fas fa-plus"></i> Đăng ký nghỉ phép
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-calendar-check"></i> Nghỉ phép</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingLeave({})}>
+                        <i className="fas fa-plus"></i> Đăng ký nghỉ phép
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -2976,8 +3189,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.remaining_leave}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingLeave(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteLeave(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingLeave(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteLeave(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3017,8 +3230,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingLeave.note || ''} onChange={e => setEditingLeave({ ...editingLeave, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingLeave(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveLeave(editingLeave)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingLeave(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveLeave(editingLeave)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3029,13 +3246,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 4.2 Bổ nhiệm - Điều chuyển
     const renderBoNhiem = () => (
         <div className="section-content">
-            <h3>Bổ nhiệm - Điều chuyển</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingAppointment({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-user-tie"></i> Bổ nhiệm - Điều chuyển</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingAppointment({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3061,8 +3280,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.workplace}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingAppointment(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteAppointment(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingAppointment(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteAppointment(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3084,8 +3303,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingAppointment.note || ''} onChange={e => setEditingAppointment({ ...editingAppointment, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingAppointment(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveAppointment(editingAppointment)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingAppointment(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveAppointment(editingAppointment)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3096,13 +3319,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 4.3 Nhật ký công tác
     const renderNhatKyCongTac = () => (
         <div className="section-content">
-            <h3>Nhật ký công tác</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingWorkJournal({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-plane-departure"></i> Nhật ký công tác</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkJournal({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3126,8 +3351,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.purpose}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingWorkJournal(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteWorkJournal(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingWorkJournal(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkJournal(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3148,8 +3373,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingWorkJournal.note || ''} onChange={e => setEditingWorkJournal({ ...editingWorkJournal, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingWorkJournal(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveWorkJournal(editingWorkJournal)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingWorkJournal(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveWorkJournal(editingWorkJournal)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3160,13 +3389,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 5.1 Chuyên ngành đào tạo
     const renderChuyenNganh = () => (
         <div className="section-content">
-            <h3>Chuyên ngành đào tạo</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingSpecialization({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-graduation-cap"></i> Chuyên ngành đào tạo</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingSpecialization({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3192,8 +3423,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.training_type}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingSpecialization(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteSpecialization(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingSpecialization(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteSpecialization(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3233,8 +3464,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingSpecialization.note || ''} onChange={e => setEditingSpecialization({ ...editingSpecialization, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingSpecialization(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveSpecialization(editingSpecialization)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingSpecialization(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveSpecialization(editingSpecialization)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3245,13 +3480,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 5.2 Chứng chỉ
     const renderChungChi = () => (
         <div className="section-content">
-            <h3>Chứng chỉ</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingCertificate({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-certificate"></i> Chứng chỉ</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingCertificate({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3281,8 +3518,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.expiry_date}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingCertificate(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteCertificate(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingCertificate(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteCertificate(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3306,8 +3543,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingCertificate.note || ''} onChange={e => setEditingCertificate({ ...editingCertificate, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingCertificate(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveCertificate(editingCertificate)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingCertificate(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveCertificate(editingCertificate)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3318,13 +3559,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 5.3 Đào tạo nội bộ
     const renderDaoTaoNoiBo = () => (
         <div className="section-content">
-            <h3>Đào tạo nội bộ</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingInternalTraining({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-chalkboard-teacher"></i> Đào tạo nội bộ</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingInternalTraining({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3352,8 +3595,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.result}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingInternalTraining(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteInternalTraining(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingInternalTraining(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteInternalTraining(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3385,8 +3628,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingInternalTraining.note || ''} onChange={e => setEditingInternalTraining({ ...editingInternalTraining, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingInternalTraining(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveInternalTraining(editingInternalTraining)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingInternalTraining(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveInternalTraining(editingInternalTraining)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3397,13 +3644,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 6.1 Khen thưởng
     const renderKhenThuong = () => (
         <div className="section-content">
-            <h3>Khen thưởng</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingReward({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-trophy"></i> Khen thưởng</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingReward({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3433,8 +3682,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingReward(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteReward(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingReward(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteReward(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3467,8 +3716,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingReward.note || ''} onChange={e => setEditingReward({ ...editingReward, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingReward(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveReward(editingReward)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingReward(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveReward(editingReward)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3479,13 +3732,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 6.2 Kỷ luật
     const renderKyLuat = () => (
         <div className="section-content">
-            <h3>Kỷ luật</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingDiscipline({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-gavel"></i> Kỷ luật</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingDiscipline({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3509,8 +3764,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.to_date}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingDiscipline(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteDiscipline(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingDiscipline(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteDiscipline(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3540,8 +3795,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingDiscipline.note || ''} onChange={e => setEditingDiscipline({ ...editingDiscipline, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingDiscipline(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveDiscipline(editingDiscipline)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingDiscipline(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveDiscipline(editingDiscipline)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3552,15 +3811,21 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 7.1 Thẻ bảo hiểm y tế
     const renderTheBHYT = () => (
         <div className="section-content">
-            <h3>Thẻ bảo hiểm y tế</h3>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-id-card-alt"></i> Thẻ bảo hiểm y tế</h3>
+                {renderActions(
+                    !healthInsurance && !editingHealthInsurance && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthInsurance({})}>
+                            <i className="fas fa-plus"></i> Thêm thông tin
+                        </button>
+                    )
+                )}
+            </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
             {!healthInsurance && !editingHealthInsurance && (
                 <div style={{ textAlign: 'center', padding: '30px' }}>
-                    <p>Chưa có thông tin thẻ BHYT</p>
-                    <button className="btn btn-primary" onClick={() => setEditingHealthInsurance({})}>
-                        <i className="fas fa-plus"></i> Thêm thông tin
-                    </button>
+                    <p style={{ color: '#666' }}>Chưa có thông tin thẻ BHYT</p>
                 </div>
             )}
 
@@ -3573,7 +3838,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                         <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={healthInsurance.note || ''} disabled /></div>
                     </div>
                     <div style={{ textAlign: 'right', marginTop: '15px' }}>
-                        <button className="btn btn-primary" onClick={() => setEditingHealthInsurance(healthInsurance)}>
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthInsurance(healthInsurance)}>
                             <i className="fas fa-edit"></i> Cập nhật
                         </button>
                     </div>
@@ -3591,8 +3856,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingHealthInsurance.note || ''} onChange={e => setEditingHealthInsurance({ ...editingHealthInsurance, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingHealthInsurance(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveHealthInsurance(editingHealthInsurance)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingHealthInsurance(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveHealthInsurance(editingHealthInsurance)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3603,13 +3872,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 7.2 Tai nạn lao động
     const renderTaiNanLaoDong = () => (
         <div className="section-content">
-            <h3>Tai nạn lao động</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingWorkAccident({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-user-injured"></i> Tai nạn lao động</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkAccident({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3637,8 +3908,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.property_damage?.toLocaleString()}</td>
                                 <td>{item.compensation_amount?.toLocaleString()}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingWorkAccident(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteWorkAccident(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingWorkAccident(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkAccident(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3669,8 +3940,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingWorkAccident.note || ''} onChange={e => setEditingWorkAccident({ ...editingWorkAccident, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingWorkAccident(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveWorkAccident(editingWorkAccident)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingWorkAccident(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveWorkAccident(editingWorkAccident)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3681,13 +3956,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // 7.3 Khám sức khỏe
     const renderKhamSucKhoe = () => (
         <div className="section-content">
-            <h3>Khám sức khỏe</h3>
-            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
-            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditingHealthCheckup({})}>
-                    <i className="fas fa-plus"></i> Thêm mới
-                </button>
+            <div className="section-header-modern">
+                <h3><i className="fas fa-heartbeat"></i> Khám sức khỏe</h3>
+                {renderActions(
+                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthCheckup({})}>
+                        <i className="fas fa-plus"></i> Thêm mới
+                    </button>
+                )}
             </div>
+            <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
             <div className="table-wrapper">
                 <table className="table table-bordered table-striped">
                     <thead>
@@ -3713,8 +3990,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn btn-link btn-sm" onClick={() => setEditingHealthCheckup(item)}><i className="fas fa-edit"></i></button>
-                                    <button className="btn btn-link btn-sm text-danger" onClick={() => handleDeleteHealthCheckup(item.id)}><i className="fas fa-trash"></i></button>
+                                    <button className="btn-table-action" onClick={() => setEditingHealthCheckup(item)}><i className="fas fa-pencil-alt"></i></button>
+                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteHealthCheckup(item.id)}><i className="fas fa-trash"></i></button>
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3743,8 +4020,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={editingHealthCheckup.note || ''} onChange={e => setEditingHealthCheckup({ ...editingHealthCheckup, note: e.target.value })} /></div>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setEditingHealthCheckup(null)}>Hủy</button>
-                            <button className="btn btn-primary" onClick={() => handleSaveHealthCheckup(editingHealthCheckup)}>Lưu</button>
+                            <button className="btn-premium-outline btn-premium-sm" onClick={() => setEditingHealthCheckup(null)}>
+                                <i className="fas fa-times"></i> Hủy
+                            </button>
+                            <button className="btn-premium btn-premium-sm" onClick={() => handleSaveHealthCheckup(editingHealthCheckup)}>
+                                <i className="fas fa-check"></i> Lưu
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3753,9 +4034,9 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     )
 
     return (
-        <div className="employee-detail-container">
+        <div className="employee-detail">
+            {/* Actions are now integrated into section headers */}
             <div className="detail-main" style={{ position: 'relative' }}>
-                {renderActions()}
                 <div className="detail-form-area">
                     {activeSection === 'ly_lich' && renderLyLich()}
                     {activeSection === 'lien_he' && renderLienHe()}
