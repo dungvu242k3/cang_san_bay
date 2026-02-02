@@ -468,3 +468,95 @@
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 768px) {
+    .settings-page {
+        padding: 12px;
+    }
+
+    .settings-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .header-title h1 {
+        font-size: 1.3rem;
+    }
+
+    .settings-tabs {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tab-btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+
+    .settings-body {
+        padding: 16px;
+    }
+
+    .search-bar-roles {
+        width: 100%;
+    }
+
+    .search-bar-roles input {
+        width: 100%;
+    }
+
+    .settings-table,
+    .matrix-table {
+        font-size: 0.85rem;
+    }
+
+    .settings-table th,
+    .matrix-table th {
+        padding: 8px;
+        font-size: 0.75rem;
+    }
+
+    .settings-table td,
+    .matrix-table td {
+        padding: 8px;
+    }
+
+    .matrix-grid-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .matrix-table {
+        min-width: 600px;
+    }
+
+    .leave-settings-header {
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+    }
+
+    .leave-settings-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .add-leave-setting-card {
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    .leave-setting-form {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .action-buttons {
+        flex-wrap: wrap;
+    }
+
+    .action-buttons .btn {
+        flex: 1;
+        min-width: 80px;
+    }
+}

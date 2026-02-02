@@ -155,3 +155,92 @@
     box-shadow: none;
     border: none;
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .grading-page-container {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 120px);
+        overflow: visible;
+    }
+
+    .grading-sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .grading-sidebar-header {
+        padding: 10px 12px;
+    }
+
+    .grading-sidebar-header h2 {
+        font-size: 0.9rem;
+    }
+
+    .sidebar-toolbar {
+        padding: 10px;
+    }
+
+    .sidebar-search {
+        gap: 8px;
+    }
+
+    .sidebar-search input,
+    .sidebar-search select {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .sidebar-stats {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+    }
+
+    .grading-sidebar-list {
+        max-height: calc(40vh - 150px);
+        overflow-y: auto;
+    }
+
+    .employee-item {
+        padding: 10px 12px;
+    }
+
+    .item-name {
+        font-size: 0.9rem;
+    }
+
+    .item-code {
+        font-size: 0.75rem;
+    }
+
+    .item-sub {
+        font-size: 0.8rem;
+    }
+
+    .grading-main-content {
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .grading-empty-state {
+        padding: 40px 20px;
+        min-height: 400px;
+    }
+
+    .grading-empty-state i {
+        font-size: 3rem;
+    }
+
+    .grading-empty-state p {
+        font-size: 0.9rem;
+        text-align: center;
+        padding: 0 20px;
+    }
+}

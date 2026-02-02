@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
-function Sidebar() {
+function Sidebar({ className = '', onLinkClick }) {
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -13,8 +13,15 @@ function Sidebar() {
     { path: '/cau-truc-ho-so', icon: 'fas fa-folder-open', label: 'Cấu trúc hồ sơ (Admin)' }
   ]
 
+  const handleLinkClick = () => {
+    // Close mobile menu when link is clicked
+    if (window.innerWidth <= 768 && onLinkClick) {
+      onLinkClick()
+    }
+  }
+
   return (
-    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${className}`}>
       <div className="sidebar-header">
         <span className="sidebar-title">Menu</span>
         <button
@@ -33,6 +40,7 @@ function Sidebar() {
             to={item.path}
             className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
             title={item.label}
+            onClick={handleLinkClick}
           >
             <i className={item.icon}></i>
             {!isCollapsed && <span>{item.label}</span>}

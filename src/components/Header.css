@@ -11,6 +11,15 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+@media (max-width: 768px) {
+    .header {
+        height: 56px;
+        padding: 0 12px;
+        position: sticky;
+        top: 0;
+    }
+}
+
 .header::before {
     content: '';
     position: absolute;
@@ -296,14 +305,47 @@
     color: #1e3e72;
 }
 
+/* Mobile Menu Button */
+.mobile-menu-btn {
+    display: none;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
 /* Responsive */
 @media (max-width: 968px) {
     .header {
-        padding: 0 20px;
+        padding: 0 15px;
+        height: 60px;
+    }
+
+    .logo-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
     }
 
     .logo-text h1 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+    }
+
+    .logo-text .subtitle {
+        font-size: 0.65rem;
     }
 
     .identity-switcher {
@@ -316,5 +358,64 @@
 
     .user-details {
         display: none;
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+    }
+
+    .logout-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0 12px;
+        height: 56px;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    .logo {
+        gap: 10px;
+    }
+
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    .logo-text h1 {
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+    }
+
+    .logo-text .subtitle {
+        font-size: 0.6rem;
+        letter-spacing: 2px;
+    }
+
+    .user-info {
+        gap: 8px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .logout-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
     }
 }

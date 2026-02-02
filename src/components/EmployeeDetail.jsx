@@ -1971,6 +1971,173 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         </div>
     )
 
+    const [availableDepartments, setAvailableDepartments] = useState([])
+
+    useEffect(() => {
+        // Load departments from database
+        const loadDepartments = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('employee_profiles')
+                    .select('department')
+                    .not('department', 'is', null)
+                    .neq('department', '')
+
+                if (!error && data) {
+                    const uniqueDepts = [...new Set(data.map(d => d.department).filter(Boolean))].sort()
+                    setAvailableDepartments(uniqueDepts)
+                }
+            } catch (err) {
+                console.error('Error loading departments:', err)
+            }
+        }
+        loadDepartments()
+    }, [])
+
+    const renderKhac = () => {
+        // Default departments if not loaded yet
+        const defaultDepartments = ['Ban Giám đốc', 'Văn phòng', 'Phòng Kỹ thuật', 'Phòng Khai thác', 'Đội An ninh', 'Đội Dịch vụ', 'Phòng Điều hành sân bay', 'Phòng Kỹ thuật hạ tầng', 'Phòng Phục vụ mặt đất', 'Phòng Tài chính - Kế hoạch']
+        const departments = availableDepartments.length > 0 ? availableDepartments : defaultDepartments
+        
+        const currentDept = formData.department || formData.bo_phan || ''
+        const isCustomDept = currentDept && !departments.includes(currentDept)
+        
+        return (
+            <div className="section-content">
+                <h3>Thông tin khác</h3>
+                <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
+                
+                <div className="grid-2">
+                    <div className="form-group">
+                        <label>Phòng ban <span className="text-danger">*</span></label>
+                        <select 
+                            name="department" 
+                            value={isCustomDept ? '' : currentDept} 
+                            onChange={(e) => {
+                                setFormData(prev => ({ 
+                                    ...prev, 
+                                    department: e.target.value,
+                                    bo_phan: e.target.value
+                                }))
+                            }} 
+                            disabled={!isEditing} 
+                            required
+                        >
+                            <option value="">-- Chọn phòng ban --</option>
+                            {departments.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                        <input 
+                            type="text" 
+                            name="department_custom" 
+                            placeholder="Hoặc nhập phòng ban khác..."
+                            value={isCustomDept ? currentDept : ''}
+                            onChange={(e) => {
+                                setFormData(prev => ({ 
+                                    ...prev, 
+                                    department: e.target.value,
+                                    bo_phan: e.target.value
+                                }))
+                            }}
+                            disabled={!isEditing}
+                            style={{ marginTop: '8px' }}
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Vị trí công việc</label>
+                        <input 
+                            type="text" 
+                            name="job_position" 
+                            value={formData.job_position || ''} 
+                            onChange={handleChange} 
+                            disabled={!isEditing}
+                            placeholder="Ví dụ: Nhân viên, Trưởng phòng..."
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Chức vụ hiện tại</label>
+                        <select 
+                            name="current_position" 
+                            value={formData.current_position || 'Khác'} 
+                            onChange={handleChange} 
+                            disabled={!isEditing}
+                        >
+                            <option value="Giám đốc">Giám đốc</option>
+                            <option value="Phó giám đốc">Phó giám đốc</option>
+                            <option value="Trưởng phòng">Trưởng phòng</option>
+                            <option value="Phó trưởng phòng">Phó trưởng phòng</option>
+                            <option value="Đội trưởng">Đội trưởng</option>
+                            <option value="Đội phó">Đội phó</option>
+                            <option value="Chủ đội">Chủ đội</option>
+                            <option value="Tổ trưởng">Tổ trưởng</option>
+                            <option value="Tổ phó">Tổ phó</option>
+                            <option value="Chủ tổ">Chủ tổ</option>
+                            <option value="Nhân viên">Nhân viên</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Đội</label>
+                        <input 
+                            type="text" 
+                            name="team" 
+                            value={formData.team || ''} 
+                            onChange={handleChange} 
+                            disabled={!isEditing}
+                            placeholder="Ví dụ: Đội Kỹ thuật HT..."
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Tổ</label>
+                        <input 
+                            type="text" 
+                            name="group_name" 
+                            value={formData.group_name || ''} 
+                            onChange={handleChange} 
+                            disabled={!isEditing}
+                            placeholder="Tên tổ..."
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Chức danh công việc</label>
+                        <input 
+                            type="text" 
+                            name="job_title" 
+                            value={formData.job_title || ''} 
+                            onChange={handleChange} 
+                            disabled={!isEditing}
+                            placeholder="Chức danh..."
+                        />
+                    </div>
+                </div>
+                
+                <div style={{ 
+                    marginTop: '20px', 
+                    padding: '15px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '8px',
+                    border: '1px solid #e9ecef'
+                }}>
+                    <h4 style={{ marginTop: 0, marginBottom: '10px', fontSize: '0.95rem', color: '#495057' }}>
+                        <i className="fas fa-info-circle" style={{ marginRight: '8px', color: '#007bff' }}></i>
+                        Lưu ý
+                    </h4>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#6c757d' }}>
+                        <li><strong>Phòng ban:</strong> Sẽ hiển thị trong cột "Phòng Ban" của bảng danh sách nhân viên</li>
+                        <li><strong>Vị trí công việc:</strong> Sẽ hiển thị trong cột "Vị Trí" của bảng danh sách nhân viên (ưu tiên job_position, nếu không có thì dùng current_position)</li>
+                        <li>Các thông tin này sẽ được lưu vào bảng <code>employee_profiles</code></li>
+                    </ul>
+                </div>
+            </div>
+        )
+    }
+
     const renderPhapLyChung = () => (
         <div className="section-content">
             <h3>Số CCCD - Số BH</h3>
@@ -3840,6 +4007,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     {activeSection === 'tai_nan_lao_dong' && renderTaiNanLaoDong()}
                     {activeSection === 'kham_suc_khoe' && renderKhamSucKhoe()}
                     {activeSection === 'grading' && renderGrading()}
+                    {activeSection === 'khac' && renderKhac()}
                 </div>
             </div>
         </div>

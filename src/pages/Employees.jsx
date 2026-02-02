@@ -500,6 +500,8 @@ function Employees() {
                                 <tr>
                                     <th>Mã</th>
                                     <th>Họ Tên</th>
+                                    <th>Phòng Ban</th>
+                                    <th>Vị Trí</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -507,7 +509,7 @@ function Employees() {
                                     <React.Fragment key={group.department}>
                                         {/* Department Header */}
                                         <tr className="department-header-row">
-                                            <td colSpan="2" className="department-header">
+                                            <td colSpan="4" className="department-header">
                                                 <strong>{group.department}</strong>
                                                 <span className="employee-count">({group.count} nhân viên)</span>
                                             </td>
@@ -521,12 +523,14 @@ function Employees() {
                                             >
                                                 <td className="employee-code">{emp.employeeId}</td>
                                                 <td className="employee-name">{emp.ho_va_ten}</td>
+                                                <td className="employee-department">{emp.bo_phan || '-'}</td>
+                                                <td className="employee-position">{emp.vi_tri || '-'}</td>
                                             </tr>
                                         ))}
                                     </React.Fragment>
                                 ))}
                                 {filteredEmployees.length === 0 && (
-                                    <tr><td colSpan="2" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                                    <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
                                 )}
                             </tbody>
                         </table>

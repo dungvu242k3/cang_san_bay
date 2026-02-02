@@ -125,11 +125,53 @@
 }
 
 @media (max-width: 768px) {
+    .dashboard-page {
+        padding: 16px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .dashboard-header p {
+        font-size: 0.9rem;
+    }
+
     .charts-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
     
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .stat-card {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+    }
+
+    .stat-info h3 {
+        font-size: 1.5rem;
+    }
+
+    .stat-info p {
+        font-size: 0.85rem;
+    }
+
+    .chart-card {
+        padding: 16px;
+    }
+
+    .chart-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 16px;
     }
 }

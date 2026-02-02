@@ -665,3 +665,106 @@ input.grading-input[type=number] {
 .section-bonus .col-supervisor {
     background-color: rgba(0, 0, 0, 0.05) !important;
 }
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .employee-detail-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100%;
+    }
+
+    .detail-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #eee;
+        padding: 12px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .detail-main {
+        width: 100%;
+        flex: 1;
+        padding: 12px;
+    }
+
+    .section-content {
+        padding: 12px;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .grading-table {
+        min-width: 600px;
+        font-size: 0.85rem;
+    }
+
+    .grading-table {
+        min-width: 500px;
+    }
+
+    .grading-table th,
+    .grading-table td {
+        padding: 6px 4px;
+        font-size: 0.8rem;
+    }
+
+    .grading-table thead th {
+        font-size: 0.75rem;
+        padding: 8px 4px;
+    }
+
+    input.grading-input {
+        width: 45px !important;
+        padding: 4px 0;
+        font-size: 0.8rem;
+    }
+
+    .grading-item-row {
+        font-size: 0.8rem;
+    }
+
+    .col-criteria {
+        min-width: 150px;
+        font-size: 0.8rem;
+    }
+
+    .col-weight {
+        min-width: 60px;
+        font-size: 0.8rem;
+    }
+
+    .col-self,
+    .col-supervisor {
+        min-width: 80px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: 100%;
+        padding: 20px;
+        margin: 10px;
+    }
+
+    .modal-content h4 {
+        font-size: 1.1rem;
+    }
+
+    .menu-group {
+        margin-bottom: 8px;
+    }
+
+    .group-header {
+        font-size: 0.9rem;
+        padding: 6px 8px;
+    }
+
+    .menu-item {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}

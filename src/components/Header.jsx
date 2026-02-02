@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import './Header.css'
 
-function Header() {
+function Header({ onMenuToggle }) {
   const { user, switchUser, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -44,6 +44,13 @@ function Header() {
 
   return (
     <header className="header">
+      <button 
+        className="mobile-menu-btn"
+        onClick={onMenuToggle}
+        aria-label="Toggle menu"
+      >
+        <i className="fas fa-bars"></i>
+      </button>
       <div className="logo" onClick={() => navigate('/dashboard')}>
         <div className="logo-icon">
           <i className="fas fa-plane-departure"></i>
