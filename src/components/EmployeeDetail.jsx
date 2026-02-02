@@ -1017,6 +1017,35 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }, [activeSection, month, employee])
 
+    // Realtime sync for grading data
+    useEffect(() => {
+        if (!employee?.employeeId) return
+
+        const channel = supabase
+            .channel(`grading-${employee.employeeId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'performance_reviews',
+                    filter: `employee_code=eq.${employee.employeeId}`
+                },
+                (payload) => {
+                    console.log('🔄 Grading data changed:', payload)
+                    // Reload grading data when changes detected
+                    if (activeSection === 'grading') {
+                        loadGradingData()
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [employee?.employeeId, activeSection, month])
+
     const calculateTotals = (data) => {
         const criteria = getCriteria(formData.score_template_code)
 

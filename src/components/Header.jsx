@@ -61,6 +61,7 @@ function Header({ onMenuToggle }) {
 
   return (
     <header className="header">
+<<<<<<< HEAD
       <button 
         className="mobile-menu-btn"
         onClick={onMenuToggle}
@@ -76,6 +77,10 @@ function Header({ onMenuToggle }) {
           <div className="logo-divider"></div>
           <div className="logo-sub-text">Cat Bi International Airport</div>
         </div>
+=======
+      <div className="logo" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>
+        <img src="/1.png" style={{ height: '50px', width: 'auto' }} />
+>>>>>>> 64bd4d8 (fix)
       </div>
 
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>

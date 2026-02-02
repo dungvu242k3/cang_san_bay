@@ -80,12 +80,8 @@ body {
 
 .logo img {
   height: 60px;
-  width: 60px;
-  border-radius: 50%;
-  background: #fff;
-  padding: 5px;
+  width: auto;
   object-fit: contain;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .logo h1 {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import CreateEmployeeWizard from '../components/CreateEmployeeWizard'
 import EmployeeDetail from '../components/EmployeeDetail'
 import ProfileMenu from '../components/ProfileMenu'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,7 +8,7 @@ import { supabase } from '../services/supabase'
 import './Employees.css'
 
 function Employees() {
-    const { user } = useAuth()
+    const { user, checkAction } = useAuth()
     const navigate = useNavigate()
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
@@ -19,6 +20,7 @@ function Employees() {
     const [activeSection, setActiveSection] = useState('ly_lich')
     const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
     const [employeeToReset, setEmployeeToReset] = useState(null)
+    const [showCreateWizard, setShowCreateWizard] = useState(false)
     const fileInputRef = useRef(null)
 
     // Scroll ref to top on selection
@@ -172,6 +174,41 @@ function Employees() {
         }
     }
 
+    const handleDeleteEmployee = async (employee) => {
+        // Check permission first
+        const canDelete = checkAction('delete', { module: 'profiles', ...employee })
+        if (!canDelete) {
+            alert('Bạn không có quyền xóa nhân viên!')
+            return
+        }
+
+        if (!window.confirm(`⚠️ XÓA VĨNH VIỄN nhân viên ${employee.employeeId} - ${employee.ho_va_ten}?\n\nHành động này KHÔNG THỂ hoàn tác!`)) {
+            return
+        }
+        // Double confirm for safety
+        if (!window.confirm('Xác nhận lần cuối: Bạn thực sự muốn xóa?')) {
+            return
+        }
+
+        try {
+            const { error } = await supabase
+                .from('employee_profiles')
+                .delete()
+                .eq('id', employee.id)
+
+            if (error) throw error
+
+            // Update local state directly - no reload needed
+            setEmployees(prev => prev.filter(e => e.id !== employee.id))
+            if (selectedEmployee?.id === employee.id) {
+                setSelectedEmployee(null)
+            }
+        } catch (err) {
+            console.error('Error deleting employee:', err)
+            alert('Lỗi xóa: ' + err.message)
+        }
+    }
+
     const handleResetPassword = (employee) => {
         setEmployeeToReset(employee)
         setShowResetPasswordModal(true)
@@ -217,12 +254,6 @@ function Employees() {
         if (!id) {
             if (!formData.employeeId || !formData.employeeId.trim()) {
                 alert('Vui lòng nhập mã nhân viên')
-                return
-            }
-            // Validate employee_code format: CBA + 4 digits
-            const code = formData.employeeId.trim().toUpperCase()
-            if (!/^CBA\d{4}$/.test(code)) {
-                alert('Mã nhân viên phải có format: CBA + 4 chữ số\nVí dụ: CBA0001, CBA0004, CBA0016')
                 return
             }
             if (!formData.ho_va_ten || !formData.ho_va_ten.trim()) {
@@ -290,30 +321,6 @@ function Employees() {
                 concurrent_start_date: formData.concurrent_start_date || null,
                 concurrent_end_date: formData.concurrent_end_date || null,
                 leave_calculation_type: formData.leave_calculation_type || 'Có cộng dồn',
-                // Party records
-                is_party_member: formData.is_party_member || false,
-                party_card_number: formData.party_card_number || null,
-                party_join_date: formData.party_join_date || null,
-                party_official_date: formData.party_official_date || null,
-                party_position: formData.party_position || null,
-                party_activity_location: formData.party_activity_location || null,
-                political_education_level: formData.political_education_level || null,
-                party_notes: formData.party_notes || null,
-                // Youth union
-                is_youth_union_member: formData.is_youth_union_member || false,
-                youth_union_card_number: formData.youth_union_card_number || null,
-                youth_union_join_date: formData.youth_union_join_date || null,
-                youth_union_join_location: formData.youth_union_join_location || null,
-                youth_union_position: formData.youth_union_position || null,
-                youth_union_activity_location: formData.youth_union_activity_location || null,
-                youth_union_notes: formData.youth_union_notes || null,
-                // Trade union
-                is_trade_union_member: formData.is_trade_union_member || false,
-                trade_union_card_number: formData.trade_union_card_number || null,
-                trade_union_join_date: formData.trade_union_join_date || null,
-                trade_union_position: formData.trade_union_position || null,
-                trade_union_activity_location: formData.trade_union_activity_location || null,
-                trade_union_notes: formData.trade_union_notes || null,
                 // Legal Info
                 identity_card_number: formData.cccd || formData.identity_card_number || null,
                 identity_card_issue_date: formData.ngay_cap || formData.identity_card_issue_date || null,
@@ -325,7 +332,32 @@ function Employees() {
                 social_insurance_number: formData.social_insurance_number || null,
                 social_insurance_issue_date: formData.social_insurance_issue_date || null,
                 unemployment_insurance_number: formData.unemployment_insurance_number || null,
-                unemployment_insurance_issue_date: formData.unemployment_insurance_issue_date || null
+                unemployment_insurance_issue_date: formData.unemployment_insurance_issue_date || null,
+
+                // Party / Union Details
+                is_party_member: formData.is_party_member || false,
+                party_card_number: formData.party_card_number || null,
+                party_join_date: formData.party_join_date || null,
+                party_official_date: formData.party_official_date || null,
+                party_position: formData.party_position || null,
+                party_activity_location: formData.party_cell || formData.party_activity_location || null,
+                political_education_level: formData.political_education_level || null,
+                party_notes: formData.party_notes || null,
+
+                is_youth_union_member: formData.is_youth_union_member || false,
+                youth_union_card_number: formData.youth_union_card_number || null,
+                youth_union_join_date: formData.youth_union_join_date || null,
+                youth_union_join_location: formData.youth_union_join_location || null,
+                youth_union_position: formData.youth_union_position || null,
+                youth_union_activity_location: formData.youth_union_cell || formData.youth_union_activity_location || null,
+                youth_union_notes: formData.youth_union_notes || null,
+
+                is_trade_union_member: formData.is_trade_union_member || false,
+                trade_union_card_number: formData.trade_union_card_number || null,
+                trade_union_join_date: formData.trade_union_join_date || null,
+                trade_union_position: formData.trade_union_position || null,
+                trade_union_activity_location: formData.trade_union_base || formData.trade_union_activity_location || null,
+                trade_union_notes: formData.trade_union_notes || null,
             }
 
             console.log('dbPayload to save:', dbPayload)
@@ -344,7 +376,7 @@ function Employees() {
                     .from('employee_profiles')
                     .select('employee_code')
                     .eq('employee_code', dbPayload.employee_code)
-                    .single()
+                    .maybeSingle()
 
                 if (existing) {
                     alert('Mã nhân viên đã tồn tại!')
@@ -380,6 +412,199 @@ function Employees() {
             }
 
             console.log('Save successful! Rows affected:', result.data)
+
+            // Save related data if this was a new employee creation (Wizard)
+            if (!id && result.data && result.data.length > 0) {
+                const newEmployeeCode = result.data[0].employee_code
+
+                // Save Family Members
+                if (formData.familyMembers && formData.familyMembers.length > 0) {
+                    const familyPayload = formData.familyMembers.map(m => {
+                        // Split name roughly
+                        const nameParts = m.name.trim().split(' ')
+                        const firstName = nameParts.pop() || ''
+                        const lastName = nameParts.join(' ') || ''
+
+                        return {
+                            employee_code: newEmployeeCode,
+                            first_name: firstName,
+                            last_name: lastName,
+                            relationship: m.relation,
+                            date_of_birth: m.birth_year ? `${m.birth_year}-01-01` : null,
+                            is_dependent: false
+                        }
+                    })
+                    const { error: famError } = await supabase.from('family_members').insert(familyPayload)
+                    if (famError) console.error('Error saving family members:', famError)
+                }
+
+                // Save Bank Accounts
+                if (formData.bankAccounts && formData.bankAccounts.length > 0) {
+                    const bankPayload = formData.bankAccounts.map(b => ({
+                        employee_code: newEmployeeCode,
+                        bank_name: b.bank,
+                        account_number: b.number,
+                        account_name: b.owner,
+                        note: null
+                    }))
+                    const { error: bankError } = await supabase.from('employee_bank_accounts').insert(bankPayload)
+                    if (bankError) console.error('Error saving bank accounts:', bankError)
+                }
+
+                // Save Contracts
+                if (formData.contracts && formData.contracts.length > 0) {
+                    const contractsPayload = formData.contracts.map(c => ({
+                        employee_code: newEmployeeCode,
+                        contract_number: c.number,
+                        contract_type: c.type,
+                        effective_date: c.effectiveDate || null,
+                        expiration_date: c.expiryDate || null,
+                        signed_date: c.signedDate || null
+                    }))
+                    const { error: contractError } = await supabase.from('labor_contracts').insert(contractsPayload)
+                    if (contractError) console.error('Error saving contracts:', contractError)
+                }
+
+                // Save Passports
+                if (formData.passports && formData.passports.length > 0) {
+                    const passportsPayload = formData.passports.map(p => ({
+                        employee_code: newEmployeeCode,
+                        passport_number: p.number,
+                        passport_type: p.type,
+                        issue_date: p.issueDate || null,
+                        issue_place: p.issuePlace || null,
+                        expiration_date: p.expiryDate || null,
+                        note: null
+                    }))
+                    const { error: passportError } = await supabase.from('employee_passports').insert(passportsPayload)
+                    if (passportError) console.error('Error saving passports:', passportError)
+                }
+
+                // Save Basic Salaries
+                if (formData.salaries && formData.salaries.length > 0) {
+                    const salariesPayload = formData.salaries.map(s => ({
+                        employee_code: newEmployeeCode,
+                        decision_number: s.decisionNumber || null,
+                        basic_salary: s.amount ? parseFloat(s.amount.toString().replace(/\./g, "").replace(",", ".")) : 0,
+                        effective_date: s.effectiveDate || null,
+                        is_active: true
+                    }))
+                    const { error: salaryError } = await supabase.from('employee_salaries').insert(salariesPayload)
+                    if (salaryError) console.error('Error saving salaries:', salaryError)
+                }
+
+                // Save Allowances
+                if (formData.allowances && formData.allowances.length > 0) {
+                    const allowancesPayload = formData.allowances.map(a => ({
+                        employee_code: newEmployeeCode,
+                        decision_number: a.decisionNumber || null,
+                        allowance_type: a.type,
+                        amount: a.amount ? parseFloat(a.amount.toString().replace(/\./g, "").replace(",", ".")) : 0,
+                        effective_date: a.effectiveDate || null,
+                        is_active: true
+                    }))
+                    const { error: allowError } = await supabase.from('employee_allowances').insert(allowancesPayload)
+                    if (allowError) console.error('Error saving allowances:', allowError)
+                }
+
+                // Save Appointments
+                if (formData.appointments && formData.appointments.length > 0) {
+                    const appointmentsPayload = formData.appointments.map(a => ({
+                        employee_code: newEmployeeCode,
+                        decision_number: a.decisionNumber || null,
+                        applied_date: a.appliedDate || null,
+                        position: a.position || null,
+                        job_title: a.jobTitle || null,
+                        department: a.department || null
+                    }))
+                    const { error: apptError } = await supabase.from('employee_appointments').insert(appointmentsPayload)
+                    if (apptError) console.error('Error saving appointments:', apptError)
+                }
+
+                // Save Certificates
+                if (formData.certifications && formData.certifications.length > 0) {
+                    const certsPayload = formData.certifications.map(c => ({
+                        employee_code: newEmployeeCode,
+                        certificate_name: c.name,
+                        certificate_number: c.number || null,
+                        training_place: c.trainingPlace || null,
+                        issue_date: c.issueDate || null,
+                        expiry_date: c.expiryDate || null
+                    }))
+                    const { error: certError } = await supabase.from('employee_certificates').insert(certsPayload)
+                    if (certError) console.error('Error saving certificates:', certError)
+                }
+
+                // Save Internal Trainings
+                if (formData.trainings && formData.trainings.length > 0) {
+                    const trainingsPayload = formData.trainings.map(t => ({
+                        employee_code: newEmployeeCode,
+                        training_course: t.course,
+                        decision_number: t.decisionNumber || null,
+                        from_date: t.fromDate || null,
+                        to_date: t.toDate || null,
+                        training_place: t.place || null,
+                        result: t.result || null
+                    }))
+                    const { error: trainError } = await supabase.from('employee_internal_trainings').insert(trainingsPayload)
+                    if (trainError) console.error('Error saving trainings:', trainError)
+                }
+
+                // Save Rewards
+                if (formData.rewards && formData.rewards.length > 0) {
+                    const rewardsPayload = formData.rewards.map(r => ({
+                        employee_code: newEmployeeCode,
+                        decision_number: r.decisionNumber || null,
+                        reward_type: r.type,
+                        reward_content: r.content || null,
+                        amount: r.amount ? parseFloat(r.amount.toString().replace(/\./g, "").replace(",", ".")) : 0,
+                        reward_date: r.date || null
+                    }))
+                    const { error: rewardError } = await supabase.from('employee_rewards').insert(rewardsPayload)
+                    if (rewardError) console.error('Error saving rewards:', rewardError)
+                }
+
+                // Save Disciplines
+                if (formData.disciplines && formData.disciplines.length > 0) {
+                    const disciplinesPayload = formData.disciplines.map(d => ({
+                        employee_code: newEmployeeCode,
+                        decision_number: d.decisionNumber || null,
+                        discipline_type: d.type,
+                        signed_date: d.signedDate || null,
+                        from_date: d.fromDate || null,
+                        to_date: d.toDate || null,
+                        note: d.note || null
+                    }))
+                    const { error: disciplineError } = await supabase.from('employee_disciplines').insert(disciplinesPayload)
+                    if (disciplineError) console.error('Error saving disciplines:', disciplineError)
+                }
+
+                // Save Health Checks
+                if (formData.healthChecks && formData.healthChecks.length > 0) {
+                    const healthPayload = formData.healthChecks.map(h => ({
+                        employee_code: newEmployeeCode,
+                        checkup_date: h.date || null,
+                        checkup_location: h.location || null,
+                        result: h.result || null
+                    }))
+                    const { error: healthError } = await supabase.from('employee_health_checkups').insert(healthPayload)
+                    if (healthError) console.error('Error saving health checks:', healthError)
+                }
+
+                // Save Accidents
+                if (formData.accidents && formData.accidents.length > 0) {
+                    const accidentsPayload = formData.accidents.map(a => ({
+                        employee_code: newEmployeeCode,
+                        accident_date: a.date || null,
+                        accident_location: a.location || null,
+                        accident_type: a.type || null,
+                        note: a.description || null
+                    }))
+                    const { error: accidentError } = await supabase.from('employee_work_accidents').insert(accidentsPayload)
+                    if (accidentError) console.error('Error saving accidents:', accidentError)
+                }
+            }
+
             alert('Đã lưu thành công!')
 
             // Reload employees and update selectedEmployee
@@ -524,20 +749,24 @@ function Employees() {
                                                 <td className="employee-name">{emp.ho_va_ten}</td>
                                                 <td className="employee-department">{emp.bo_phan || '-'}</td>
                                                 <td className="employee-position">{emp.vi_tri || '-'}</td>
-                                            </tr>
-                                        ))}
-                                    </React.Fragment>
-                                ))}
-                                {filteredEmployees.length === 0 && (
-                                    <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                            </tr >
+                                        ))
+                                        }
+                                    </React.Fragment >
+                                ))
+                                }
+                                {
+                                    filteredEmployees.length === 0 && (
+                                        <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                                    )
+                                }
+                            </tbody >
+                        </table >
+                    </div >
+                </div >
 
                 {/* RIGHT PANEL: DETAIL VIEW */}
-                <div className="detail-panel" ref={detailRef}>
+                < div className="detail-panel" ref={detailRef} >
                     <div className="panel-header">
                         <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
                         <div className="panel-actions">
@@ -548,7 +777,7 @@ function Employees() {
                             >
                                 <i className="fas fa-file-import"></i> Import
                             </button>
-                            <button className="btn btn-primary btn-sm" onClick={() => setSelectedEmployee(null)}>
+                            <button className="btn btn-primary btn-sm" onClick={() => setShowCreateWizard(true)}>
                                 <i className="fas fa-plus"></i> Thêm mới
                             </button>
                         </div>
@@ -565,41 +794,62 @@ function Employees() {
                             onSectionChange={setActiveSection}
                             onDisable={handleDisableEmployee}
                             onActivate={handleActivateEmployee}
+                            onDelete={handleDeleteEmployee}
                             onResetPassword={handleResetPassword}
                             canManage={true}
                         />
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
             {/* Reset Password Modal */}
-            {showResetPasswordModal && employeeToReset && (
-                <div className="modal-overlay" onClick={() => setShowResetPasswordModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>
-                                <i className="fas fa-key"></i> Reset mật khẩu
-                            </h2>
-                            <button className="close-btn" onClick={() => setShowResetPasswordModal(false)}>
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p>Bạn có chắc chắn muốn reset mật khẩu của <strong>{employeeToReset.employeeId}</strong> về mặc định (123456)?</p>
-                            <p className="text-muted">Người dùng sẽ phải đổi mật khẩu trong lần đăng nhập tiếp theo.</p>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>
-                                Hủy
-                            </button>
-                            <button className="btn btn-primary" onClick={confirmResetPassword}>
-                                <i className="fas fa-check"></i> Xác nhận
-                            </button>
+            {
+                showResetPasswordModal && employeeToReset && (
+                    <div className="modal-overlay" onClick={() => setShowResetPasswordModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>
+                                    <i className="fas fa-key"></i> Reset mật khẩu
+                                </h2>
+                                <button className="close-btn" onClick={() => setShowResetPasswordModal(false)}>
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Bạn có chắc chắn muốn reset mật khẩu của <strong>{employeeToReset.employeeId}</strong> về mặc định (123456)?</p>
+                                <p className="text-muted">Người dùng sẽ phải đổi mật khẩu trong lần đăng nhập tiếp theo.</p>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>
+                                    Hủy
+                                </button>
+                                <button className="btn btn-primary" onClick={confirmResetPassword}>
+                                    <i className="fas fa-check"></i> Xác nhận
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Create Employee Wizard */}
+            {
+                showCreateWizard && (
+                    <CreateEmployeeWizard
+                        onClose={() => setShowCreateWizard(false)}
+                        onComplete={async (wizardData) => {
+                            try {
+                                await handleSaveEmployee(wizardData, null)
+                                setShowCreateWizard(false)
+                                loadEmployees()
+                            } catch (err) {
+                                console.error('Error creating employee:', err)
+                            }
+                        }}
+                    />
+                )
+            }
+        </div >
     )
 }
 
