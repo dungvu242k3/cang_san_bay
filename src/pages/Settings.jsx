@@ -23,7 +23,7 @@ const MODULES = [
 ]
 
 function Settings() {
-    const [activeTab, setActiveTab] = useState('roles') // 'roles' or 'matrix'
+    const [activeTab, setActiveTab] = useState('roles') // 'roles', 'matrix', or 'leaves'
     const [employees, setEmployees] = useState([])
     const [rolesMap, setRolesMap] = useState({})
     const [matrix, setMatrix] = useState([])
@@ -32,6 +32,9 @@ function Settings() {
     const [saving, setSaving] = useState(null)
     const [departments, setDepartments] = useState([])
     const [teams, setTeams] = useState([])
+    const [leaveSettings, setLeaveSettings] = useState([])
+    const [editingLeaveSetting, setEditingLeaveSetting] = useState(null)
+    const [newLeaveSetting, setNewLeaveSetting] = useState({ department: '', annual_leave_days: 12, description: '' })
 
     useEffect(() => {
         fetchData()
@@ -87,6 +90,14 @@ function Settings() {
                 setDepartments(uniqueDepts)
                 setTeams(uniqueTeams)
             }
+
+            // 4. Fetch Leave Settings
+            const { data: leaveData } = await supabase
+                .from('department_leave_settings')
+                .select('*')
+                .order('department')
+
+            setLeaveSettings(leaveData || [])
 
             setLoading(false)
         } catch (err) {
@@ -200,6 +211,65 @@ function Settings() {
         return fullName.includes(search.toLowerCase()) || code.includes(search.toLowerCase())
     })
 
+    const handleSaveLeaveSetting = async (setting) => {
+        try {
+            setSaving(`leave-${setting.department}`)
+            const payload = {
+                ...setting,
+                updated_at: new Date().toISOString()
+            }
+
+            const { error } = setting.id
+                ? await supabase.from('department_leave_settings').update(payload).eq('id', setting.id)
+                : await supabase.from('department_leave_settings').insert([payload])
+
+            if (error) throw error
+
+            const { data } = await supabase
+                .from('department_leave_settings')
+                .select('*')
+                .order('department')
+
+            setLeaveSettings(data || [])
+            setEditingLeaveSetting(null)
+            setNewLeaveSetting({ department: '', annual_leave_days: 12, description: '' })
+            setSaving(null)
+        } catch (err) {
+            alert('Lỗi: ' + err.message)
+            setSaving(null)
+        }
+    }
+
+    const handleDeleteLeaveSetting = async (id) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa cài đặt này?')) return
+
+        try {
+            setSaving(`delete-${id}`)
+            const { error } = await supabase
+                .from('department_leave_settings')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+
+            const { data } = await supabase
+                .from('department_leave_settings')
+                .select('*')
+                .order('department')
+
+            setLeaveSettings(data || [])
+            setSaving(null)
+        } catch (err) {
+            alert('Lỗi: ' + err.message)
+            setSaving(null)
+        }
+    }
+
+    // Get departments that don't have leave settings yet
+    const availableDepartments = departments.filter(dept => 
+        !leaveSettings.some(setting => setting.department === dept)
+    )
+
     return (
         <div className="settings-page">
             <div className="settings-header">
@@ -219,6 +289,12 @@ function Settings() {
                         onClick={() => setActiveTab('matrix')}
                     >
                         <i className="fas fa-th"></i> Ma trận Quyền hạn
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'leaves' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('leaves')}
+                    >
+                        <i className="fas fa-calendar-alt"></i> Nghỉ phép
                     </button>
                 </div>
             </div>
@@ -300,7 +376,7 @@ function Settings() {
                             </table>
                         </div>
                     </div>
-                ) : (
+                ) : activeTab === 'matrix' ? (
                     <div className="tab-content">
                         <div className="matrix-grid-wrapper">
                             <table className="matrix-table">
@@ -384,7 +460,167 @@ function Settings() {
                             <p className="notice">* Thay đổi được áp dụng ngay lập tức cho người dùng tương ứng.</p>
                         </div>
                     </div>
-                )}
+                ) : activeTab === 'leaves' ? (
+                    <div className="tab-content">
+                        <div className="leave-settings-header">
+                            <h3><i className="fas fa-calendar-check"></i> Cài đặt số ngày nghỉ phép năm theo phòng ban</h3>
+                            <p className="subtitle">Quản lý số ngày nghỉ phép được hưởng trong 1 năm cho từng phòng ban</p>
+                        </div>
+
+                        {/* Add New Setting */}
+                        <div className="add-leave-setting-card">
+                            <h4><i className="fas fa-plus-circle"></i> Thêm cài đặt mới</h4>
+                            <div className="leave-setting-form">
+                                <div className="form-group">
+                                    <label>Phòng ban</label>
+                                    <select
+                                        value={newLeaveSetting.department}
+                                        onChange={(e) => setNewLeaveSetting({ ...newLeaveSetting, department: e.target.value })}
+                                    >
+                                        <option value="">-- Chọn phòng ban --</option>
+                                        {availableDepartments.map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Số ngày nghỉ/năm</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="365"
+                                        value={newLeaveSetting.annual_leave_days}
+                                        onChange={(e) => setNewLeaveSetting({ ...newLeaveSetting, annual_leave_days: parseInt(e.target.value) || 12 })}
+                                    />
+                                </div>
+                                <div className="form-group full-width">
+                                    <label>Mô tả (tùy chọn)</label>
+                                    <input
+                                        type="text"
+                                        value={newLeaveSetting.description}
+                                        onChange={(e) => setNewLeaveSetting({ ...newLeaveSetting, description: e.target.value })}
+                                        placeholder="Ví dụ: Áp dụng cho nhân viên chính thức"
+                                    />
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => handleSaveLeaveSetting(newLeaveSetting)}
+                                    disabled={!newLeaveSetting.department || saving}
+                                >
+                                    <i className="fas fa-save"></i> Thêm
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Existing Settings */}
+                        <div className="leave-settings-list">
+                            <h4><i className="fas fa-list"></i> Danh sách cài đặt ({leaveSettings.length})</h4>
+                            {leaveSettings.length === 0 ? (
+                                <div className="empty-state">
+                                    <i className="fas fa-inbox"></i>
+                                    <p>Chưa có cài đặt nào. Hãy thêm cài đặt cho phòng ban đầu tiên.</p>
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table className="settings-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Phòng ban</th>
+                                                <th>Số ngày nghỉ/năm</th>
+                                                <th>Mô tả</th>
+                                                <th>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {leaveSettings.map(setting => (
+                                                <tr key={setting.id}>
+                                                    <td>
+                                                        {editingLeaveSetting?.id === setting.id ? (
+                                                            <select
+                                                                value={editingLeaveSetting.department}
+                                                                onChange={(e) => setEditingLeaveSetting({ ...editingLeaveSetting, department: e.target.value })}
+                                                            >
+                                                                {departments.map(dept => (
+                                                                    <option key={dept} value={dept}>{dept}</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            <strong>{setting.department}</strong>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {editingLeaveSetting?.id === setting.id ? (
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max="365"
+                                                                value={editingLeaveSetting.annual_leave_days}
+                                                                onChange={(e) => setEditingLeaveSetting({ ...editingLeaveSetting, annual_leave_days: parseInt(e.target.value) || 12 })}
+                                                                style={{ width: '100px' }}
+                                                            />
+                                                        ) : (
+                                                            <span className="leave-days-badge">{setting.annual_leave_days} ngày</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {editingLeaveSetting?.id === setting.id ? (
+                                                            <input
+                                                                type="text"
+                                                                value={editingLeaveSetting.description || ''}
+                                                                onChange={(e) => setEditingLeaveSetting({ ...editingLeaveSetting, description: e.target.value })}
+                                                                placeholder="Mô tả..."
+                                                                style={{ width: '100%' }}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-muted">{setting.description || '—'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {editingLeaveSetting?.id === setting.id ? (
+                                                            <div className="action-buttons">
+                                                                <button
+                                                                    className="btn btn-sm btn-success"
+                                                                    onClick={() => handleSaveLeaveSetting(editingLeaveSetting)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    <i className="fas fa-check"></i>
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-sm btn-secondary"
+                                                                    onClick={() => setEditingLeaveSetting(null)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    <i className="fas fa-times"></i>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="action-buttons">
+                                                                <button
+                                                                    className="btn btn-sm btn-primary"
+                                                                    onClick={() => setEditingLeaveSetting({ ...setting })}
+                                                                    disabled={saving}
+                                                                >
+                                                                    <i className="fas fa-edit"></i>
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-sm btn-danger"
+                                                                    onClick={() => handleDeleteLeaveSetting(setting.id)}
+                                                                    disabled={saving}
+                                                                >
+                                                                    <i className="fas fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
             </div>
         </div>
     )

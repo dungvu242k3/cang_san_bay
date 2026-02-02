@@ -11,8 +11,10 @@ const navItems = [
     { path: '/leaves', icon: 'fas fa-umbrella-beach', label: 'Nghỉ phép', pKey: PERMISSIONS.LEAVES },
     { path: '/thu-vien', icon: 'fas fa-book', label: 'Thư viện', pKey: null }, // Global
     { path: '/bao-cao', icon: 'fas fa-file-alt', label: 'Báo cáo', pKey: null }, // Global
+    { path: '/thao-luan', icon: 'fas fa-comments', label: 'Thảo luận', pKey: null }, // Global - Team discussion
     { path: '/employees', icon: 'fas fa-user', label: 'Hồ sơ', pKey: PERMISSIONS.PROFILES },
     { path: '/to-chuc', icon: 'fas fa-sitemap', label: 'Tổ chức', pKey: PERMISSIONS.ORGANIZATION },
+    { path: '/quan-ly-nv', icon: 'fas fa-user-shield', label: 'Quản lý NV', pKey: PERMISSIONS.SETTINGS },
     { path: '/cai-dat', icon: 'fas fa-cog', label: 'Cài đặt', pKey: PERMISSIONS.SETTINGS },
 ]
 

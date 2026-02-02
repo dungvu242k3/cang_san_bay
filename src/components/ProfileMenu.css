@@ -5,8 +5,13 @@
     border-right: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 130px);
+    height: 100%;
     overflow-y: auto;
+    border-radius: 20px;
+    margin: 0 10px 0 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    overflow: hidden;
 }
 
 /* Header */

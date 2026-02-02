@@ -1,0 +1,320 @@
+.header {
+    background: linear-gradient(135deg, #1e3e72 0%, #2a5298 50%, #0f2042 100%);
+    padding: 0 30px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+            rgba(255, 215, 0, 0.8) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(255, 215, 0, 0.8) 100%);
+}
+
+/* Logo Section */
+.header .logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.header .logo:hover {
+    transform: translateX(-2px);
+}
+
+.logo-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.logo-icon:hover {
+    transform: scale(1.05);
+    box-shadow:
+        0 6px 16px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 15px;
+}
+
+.logo-text h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    line-height: 1.1;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.logo-text .subtitle {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #ffd700;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Identity Switcher */
+.identity-switcher {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    padding: 8px 20px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.identity-switcher:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.identity-switcher i {
+    color: #ffd700;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.identity-switcher .label {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.identity-switcher select {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+    min-width: 200px;
+}
+
+.identity-switcher select:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.identity-switcher select option {
+    background: #1e3e72;
+    color: #fff;
+    padding: 8px;
+}
+
+/* User Info Section */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.user-profile:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.user-details {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1e3e72;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        0 0 0 2px rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.user-avatar:hover {
+    transform: scale(1.1);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.logout-btn {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logout-btn:hover {
+    background: rgba(220, 53, 69, 0.3);
+    border-color: rgba(220, 53, 69, 0.5);
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.logout-btn:active {
+    transform: scale(0.95);
+}
+
+/* Role Badge Colors */
+.role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-badge.super-admin {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #1e3e72;
+}
+
+.role-badge.board-director {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+    color: #fff;
+}
+
+.role-badge.dept-head {
+    background: linear-gradient(135deg, #4ecdc4 0%, #6ee7e0 100%);
+    color: #fff;
+}
+
+.role-badge.team-leader {
+    background: linear-gradient(135deg, #95e1d3 0%, #b4f0e4 100%);
+    color: #1e3e72;
+}
+
+.role-badge.staff {
+    background: linear-gradient(135deg, #a8e6cf 0%, #c8f5e0 100%);
+    color: #1e3e72;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .header {
+        padding: 0 20px;
+    }
+
+    .logo-text h1 {
+        font-size: 1.2rem;
+    }
+
+    .identity-switcher {
+        display: none;
+    }
+
+    .user-profile {
+        padding: 4px 8px;
+    }
+
+    .user-details {
+        display: none;
+    }
+}

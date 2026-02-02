@@ -1,5 +1,104 @@
 /* Task Page Specific Styles */
 
+.progress-clickable {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 16px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-clickable:hover {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: scale(1.02);
+}
+
+.progress-clickable .progress-bar {
+    height: 100% !important;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    transition: width 0.3s ease;
+}
+
+.progress-clickable .progress-bar.bg-success {
+    background: linear-gradient(90deg, #198754 0%, #20c997 50%, #0f5132 100%) !important;
+    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.4);
+}
+
+.progress-editable-wrapper {
+    position: relative;
+}
+
+.progress-range-input {
+    width: 100%;
+    height: 16px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+}
+
+.progress-range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+    border: 3px solid #fff;
+    transition: all 0.2s ease;
+}
+
+.progress-range-input::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.progress-range-input::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+    transition: all 0.2s ease;
+}
+
+.progress-range-input::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.progress-editable-wrapper .progress {
+    height: 16px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-editable-wrapper .progress-bar {
+    height: 100% !important;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.progress-editable-wrapper .progress-bar.bg-success {
+    background: linear-gradient(90deg, #198754 0%, #20c997 50%, #0f5132 100%) !important;
+    box-shadow: 0 2px 8px rgba(25, 135, 84, 0.4);
+}
+
 :root {
     --primary: #0d6efd;
     --primary-soft: #e7f1ff;

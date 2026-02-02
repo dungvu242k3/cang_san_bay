@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import KanbanBoard from '../components/KanbanBoard';
 import './Tasks.css';
 
 function Tasks() {
@@ -16,6 +17,8 @@ function Tasks() {
     // UI States
     const [activeTab, setActiveTab] = useState('common') // 'common' | 'mine'
     const [subTab, setSubTab] = useState('received') // 'received' | 'sent' | 'unassigned'
+    const [viewMode, setViewMode] = useState('list') // 'list' | 'kanban'
+    const [editingProgress, setEditingProgress] = useState(null)
 
     // Filters
     const [filterStatus, setFilterStatus] = useState('')
@@ -43,6 +46,18 @@ function Tasks() {
     })
 
     const [rejectionModal, setRejectionModal] = useState({ show: false, task: null, reason: '' })
+    
+    // Discussion/Comments state
+    const [taskComments, setTaskComments] = useState([])
+    const [newComment, setNewComment] = useState('')
+    const [loadingComments, setLoadingComments] = useState(false)
+    const [sendingComment, setSendingComment] = useState(false)
+    
+    // Attachments state
+    const [taskAttachments, setTaskAttachments] = useState([])
+    const [loadingAttachments, setLoadingAttachments] = useState(false)
+    const [uploadingFile, setUploadingFile] = useState(false)
+    const fileInputRef = useRef(null)
 
     // Load Initial Data
     useEffect(() => {
@@ -50,6 +65,20 @@ function Tasks() {
         loadDictionaries()
         loadTasks()
     }, [user])
+
+    // Load comments when switching to discussion tab
+    useEffect(() => {
+        if (modalTab === 'discussion' && editingTask?.id) {
+            loadTaskComments(editingTask.id)
+        }
+    }, [modalTab, editingTask])
+
+    // Load attachments when switching to attachments tab
+    useEffect(() => {
+        if (modalTab === 'attachments' && editingTask?.id) {
+            loadTaskAttachments(editingTask.id)
+        }
+    }, [modalTab, editingTask])
 
     const loadMyProfile = async () => {
         let profile = null
@@ -205,7 +234,7 @@ function Tasks() {
                         (a.assignee_type === 'PERSON' && a.assignee_code === subjectCode) ||
                         (a.assignee_type === 'DEPARTMENT' && a.assignee_code === subjectDept)
                     )
-                    const needsAction = ['Mới giao', 'Mới', 'Đang làm', 'Đang thực hiện'].includes(t.status)
+                    const needsAction = ['Mới giao', 'Đang làm'].includes(t.status)
                     return isAssignee && needsAction
                 })
             } else if (subTab === 'sent') {
@@ -245,24 +274,347 @@ function Tasks() {
         setShowModal(true)
     }
 
-    const handleOpenEdit = (task) => {
-        setModalTab('detail')
-        setEditingTask(task)
-        const primary = task.primary || {}
-        const collabs = task.collabs || []
-        setFormData({
-            title: task.title,
-            description: task.description || '',
-            priority: task.priority,
-            due_date: task.due_date ? task.due_date.slice(0, 10) : '',
-            status: task.status,
-            progress: task.progress,
-            primary_assignee_type: primary.assignee_type || 'PERSON',
-            primary_assignee_code: primary.assignee_code || '',
-            collab_assignees: collabs.map(c => ({ code: c.assignee_code, type: c.assignee_type })),
-            rejection_reason: task.rejection_reason || ''
+    const handleOpenEdit = (task, event) => {
+        // Prevent event bubbling
+        if (event) {
+            event.preventDefault()
+            event.stopPropagation()
+        }
+
+        try {
+            // Log action for analytics/debugging
+            console.log('📝 [Edit Task] Opening task editor:', {
+                taskId: task?.id,
+                taskTitle: task?.title,
+                status: task?.status,
+                timestamp: new Date().toISOString()
+            })
+
+            // Validate task data
+            if (!task || !task.id) {
+                console.warn('⚠️ [Edit Task] Invalid task data:', task)
+                alert('Không thể mở chỉnh sửa: Dữ liệu công việc không hợp lệ')
+                return
+            }
+
+            // Set modal tab to detail
+            setModalTab('detail')
+            
+            // Set editing task
+            setEditingTask(task)
+            
+            // Extract primary assignee and collaborators
+            const primary = task.primary || {}
+            const collabs = task.collabs || []
+            
+            // Populate form data
+            setFormData({
+                title: task.title || '',
+                description: task.description || '',
+                priority: task.priority || 'Trung bình',
+                due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+                status: task.status || 'Mới giao',
+                progress: task.progress || 0,
+                primary_assignee_type: primary.assignee_type || 'PERSON',
+                primary_assignee_code: primary.assignee_code || '',
+                collab_assignees: collabs.map(c => ({ 
+                    code: c.assignee_code || '', 
+                    type: c.assignee_type || 'PERSON' 
+                })),
+                rejection_reason: task.rejection_reason || ''
+            })
+            
+            // Show modal
+            setShowModal(true)
+            
+            // Load related data (comments and attachments) when opening task
+            if (task.id) {
+                // Load comments in background
+                loadTaskComments(task.id).catch(err => {
+                    console.error('❌ [Edit Task] Error loading comments:', err)
+                })
+                
+                // Load attachments in background
+                loadTaskAttachments(task.id).catch(err => {
+                    console.error('❌ [Edit Task] Error loading attachments:', err)
+                })
+            }
+
+            console.log('✅ [Edit Task] Task editor opened successfully')
+        } catch (error) {
+            console.error('❌ [Edit Task] Error opening task editor:', error)
+            alert('Lỗi khi mở chỉnh sửa công việc: ' + error.message)
+        }
+    }
+
+    const loadTaskComments = async (taskId) => {
+        if (!taskId) return
+        
+        try {
+            setLoadingComments(true)
+            const { data, error } = await supabase
+                .from('task_comments')
+                .select(`
+                    *,
+                    employee_profiles:sender_code (
+                        employee_code,
+                        first_name,
+                        last_name,
+                        avatar_url
+                    )
+                `)
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: true })
+
+            if (error) throw error
+
+            setTaskComments(data || [])
+        } catch (err) {
+            console.error('Error loading comments:', err)
+            if (err.message.includes('Could not find the table')) {
+                console.warn('Bảng task_comments chưa được tạo. Vui lòng chạy migration SQL.')
+            }
+            setTaskComments([])
+        } finally {
+            setLoadingComments(false)
+        }
+    }
+
+    const handleSendComment = async (e) => {
+        e.preventDefault()
+        if (!newComment.trim() || !editingTask?.id || !user?.employee_code || sendingComment) return
+
+        try {
+            setSendingComment(true)
+            const { error } = await supabase
+                .from('task_comments')
+                .insert([{
+                    task_id: editingTask.id,
+                    sender_code: user.employee_code,
+                    comment: newComment.trim()
+                }])
+
+            if (error) {
+                if (error.message.includes('Could not find the table')) {
+                    alert('⚠️ Bảng task_comments chưa được tạo!\n\nVui lòng chạy migration SQL:\nsupabase/migrations/20260202_create_task_comments.sql')
+                    throw error
+                }
+                throw error
+            }
+
+            setNewComment('')
+            // Reload comments
+            await loadTaskComments(editingTask.id)
+        } catch (err) {
+            console.error('Error sending comment:', err)
+            if (!err.message.includes('Could not find the table')) {
+                alert('Lỗi gửi comment: ' + err.message)
+            }
+        } finally {
+            setSendingComment(false)
+        }
+    }
+
+    const handleDeleteComment = async (commentId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa comment này?')) return
+
+        try {
+            const { error } = await supabase
+                .from('task_comments')
+                .delete()
+                .eq('id', commentId)
+
+            if (error) throw error
+
+            // Reload comments
+            if (editingTask?.id) {
+                await loadTaskComments(editingTask.id)
+            }
+        } catch (err) {
+            console.error('Error deleting comment:', err)
+            alert('Lỗi xóa comment: ' + err.message)
+        }
+    }
+
+    const formatCommentTime = (dateString) => {
+        const date = new Date(dateString)
+        const now = new Date()
+        const diff = now - date
+        const minutes = Math.floor(diff / 60000)
+        const hours = Math.floor(diff / 3600000)
+        const days = Math.floor(diff / 86400000)
+
+        if (minutes < 1) return 'Vừa xong'
+        if (minutes < 60) return `${minutes} phút trước`
+        if (hours < 24) return `${hours} giờ trước`
+        if (days < 7) return `${days} ngày trước`
+
+        return date.toLocaleDateString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         })
-        setShowModal(true)
+    }
+
+    const loadTaskAttachments = async (taskId) => {
+        if (!taskId) return
+        
+        try {
+            setLoadingAttachments(true)
+            const { data, error } = await supabase
+                .from('task_attachments')
+                .select(`
+                    *,
+                    employee_profiles:uploaded_by (
+                        employee_code,
+                        first_name,
+                        last_name
+                    )
+                `)
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                if (error.message.includes('Could not find the table')) {
+                    console.warn('Bảng task_attachments chưa được tạo. Vui lòng chạy migration SQL.')
+                }
+                throw error
+            }
+
+            setTaskAttachments(data || [])
+        } catch (err) {
+            console.error('Error loading attachments:', err)
+            setTaskAttachments([])
+        } finally {
+            setLoadingAttachments(false)
+        }
+    }
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0]
+        if (!file || !editingTask?.id || !user?.employee_code) return
+
+        // Check file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File không được vượt quá 10MB')
+            return
+        }
+
+        try {
+            setUploadingFile(true)
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${editingTask.id}_${Date.now()}.${fileExt}`
+            const filePath = fileName
+
+            // Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from('task-attachments')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                })
+
+            if (uploadError) {
+                if (uploadError.message.includes('Bucket not found')) {
+                    alert('⚠️ Bucket "task-attachments" chưa được tạo!\n\nVui lòng chạy SQL:\nsupabase/create_task_attachments_bucket.sql')
+                    throw uploadError
+                }
+                throw uploadError
+            }
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('task-attachments')
+                .getPublicUrl(filePath)
+
+            // Save attachment record to database
+            const { error: dbError } = await supabase
+                .from('task_attachments')
+                .insert([{
+                    task_id: editingTask.id,
+                    uploaded_by: user.employee_code,
+                    file_name: file.name,
+                    file_path: filePath,
+                    file_size: file.size,
+                    file_type: file.type
+                }])
+
+            if (dbError) {
+                if (dbError.message.includes('Could not find the table')) {
+                    alert('⚠️ Bảng task_attachments chưa được tạo!\n\nVui lòng chạy migration SQL:\nsupabase/migrations/20260202_create_task_attachments.sql')
+                    throw dbError
+                }
+                throw dbError
+            }
+
+            // Reload attachments
+            await loadTaskAttachments(editingTask.id)
+            
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+        } catch (err) {
+            console.error('Error uploading file:', err)
+            if (!err.message.includes('Bucket not found') && !err.message.includes('Could not find the table')) {
+                alert('Lỗi upload file: ' + err.message)
+            }
+        } finally {
+            setUploadingFile(false)
+        }
+    }
+
+    const handleDeleteAttachment = async (attachmentId, filePath) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa file đính kèm này?')) return
+
+        try {
+            // Delete from storage
+            const { error: storageError } = await supabase.storage
+                .from('task-attachments')
+                .remove([filePath])
+
+            if (storageError) {
+                console.warn('Error deleting from storage:', storageError)
+                // Continue to delete from database even if storage delete fails
+            }
+
+            // Delete from database
+            const { error: dbError } = await supabase
+                .from('task_attachments')
+                .delete()
+                .eq('id', attachmentId)
+
+            if (dbError) throw dbError
+
+            // Reload attachments
+            if (editingTask?.id) {
+                await loadTaskAttachments(editingTask.id)
+            }
+        } catch (err) {
+            console.error('Error deleting attachment:', err)
+            alert('Lỗi xóa file: ' + err.message)
+        }
+    }
+
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes'
+        const k = 1024
+        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+    }
+
+    const getFileIcon = (fileType) => {
+        if (fileType?.includes('pdf')) return 'fa-file-pdf'
+        if (fileType?.includes('word') || fileType?.includes('document')) return 'fa-file-word'
+        if (fileType?.includes('excel') || fileType?.includes('spreadsheet')) return 'fa-file-excel'
+        if (fileType?.includes('powerpoint') || fileType?.includes('presentation')) return 'fa-file-powerpoint'
+        if (fileType?.includes('image')) return 'fa-file-image'
+        if (fileType?.includes('zip') || fileType?.includes('compressed')) return 'fa-file-archive'
+        if (fileType?.includes('text')) return 'fa-file-alt'
+        return 'fa-file'
     }
 
     const handleSave = async () => {
@@ -317,6 +669,19 @@ function Tasks() {
             loadTasks()
         } catch (err) {
             alert('Lỗi lưu công việc: ' + err.message)
+        }
+    }
+
+    const handleTaskUpdate = async (taskId, updates) => {
+        try {
+            await supabase
+                .from('tasks')
+                .update(updates)
+                .eq('id', taskId)
+            loadTasks()
+        } catch (err) {
+            console.error('Error updating task:', err)
+            alert('Lỗi cập nhật công việc: ' + err.message)
         }
     }
 
@@ -411,7 +776,23 @@ function Tasks() {
                         <i className="fas fa-user-circle mr-2"></i> Của tôi
                     </button>
                 </div>
-                <div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div className="custom-tabs" style={{ margin: 0 }}>
+                        <button 
+                            className={`btn ${viewMode === 'list' ? 'btn-primary' : ''}`} 
+                            onClick={() => setViewMode('list')}
+                            title="Danh sách"
+                        >
+                            <i className="fas fa-list"></i>
+                        </button>
+                        <button 
+                            className={`btn ${viewMode === 'kanban' ? 'btn-primary' : ''}`} 
+                            onClick={() => setViewMode('kanban')}
+                            title="Kanban"
+                        >
+                            <i className="fas fa-columns"></i>
+                        </button>
+                    </div>
                     <button className="btn btn-create-task" onClick={handleOpenCreate}>
                         <i className="fas fa-plus"></i> Tạo việc mới
                     </button>
@@ -430,23 +811,21 @@ function Tasks() {
                 )}
 
                 <div className="task-filter-group">
-                    {['SUPER_ADMIN', 'BOARD_DIRECTOR', 'DEPT_HEAD', 'TEAM_LEADER'].includes(myProfile?.role) && (
-                        <div className="search-input-wrapper" style={{ maxWidth: '220px' }}>
-                            <i className="fas fa-user-tag"></i>
-                            <select
-                                className="input-styled"
-                                style={{ paddingLeft: '36px' }}
-                                value={filterEmployee}
-                                onChange={e => setFilterEmployee(e.target.value)}
-                            >
-                                <option value="">-- Tất cả nhân viên --</option>
-                                {getVisibleEmployees()
-                                    .map(e => (
-                                        <option key={e.code} value={e.code}>{e.name}</option>
-                                    ))}
-                            </select>
-                        </div>
-                    )}
+                    <div className="search-input-wrapper" style={{ maxWidth: '220px' }}>
+                        <i className="fas fa-user-tag"></i>
+                        <select
+                            className="input-styled"
+                            style={{ paddingLeft: '36px' }}
+                            value={filterEmployee}
+                            onChange={e => setFilterEmployee(e.target.value)}
+                        >
+                            <option value="">-- Tất cả nhân viên --</option>
+                            {getVisibleEmployees()
+                                .map(e => (
+                                    <option key={e.code} value={e.code}>{e.name}</option>
+                                ))}
+                        </select>
+                    </div>
 
                     <div className="search-input-wrapper">
                         <i className="fas fa-search"></i>
@@ -482,8 +861,9 @@ function Tasks() {
                 </div>
             </div>
 
-            {/* List */}
-            <div className="task-table-container">
+            {/* View Toggle */}
+            {viewMode === 'list' ? (
+                <div className="task-table-container">
                 <table className="table task-table mb-0">
                     <thead>
                         <tr>
@@ -518,11 +898,44 @@ function Tasks() {
                                     </td>
                                     <td><span className={`status-badge ${getStatusClass(task.status)}`}>{task.status}</span></td>
                                     <td>
-                                        <div className="d-flex align-items-center">
-                                            <div className="progress flex-grow-1 mr-2" style={{ height: '6px', borderRadius: '3px', background: '#e9ecef' }}>
-                                                <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress}%` }}></div>
-                                            </div>
-                                            <small className="text-muted font-weight-bold" style={{ minWidth: '35px' }}>{task.progress}%</small>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {editingProgress === task.id ? (
+                                                <div className="progress-editable-wrapper" onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="100"
+                                                        value={task.progress || 0}
+                                                        onChange={(e) => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })}
+                                                        onBlur={() => setEditingProgress(null)}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        className="progress-range-input"
+                                                        autoFocus
+                                                    />
+                                                    <div className="progress" style={{ marginTop: '4px' }}>
+                                                        <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
+                                                    </div>
+                                                    <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea', marginTop: '4px' }}>
+                                                        {task.progress || 0}%
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div 
+                                                        className="progress-clickable" 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            setEditingProgress(task.id)
+                                                        }}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                    >
+                                                        <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
+                                                    </div>
+                                                    <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea' }}>
+                                                        {task.progress || 0}%
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                     <td>
@@ -533,17 +946,17 @@ function Tasks() {
                                     </td>
                                     <td className="text-center action-column-premium">
                                         <div className="action-uniform-container">
-                                            {['Mới giao', 'Mới'].includes(task.status) && (
+                                            {['Mới giao'].includes(task.status) && (
                                                 <button className="btn-task-action btn-task-action-primary" title="Nhận việc" onClick={() => handleQuickAction(task, 'start')}>
                                                     <i className="fas fa-play"></i>
                                                 </button>
                                             )}
-                                            {['Đang làm', 'Đang thực hiện'].includes(task.status) && (
+                                            {['Đang làm'].includes(task.status) && (
                                                 <button className="btn-task-action btn-task-action-success" title="Xác nhận xong" onClick={() => handleQuickAction(task, 'complete')}>
                                                     <i className="fas fa-check"></i>
                                                 </button>
                                             )}
-                                            {['Mới giao', 'Mới', 'Đang làm', 'Đang thực hiện'].includes(task.status) && (
+                                            {['Mới giao', 'Đang làm'].includes(task.status) && (
                                                 <button className="btn-task-action btn-task-action-danger" title="Từ chối" onClick={() => handleQuickAction(task, 'reject')}>
                                                     <i className="fas fa-times"></i>
                                                 </button>
@@ -553,7 +966,19 @@ function Tasks() {
                                                     <i className="fas fa-trash-alt"></i>
                                                 </button>
                                             )}
-                                            <button className="btn-task-action btn-task-action-light" title="Sửa chi tiết" onClick={() => handleOpenEdit(task)}>
+                                            <button 
+                                                className="btn-task-action btn-task-action-light" 
+                                                title="Sửa chi tiết" 
+                                                onClick={(e) => handleOpenEdit(task, e)}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'scale(1.1)'
+                                                    e.currentTarget.style.transition = 'all 0.2s ease'
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'scale(1)'
+                                                }}
+                                                aria-label={`Sửa công việc: ${task.title}`}
+                                            >
                                                 <i className="fas fa-pen"></i>
                                             </button>
                                         </div>
@@ -564,6 +989,15 @@ function Tasks() {
                     </tbody>
                 </table>
             </div>
+            ) : (
+                <KanbanBoard
+                    tasks={getFilteredTasks()}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskClick={handleOpenEdit}
+                    getPriorityClass={getPriorityClass}
+                    getStatusClass={getStatusClass}
+                />
+            )}
 
             {/* Premium Modal */}
             {showModal && (
@@ -747,26 +1181,319 @@ function Tasks() {
                             )}
 
                             {modalTab === 'discussion' && (
-                                <div className="discussion-panel">
-                                    <div className="text-center text-muted mt-5">
-                                        <div className="mb-3"><i className="far fa-comments fa-3x text-light"></i></div>
-                                        <p>Tính năng thảo luận đang được phát triển.</p>
+                                <div className="discussion-panel" style={{ maxHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+                                    {/* Comments List */}
+                                    <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px', paddingRight: '10px' }}>
+                                        {loadingComments ? (
+                                            <div className="text-center py-4">
+                                                <div className="spinner-border text-primary" role="status">
+                                                    <span className="sr-only">Loading...</span>
+                                                </div>
+                                            </div>
+                                        ) : taskComments.length === 0 ? (
+                                            <div className="text-center text-muted py-5">
+                                                <i className="far fa-comments fa-3x mb-3" style={{ opacity: 0.3 }}></i>
+                                                <p>Chưa có thảo luận nào. Hãy bắt đầu cuộc trò chuyện!</p>
+                                            </div>
+                                        ) : (
+                                            <div className="comments-list">
+                                                {taskComments.map((comment) => {
+                                                    const sender = comment.employee_profiles
+                                                    const isMyComment = comment.sender_code === user?.employee_code
+                                                    const senderName = sender 
+                                                        ? `${sender.last_name || ''} ${sender.first_name || ''}`.trim() || sender.employee_code
+                                                        : comment.sender_code
+
+                                                    return (
+                                                        <div key={comment.id} className="comment-item" style={{
+                                                            display: 'flex',
+                                                            gap: '12px',
+                                                            marginBottom: '16px',
+                                                            padding: '12px',
+                                                            background: isMyComment ? '#f0f7ff' : '#f8f9fa',
+                                                            borderRadius: '10px',
+                                                            borderLeft: `3px solid ${isMyComment ? '#0d6efd' : '#6c757d'}`
+                                                        }}>
+                                                            <div className="comment-avatar" style={{
+                                                                width: '40px',
+                                                                height: '40px',
+                                                                borderRadius: '50%',
+                                                                background: isMyComment ? 'linear-gradient(135deg, #0d6efd, #0b5ed7)' : 'linear-gradient(135deg, #6c757d, #5a6268)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                color: '#fff',
+                                                                fontWeight: '700',
+                                                                fontSize: '1rem',
+                                                                flexShrink: 0
+                                                            }}>
+                                                                {sender?.avatar_url ? (
+                                                                    <img src={sender.avatar_url} alt={senderName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    senderName.charAt(0).toUpperCase()
+                                                                )}
+                                                            </div>
+                                                            <div className="comment-content" style={{ flex: 1 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                    <div>
+                                                                        <strong style={{ color: '#212529', fontSize: '0.9rem' }}>{senderName}</strong>
+                                                                        {isMyComment && (
+                                                                            <span style={{ 
+                                                                                marginLeft: '8px',
+                                                                                padding: '2px 8px',
+                                                                                background: '#0d6efd',
+                                                                                color: '#fff',
+                                                                                borderRadius: '4px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '600'
+                                                                            }}>Bạn</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                        <span style={{ fontSize: '0.75rem', color: '#6c757d' }}>
+                                                                            {formatCommentTime(comment.created_at)}
+                                                                        </span>
+                                                                        {isMyComment && (
+                                                                            <button
+                                                                                onClick={() => handleDeleteComment(comment.id)}
+                                                                                style={{
+                                                                                    background: 'transparent',
+                                                                                    border: 'none',
+                                                                                    color: '#dc3545',
+                                                                                    cursor: 'pointer',
+                                                                                    padding: '4px 8px',
+                                                                                    borderRadius: '4px',
+                                                                                    fontSize: '0.8rem'
+                                                                                }}
+                                                                                title="Xóa comment"
+                                                                            >
+                                                                                <i className="fas fa-trash"></i>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{ 
+                                                                    color: '#495057',
+                                                                    fontSize: '0.9rem',
+                                                                    lineHeight: '1.5',
+                                                                    whiteSpace: 'pre-wrap',
+                                                                    wordWrap: 'break-word'
+                                                                }}>
+                                                                    {comment.comment}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {/* Comment Input Form */}
+                                    <form onSubmit={handleSendComment} style={{
+                                        borderTop: '1px solid #e9ecef',
+                                        paddingTop: '16px'
+                                    }}>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <textarea
+                                                    value={newComment}
+                                                    onChange={(e) => setNewComment(e.target.value)}
+                                                    placeholder="Nhập bình luận..."
+                                                    rows="3"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px 12px',
+                                                        border: '2px solid #e9ecef',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.9rem',
+                                                        resize: 'vertical',
+                                                        fontFamily: 'inherit'
+                                                    }}
+                                                    disabled={sendingComment}
+                                                />
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={!newComment.trim() || sendingComment}
+                                                style={{
+                                                    padding: '10px 20px',
+                                                    background: sendingComment || !newComment.trim() 
+                                                        ? '#6c757d' 
+                                                        : 'linear-gradient(135deg, #0d6efd, #0b5ed7)',
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: sendingComment || !newComment.trim() ? 'not-allowed' : 'pointer',
+                                                    fontWeight: '600',
+                                                    fontSize: '0.9rem',
+                                                    whiteSpace: 'nowrap',
+                                                    opacity: sendingComment || !newComment.trim() ? 0.6 : 1
+                                                }}
+                                            >
+                                                {sendingComment ? (
+                                                    <><i className="fas fa-spinner fa-spin mr-2"></i> Đang gửi...</>
+                                                ) : (
+                                                    <><i className="fas fa-paper-plane mr-2"></i> Gửi</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             )}
 
                             {modalTab === 'attachments' && (
-                                <div className="attachments-panel">
-                                    <div className="d-flex justify-content-between align-items-center mb-4 p-4 rounded border border-dashed" style={{ background: '#f8f9fa', borderStyle: 'dashed', borderWidth: '2px' }}>
+                                <div className="attachments-panel" style={{ maxHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+                                    {/* Upload Section */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '20px',
+                                        padding: '16px',
+                                        borderRadius: '10px',
+                                        border: '2px dashed #dee2e6',
+                                        background: '#f8f9fa'
+                                    }}>
                                         <div>
-                                            <strong><i className="fas fa-cloud-upload-alt mr-2"></i> Tải lên tài liệu</strong>
-                                            <p className="text-muted small mb-0 mt-1">Kéo thả hoặc chọn tệp từ máy tính (Max 10MB)</p>
+                                            <strong style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                <i className="fas fa-cloud-upload-alt"></i> Tải lên tài liệu
+                                            </strong>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#6c757d' }}>
+                                                Chọn tệp từ máy tính (Tối đa 10MB)
+                                            </p>
                                         </div>
-                                        <button className="btn btn-primary-premium btn-sm"><i className="fas fa-plus"></i> Chọn tệp</button>
+                                        <label style={{
+                                            padding: '8px 16px',
+                                            background: 'linear-gradient(135deg, #0d6efd, #0b5ed7)',
+                                            color: '#fff',
+                                            borderRadius: '8px',
+                                            cursor: uploadingFile ? 'not-allowed' : 'pointer',
+                                            fontWeight: '600',
+                                            fontSize: '0.9rem',
+                                            opacity: uploadingFile ? 0.6 : 1,
+                                            display: 'inline-block'
+                                        }}>
+                                            {uploadingFile ? (
+                                                <><i className="fas fa-spinner fa-spin mr-2"></i> Đang tải...</>
+                                            ) : (
+                                                <><i className="fas fa-plus mr-2"></i> Chọn tệp</>
+                                            )}
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleFileUpload}
+                                                disabled={uploadingFile}
+                                                style={{ display: 'none' }}
+                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip"
+                                            />
+                                        </label>
                                     </div>
-                                    <div className="text-center text-muted mt-5">
-                                        <i className="far fa-folder-open fa-3x mb-3 text-light"></i>
-                                        <p>Chưa có tệp đính kèm.</p>
+
+                                    {/* Attachments List */}
+                                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
+                                        {loadingAttachments ? (
+                                            <div className="text-center py-4">
+                                                <div className="spinner-border text-primary" role="status">
+                                                    <span className="sr-only">Loading...</span>
+                                                </div>
+                                            </div>
+                                        ) : taskAttachments.length === 0 ? (
+                                            <div className="text-center text-muted py-5">
+                                                <i className="far fa-folder-open fa-3x mb-3" style={{ opacity: 0.3 }}></i>
+                                                <p>Chưa có tệp đính kèm nào.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="attachments-list">
+                                                {taskAttachments.map((attachment) => {
+                                                    const uploader = attachment.employee_profiles
+                                                    const isMyAttachment = attachment.uploaded_by === user?.employee_code
+                                                    const uploaderName = uploader 
+                                                        ? `${uploader.last_name || ''} ${uploader.first_name || ''}`.trim() || uploader.employee_code
+                                                        : attachment.uploaded_by
+
+                                                    // Get file URL
+                                                    const { data: { publicUrl } } = supabase.storage
+                                                        .from('task-attachments')
+                                                        .getPublicUrl(attachment.file_path)
+
+                                                    return (
+                                                        <div key={attachment.id} style={{
+                                                            display: 'flex',
+                                                            gap: '12px',
+                                                            padding: '12px',
+                                                            background: '#fff',
+                                                            borderRadius: '10px',
+                                                            border: '1px solid #e9ecef',
+                                                            marginBottom: '12px',
+                                                            alignItems: 'center'
+                                                        }}>
+                                                            <div style={{
+                                                                width: '48px',
+                                                                height: '48px',
+                                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                                borderRadius: '10px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                color: '#fff',
+                                                                fontSize: '1.5rem',
+                                                                flexShrink: 0
+                                                            }}>
+                                                                <i className={`fas ${getFileIcon(attachment.file_type)}`}></i>
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                                    <a
+                                                                        href={publicUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{
+                                                                            fontWeight: '600',
+                                                                            color: '#0d6efd',
+                                                                            textDecoration: 'none',
+                                                                            fontSize: '0.9rem',
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            whiteSpace: 'nowrap',
+                                                                            display: 'block',
+                                                                            maxWidth: '300px'
+                                                                        }}
+                                                                        title={attachment.file_name}
+                                                                    >
+                                                                        {attachment.file_name}
+                                                                    </a>
+                                                                    {isMyAttachment && (
+                                                                        <button
+                                                                            onClick={() => handleDeleteAttachment(attachment.id, attachment.file_path)}
+                                                                            style={{
+                                                                                background: 'transparent',
+                                                                                border: 'none',
+                                                                                color: '#dc3545',
+                                                                                cursor: 'pointer',
+                                                                                padding: '4px 8px',
+                                                                                borderRadius: '4px',
+                                                                                fontSize: '0.8rem'
+                                                                            }}
+                                                                            title="Xóa file"
+                                                                        >
+                                                                            <i className="fas fa-trash"></i>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.8rem', color: '#6c757d' }}>
+                                                                    <span>{formatFileSize(attachment.file_size || 0)}</span>
+                                                                    <span style={{ margin: '0 8px' }}>•</span>
+                                                                    <span>{uploaderName}</span>
+                                                                    <span style={{ margin: '0 8px' }}>•</span>
+                                                                    <span>{formatCommentTime(attachment.created_at)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
