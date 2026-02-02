@@ -462,6 +462,44 @@
     box-shadow: 0 2px 6px rgba(25, 118, 210, 0.3);
 }
 
+/* Employee Selector Button */
+.btn-employee-selector {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: #00a0e9;
+    border-color: #00a0e9;
+    white-space: nowrap;
+}
+
+.btn-employee-selector:hover {
+    background: #00a0e9;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0, 160, 233, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-employee-selector:active {
+    transform: translateY(0);
+}
+
+.btn-employee-selector i {
+    font-size: 0.85rem;
+}
+
+.btn-employee-selector span {
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
 .btn-secondary {
     background: #fff;
     color: #666;

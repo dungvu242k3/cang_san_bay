@@ -66,15 +66,15 @@ function Header({ onMenuToggle }) {
         onClick={onMenuToggle}
         aria-label="Toggle menu"
       >
-        <i className="fas fa-bars"></i>
+        <i className="fas fa-chevron-left"></i>
       </button>
-      <div className="logo" onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-        <img src="/logo-acv-standard.png" alt="ACV Logo" className="logo-img" style={{ height: '50px', width: 'auto', marginRight: '10px' }} />
-        <div className="logo-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', color: '#fff' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: '900', lineHeight: '1.2', textTransform: 'uppercase' }}>Cảng hàng không</div>
-          <div style={{ fontSize: '0.9rem', fontWeight: '900', lineHeight: '1.2', textTransform: 'uppercase' }}>Quốc tế Cát Bi</div>
-          <div style={{ width: '100%', height: '2px', backgroundColor: '#fff', margin: '4px 0 2px 0' }}></div>
-          <div style={{ fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cat Bi International Airport</div>
+      <div className="logo" onClick={() => navigate('/dashboard')}>
+        <img src="/logo-acv-standard.png" alt="ACV Logo" className="logo-img" />
+        <div className="logo-text">
+          <div className="logo-main-text">Cảng hàng không</div>
+          <div className="logo-main-text">Quốc tế Cát Bi</div>
+          <div className="logo-divider"></div>
+          <div className="logo-sub-text">Cat Bi International Airport</div>
         </div>
       </div>
 

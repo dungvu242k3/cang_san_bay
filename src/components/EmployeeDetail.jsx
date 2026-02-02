@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import { formatDateDisplay, formatMonthYearDisplay } from '../utils/helpers'
@@ -170,8 +171,9 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false }) => {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector }) => {
     const { user: authUser } = useAuth()
+    const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -1081,7 +1083,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     }
 
     const handleGradingSave = async () => {
-        if (!employee || !employee.employeeId) return
+        if (!employee || !employee.employeeId) {
+            alert('Không tìm thấy thông tin nhân viên!')
+            return
+        }
+
+        if (!month) {
+            alert('Vui lòng chọn tháng đánh giá!')
+            return
+        }
 
         const selfTotals = calculateTotals(selfAssessment)
         const supervisorTotals = calculateTotals(supervisorAssessment)
@@ -1100,16 +1110,51 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
 
         try {
+            let result
             if (gradingReviewId) {
-                await supabase.from('performance_reviews').update(payload).eq('id', gradingReviewId)
+                // Update existing record
+                result = await supabase
+                    .from('performance_reviews')
+                    .update(payload)
+                    .eq('id', gradingReviewId)
             } else {
-                await supabase.from('performance_reviews').insert([payload])
+                // Try to insert, but if it fails due to UNIQUE constraint, try to update instead
+                result = await supabase
+                    .from('performance_reviews')
+                    .insert([payload])
+                
+                // If insert fails due to unique constraint, try to find and update existing record
+                if (result.error && result.error.code === '23505') {
+                    // UNIQUE constraint violation - record already exists
+                    const { data: existing } = await supabase
+                        .from('performance_reviews')
+                        .select('id')
+                        .eq('employee_code', employee.employeeId)
+                        .eq('month', month)
+                        .maybeSingle()
+                    
+                    if (existing) {
+                        setGradingReviewId(existing.id)
+                        result = await supabase
+                            .from('performance_reviews')
+                            .update(payload)
+                            .eq('id', existing.id)
+                    }
+                }
             }
-            alert('Đã lưu đánh giá!')
+
+            if (result.error) {
+                console.error('Supabase error:', result.error)
+                alert('Lỗi khi lưu: ' + (result.error.message || result.error.details || 'Không thể lưu dữ liệu'))
+                return
+            }
+
+            alert('Đã lưu đánh giá thành công!')
             setIsGradingLocked(true) // Lock after save
-            loadGradingData()
+            await loadGradingData()
         } catch (e) {
-            alert('Lỗi khi lưu: ' + e.message)
+            console.error('Error saving grading:', e)
+            alert('Lỗi khi lưu: ' + (e.message || 'Đã xảy ra lỗi không xác định'))
         }
     }
 
@@ -4213,7 +4258,15 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const renderManagementActions = () => {
         if (!employee) return null
 
-        const isActive = employee.status !== 'Nghỉ việc'
+        const handleClick = () => {
+            if (onOpenEmployeeSelector) {
+                // Nếu có callback từ parent (GradingPage), mở sidebar
+                onOpenEmployeeSelector()
+            } else {
+                // Nếu không, điều hướng đến trang employees
+                navigate('/employees')
+            }
+        }
 
         return (
             <div className="management-actions" style={{
@@ -4225,29 +4278,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 borderRadius: '10px',
                 border: '1px solid #e9ecef'
             }}>
-                {isActive ? (
-                    <button
-                        className="btn btn-warning btn-sm"
-                        onClick={() => onDisable && onDisable(employee)}
-                        title="Ngừng hoạt động"
-                    >
-                        <i className="fas fa-ban"></i> Ngừng hoạt động
-                    </button>
-                ) : (
-                    <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => onActivate && onActivate(employee)}
-                        title="Kích hoạt"
-                    >
-                        <i className="fas fa-check"></i> Kích hoạt
-                    </button>
-                )}
                 <button
-                    className="btn btn-info btn-sm"
-                    onClick={() => onResetPassword && onResetPassword(employee)}
-                    title="Reset mật khẩu về mặc định"
+                    className="btn-employee-selector"
+                    onClick={handleClick}
+                    title={onOpenEmployeeSelector ? "Chọn nhân sự để chấm điểm" : "Quản lý nhân sự"}
                 >
-                    <i className="fas fa-key"></i> Reset mật khẩu
+                    <i className="fas fa-users"></i> <span>Nhân sự</span>
                 </button>
             </div>
         )
@@ -4294,4 +4330,4 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     )
 }
 
-export default EmployeeDetail
+export default EmployeeDetail;

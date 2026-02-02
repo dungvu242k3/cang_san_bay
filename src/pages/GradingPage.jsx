@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import EmployeeDetail from '../components/EmployeeDetail';
+import GradingModal from '../components/GradingModal';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import './GradingPage.css'; // Dedicated styles
@@ -12,6 +13,9 @@ function GradingPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [filterDept, setFilterDept] = useState('')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
+    const [gradingModalEmployee, setGradingModalEmployee] = useState(null)
 
     // Scroll ref to top on selection
     const detailRef = useRef(null)
@@ -28,7 +32,26 @@ function GradingPage() {
         if (selectedEmployee && detailRef.current) {
             detailRef.current.scrollTop = 0
         }
+        // Close mobile menu when employee is selected
+        if (selectedEmployee && window.innerWidth <= 768) {
+            setIsMobileMenuOpen(false)
+        }
     }, [selectedEmployee])
+
+    // Handle window resize and mobile detection
+    useEffect(() => {
+        const checkMobile = () => {
+            const mobile = window.innerWidth <= 768
+            setIsMobile(mobile)
+            if (!mobile) {
+                setIsMobileMenuOpen(false)
+            }
+        }
+        
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     const loadEmployees = async () => {
         try {
@@ -100,12 +123,44 @@ function GradingPage() {
 
     const departments = [...new Set(employees.map(e => e.bo_phan).filter(Boolean))].sort()
 
+    const handleOpenEmployeeSelector = () => {
+        if (isMobile) {
+            setIsMobileMenuOpen(true)
+        } else {
+            // Trên desktop, focus vào sidebar hoặc scroll đến nó
+            const sidebar = document.querySelector('.grading-sidebar')
+            if (sidebar) {
+                sidebar.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                // Focus vào search input
+                const searchInput = sidebar.querySelector('input[type="text"]')
+                if (searchInput) {
+                    setTimeout(() => searchInput.focus(), 300)
+                }
+            }
+        }
+    }
+
     return (
         <div className="grading-page-container">
+            {/* MOBILE OVERLAY */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="mobile-overlay"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                ></div>
+            )}
+
             {/* LEFT SIDEBAR: LIST VIEW */}
-            <div className="grading-sidebar">
+            <div className={`grading-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
                 <div className="grading-sidebar-header">
                     <h2><i className="fas fa-list-ul"></i> Danh sách nhân sự</h2>
+                    <button 
+                        className="mobile-close-btn"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        <i className="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <div className="sidebar-toolbar">
@@ -136,7 +191,13 @@ function GradingPage() {
                         <div
                             key={emp.id}
                             className={`employee-item ${selectedEmployee && selectedEmployee.id === emp.id ? 'active' : ''}`}
-                            onClick={() => setSelectedEmployee(emp)}
+                            onClick={() => {
+                                // Mở popup chấm điểm khi click vào dòng
+                                setGradingModalEmployee(emp);
+                                if (isMobile) {
+                                    setIsMobileMenuOpen(false);
+                                }
+                            }}
                         >
                             <div className="item-main">
                                 <span className="item-name">{emp.ho_va_ten}</span>
@@ -157,21 +218,55 @@ function GradingPage() {
             {/* RIGHT MAIN CONTENT: GRADING VIEW */}
             <div className="grading-main-content" ref={detailRef}>
                 {selectedEmployee ? (
-                    <EmployeeDetail
-                        employee={selectedEmployee}
-                        activeSection="grading"
-                        allowEditProfile={false}
-                        onSave={handleSave}
-                        onCancel={() => { }}
-                        onSectionChange={() => { }}
-                    />
+                    <div className="grading-content-wrapper">
+                        <div className="grading-content-header">
+                            <div className="employee-header-info">
+                                <h3 className="employee-name">{selectedEmployee.ho_va_ten}</h3>
+                                <div className="employee-meta">
+                                    <span className="employee-code">{selectedEmployee.employeeId}</span>
+                                    <span className="employee-dept">{selectedEmployee.bo_phan}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <EmployeeDetail
+                            employee={selectedEmployee}
+                            activeSection="grading"
+                            allowEditProfile={false}
+                            onSave={handleSave}
+                            onCancel={() => { }}
+                            onSectionChange={() => { }}
+                            onOpenEmployeeSelector={handleOpenEmployeeSelector}
+                        />
+                    </div>
                 ) : (
                     <div className="grading-empty-state">
-                        <i className="fas fa-user-edit"></i>
-                        <p>Chọn nhân viên từ danh sách bên trái để chấm điểm</p>
+                        <div className="empty-state-icon">
+                            <i className="fas fa-user-edit"></i>
+                        </div>
+                        <h3>Chọn nhân viên để chấm điểm</h3>
+                        <p>Chọn nhân viên từ danh sách bên trái để bắt đầu chấm điểm</p>
+                        {isMobile && (
+                            <button 
+                                className="btn-select-employee"
+                                onClick={() => setIsMobileMenuOpen(true)}
+                            >
+                                <i className="fas fa-list"></i> Xem danh sách
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* Grading Modal */}
+            <GradingModal
+                employee={gradingModalEmployee}
+                isOpen={!!gradingModalEmployee}
+                onClose={() => setGradingModalEmployee(null)}
+                onSave={() => {
+                    // Reload employees sau khi lưu
+                    if (user) loadEmployees();
+                }}
+            />
         </div>
     )
 }

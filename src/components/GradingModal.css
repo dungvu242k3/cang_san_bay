@@ -1,0 +1,587 @@
+/* ============================================
+   GRADING MODAL - Mobile-First Popup
+   ============================================ */
+
+.grading-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease-out;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.grading-modal-content {
+    background: #fff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   MODAL HEADER
+   ============================================ */
+
+.grading-modal-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.grading-modal-title h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.5;
+}
+
+.grading-modal-employee-info {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.grading-modal-employee-info .employee-name {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.grading-modal-employee-info .employee-code {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.grading-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.grading-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.grading-modal-close:active {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+/* ============================================
+   MODAL BODY
+   ============================================ */
+
+.grading-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.grading-modal-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #666;
+    font-size: 1rem;
+    gap: 12px;
+}
+
+.grading-modal-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.grading-month-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.grading-month-selector label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+}
+
+.grading-month-selector input {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    flex: 1;
+    min-width: 150px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.grading-month-selector input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.grading-template-badge .badge {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+/* ============================================
+   GRADING TABLE
+   ============================================ */
+
+.grading-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.grading-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    background: #fff;
+}
+
+.grading-table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.grading-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #e0e0e0;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.grading-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.grading-section-header {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.grading-section-header.section-negative {
+    background: #fff5f5;
+    color: #c62828;
+}
+
+.grading-section-header.section-positive {
+    background: #f1f8e9;
+    color: #2e7d32;
+}
+
+.grading-section-header.section-bonus {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.grading-group-header {
+    background: #fafafa;
+    font-weight: 500;
+}
+
+.grading-item-row:hover {
+    background: #f8f9ff;
+}
+
+.grading-input {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.grading-input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.grading-input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.pl-2 {
+    padding-left: 16px;
+}
+
+.pl-4 {
+    padding-left: 32px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-danger {
+    color: #c62828;
+}
+
+.text-success {
+    color: #2e7d32;
+}
+
+.text-primary {
+    color: #1976d2;
+}
+
+.font-weight-bold {
+    font-weight: 600;
+}
+
+/* ============================================
+   SUMMARY TABLE
+   ============================================ */
+
+.grading-summary {
+    margin-bottom: 20px;
+}
+
+.grading-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.grading-summary-table thead {
+    background: #f8f9fa;
+}
+
+.grading-summary-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.875rem;
+}
+
+.grading-summary-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.875rem;
+}
+
+.grading-summary-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.badge-primary {
+    background: #bbdefb;
+    color: #1565c0;
+}
+
+.badge-warning {
+    background: #ffe0b2;
+    color: #e65100;
+}
+
+.badge-info {
+    background: #e1f5fe;
+    color: #01579b;
+}
+
+/* ============================================
+   COMMENTS
+   ============================================ */
+
+.grading-comments {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.grading-comment-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.grading-comment-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.grading-comment-group textarea {
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 80px;
+}
+
+.grading-comment-group textarea:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.grading-comment-group textarea:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.grading-comment-group textarea::placeholder {
+    color: #999;
+}
+
+/* ============================================
+   MODAL FOOTER
+   ============================================ */
+
+.grading-modal-footer {
+    padding: 16px 24px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.btn-premium,
+.btn-premium-outline {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-premium {
+    background: #1976d2;
+    color: white;
+    box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
+}
+
+.btn-premium:hover {
+    background: #1565c0;
+    box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+}
+
+.btn-premium:active {
+    transform: scale(0.98);
+}
+
+.btn-premium-outline {
+    background: transparent;
+    color: #1976d2;
+    border: 1px solid #1976d2;
+}
+
+.btn-premium-outline:hover {
+    background: #e3f2fd;
+}
+
+.btn-premium-outline:active {
+    transform: scale(0.98);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .grading-modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .grading-modal-content {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 16px 16px 0 0;
+        animation: slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes slideUpMobile {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .grading-modal-header {
+        padding: 16px 20px;
+    }
+
+    .grading-modal-title h3 {
+        font-size: 1.125rem;
+    }
+
+    .grading-modal-body {
+        padding: 16px 20px;
+    }
+
+    .grading-modal-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .grading-month-selector {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .grading-month-selector label {
+        font-size: 0.875rem;
+    }
+
+    .grading-table {
+        font-size: 0.8125rem;
+    }
+
+    .grading-table th,
+    .grading-table td {
+        padding: 8px 6px;
+    }
+
+    .grading-input {
+        width: 50px;
+        padding: 6px;
+        font-size: 0.8125rem;
+    }
+
+    .grading-comments {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .grading-modal-footer {
+        padding: 12px 20px;
+        flex-direction: column-reverse;
+    }
+
+    .btn-premium,
+    .btn-premium-outline {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.grading-modal-close:focus-visible,
+.btn-premium:focus-visible,
+.btn-premium-outline:focus-visible {
+    outline: 2px solid #1976d2;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .grading-modal-overlay,
+    .grading-modal-content {
+        animation: none;
+    }
+}

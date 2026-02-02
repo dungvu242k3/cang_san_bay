@@ -10,9 +10,15 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+@media (max-width: 968px) {
+    .top-nav-bar {
+        top: 75px;
+    }
+}
+
 @media (max-width: 768px) {
     .top-nav-bar {
-        top: 56px;
+        top: 65px;
         padding: 0 8px;
     }
 }
