@@ -558,7 +558,8 @@
     padding: 10px;
     background: #ffffff;
     border-radius: 0 0 20px 20px;
-    min-height: 0; /* Allow flexbox to shrink */
+    min-height: 0;
+    /* Allow flexbox to shrink */
     -webkit-overflow-scrolling: touch;
 }
 
@@ -595,13 +596,14 @@ table {
     border-collapse: collapse;
 }
 
-<<<<<<< HEAD
+
 @media (max-width: 768px) {
     table {
         font-size: 0.8rem;
     }
 
-    th, td {
+    th,
+    td {
         padding: 8px 6px;
         font-size: 0.75rem;
     }
@@ -687,7 +689,6 @@ table {
     font-weight: 500;
 }
 
-<<<<<<< HEAD
 .employee-department {
     color: #64748b;
     font-size: 0.85rem;
@@ -698,35 +699,6 @@ table {
     color: #64748b;
     font-size: 0.85rem;
     font-weight: 500;
-=======
-.employee-actions {
-    text-align: center;
-    padding: 4px !important;
-}
-
-.btn-icon {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    font-size: 0.75rem;
-}
-
-.btn-icon.btn-delete {
-    background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
-}
-
-.btn-icon.btn-delete:hover {
-    background: #dc2626;
-    color: #fff;
-    transform: scale(1.1);
->>>>>>> 64bd4d8 (fix)
 }
 
 th {
