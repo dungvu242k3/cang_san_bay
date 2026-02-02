@@ -69,12 +69,8 @@ function Header({ onMenuToggle }) {
         <i className="fas fa-chevron-left"></i>
       </button>
       <div className="logo" onClick={() => navigate('/dashboard')}>
-        <img src="/logo-acv-standard.png" alt="ACV Logo" className="logo-img" />
+        <img src="/1.png" className="logo-img" />
         <div className="logo-text">
-          <div className="logo-main-text">Cảng hàng không</div>
-          <div className="logo-main-text">Quốc tế Cát Bi</div>
-          <div className="logo-divider"></div>
-          <div className="logo-sub-text">Cat Bi International Airport</div>
         </div>
       </div>
 
