@@ -316,6 +316,94 @@ CustomAgenda.title = (date) => {
     return `Tháng ${moment(date).format('MM/YYYY')}`;
 };
 
+const CalendarToolbar = (toolbar) => {
+    const { label, view, views, onNavigate, onView, localizer, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations } = toolbar;
+
+    const goToBack = () => {
+        onNavigate('PREV');
+    };
+
+    const goToNext = () => {
+        onNavigate('NEXT');
+    };
+
+    const goToToday = () => {
+        onNavigate('TODAY');
+    };
+
+    return (
+        <div className="rbc-toolbar">
+            <span className="rbc-btn-group">
+                <button type="button" onClick={goToBack}><i className="fas fa-chevron-left"></i></button>
+                <button type="button" onClick={goToToday}>Hôm nay</button>
+                <button type="button" onClick={goToNext}><i className="fas fa-chevron-right"></i></button>
+            </span>
+
+            <span className="rbc-toolbar-label">{label}</span>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <select
+                    value={filterLocation}
+                    onChange={(e) => setFilterLocation(e.target.value)}
+                    className="form-select-macos"
+                    style={{
+                        border: '1px solid #e5e5e7',
+                        borderRadius: '6px',
+                        padding: '4px 24px 4px 10px',
+                        fontSize: '12px',
+                        background: '#f5f5f7',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        minWidth: '120px',
+                        height: '30px'
+                    }}
+                >
+                    <option value="">-- Địa điểm --</option>
+                    {getUniqueLocations().map(loc => (
+                        <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                </select>
+
+                <select
+                    value={filterScope}
+                    onChange={(e) => setFilterScope(e.target.value)}
+                    className="form-select-macos"
+                    style={{
+                        border: '1px solid #e5e5e7',
+                        borderRadius: '6px',
+                        padding: '4px 24px 4px 10px',
+                        fontSize: '12px',
+                        background: '#f5f5f7',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        minWidth: '120px',
+                        height: '30px'
+                    }}
+                >
+                    <option value="">-- Đơn vị --</option>
+                    <option value="PERSONAL">Cá nhân</option>
+                    <option value="UNIT">Đội</option>
+                    <option value="OFFICE">Phòng</option>
+                    <option value="COMPANY">Cảng</option>
+                </select>
+
+                <span className="rbc-btn-group">
+                    {views.map(v => (
+                        <button
+                            key={v}
+                            type="button"
+                            className={view === v ? 'rbc-active' : ''}
+                            onClick={() => onView(v)}
+                        >
+                            {messages[v] || v}
+                        </button>
+                    ))}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 export default function CalendarPage() {
     const { user } = useAuth();
     const [events, setEvents] = useState([]);
@@ -1541,52 +1629,6 @@ export default function CalendarPage() {
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         {activeTab === 'calendar' && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <select
-                                        value={filterLocation}
-                                        onChange={(e) => setFilterLocation(e.target.value)}
-                                        className="form-select-macos"
-                                        style={{
-                                            border: '1px solid #e5e5e7',
-                                            borderRadius: '6px',
-                                            padding: '6px 24px 6px 10px',
-                                            fontSize: '13px',
-                                            background: '#f5f5f7',
-                                            cursor: 'pointer',
-                                            outline: 'none',
-                                            minWidth: '130px',
-                                            height: '32px'
-                                        }}
-                                    >
-                                        <option value="">-- Tất cả địa điểm --</option>
-                                        {getUniqueLocations().map(loc => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
-                                    </select>
-
-                                    <select
-                                        value={filterScope}
-                                        onChange={(e) => setFilterScope(e.target.value)}
-                                        className="form-select-macos"
-                                        style={{
-                                            border: '1px solid #e5e5e7',
-                                            borderRadius: '6px',
-                                            padding: '6px 24px 6px 10px',
-                                            fontSize: '13px',
-                                            background: '#f5f5f7',
-                                            cursor: 'pointer',
-                                            outline: 'none',
-                                            minWidth: '130px',
-                                            height: '32px'
-                                        }}
-                                    >
-                                        <option value="">-- Tất cả đơn vị --</option>
-                                        <option value="PERSONAL">Cá nhân</option>
-                                        <option value="UNIT">Đơn vị / Đội</option>
-                                        <option value="OFFICE">Phòng ban</option>
-                                        <option value="COMPANY">Công ty</option>
-                                    </select>
-                                </div>
                                 <button
                                     className="btn-macos-primary"
                                     onClick={() => {
@@ -1680,6 +1722,18 @@ export default function CalendarPage() {
                                 day: true,
                                 agenda: CustomAgenda
                             }}
+                            components={{
+                                toolbar: (props) => (
+                                    <CalendarToolbar
+                                        {...props}
+                                        filterLocation={filterLocation}
+                                        setFilterLocation={setFilterLocation}
+                                        filterScope={filterScope}
+                                        setFilterScope={setFilterScope}
+                                        getUniqueLocations={getUniqueLocations}
+                                    />
+                                )
+                            }}
                             date={date}
                             onNavigate={setDate}
                             selectable
@@ -1703,47 +1757,69 @@ export default function CalendarPage() {
                     ) : (
                         <div className="duty-schedule-calendar-view">
 
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                                <div className="d-flex align-items-center gap-3">
-                                    <h6 className="mb-0">
+                            <div className="d-flex flex-column mb-4" style={{ gap: '15px', paddingBottom: '15px', borderBottom: '1px solid #f0f0f0' }}>
+
+                                {/* Row 1: Title */}
+                                <div>
+                                    <h6 className="mb-0" style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#2d3748' }}>
                                         {dutyView === 'week' ? `Tuần: ${formatWeekRange()}` : `Tháng ${dutyWeek.getMonth() + 1}/${dutyWeek.getFullYear()}`}
                                     </h6>
-                                    <div className="btn-group btn-group-sm">
+                                </div>
+
+                                {/* Row 2: Controls */}
+                                <div className="d-flex align-items-center justify-content-between">
+                                    {/* View Toggles */}
+                                    <div className="btn-group btn-group-sm" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                                         <button
                                             className={`btn ${dutyView === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
                                             onClick={() => setDutyView('week')}
+                                            style={{ padding: '6px 20px' }}
                                         >
                                             Tuần
                                         </button>
                                         <button
                                             className={`btn ${dutyView === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
                                             onClick={() => setDutyView('month')}
+                                            style={{ padding: '6px 20px' }}
                                         >
                                             Tháng
                                         </button>
                                     </div>
-                                </div>
 
-                                <div>
-                                    <button className="btn btn-sm btn-outline-secondary mr-2" onClick={() => {
-                                        const newDate = new Date(dutyWeek);
-                                        if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() - 7);
-                                        else newDate.setMonth(dutyWeek.getMonth() - 1);
-                                        setDutyWeek(newDate);
-                                    }}>
-                                        <i className="fas fa-chevron-left"></i> {dutyView === 'week' ? 'Tuần trước' : 'Tháng trước'}
-                                    </button>
-                                    <button className="btn btn-sm btn-outline-primary mr-2" onClick={() => setDutyWeek(new Date())}>
-                                        Hôm nay
-                                    </button>
-                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => {
-                                        const newDate = new Date(dutyWeek);
-                                        if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() + 7);
-                                        else newDate.setMonth(dutyWeek.getMonth() + 1);
-                                        setDutyWeek(newDate);
-                                    }}>
-                                        {dutyView === 'week' ? 'Tuần sau' : 'Tháng sau'} <i className="fas fa-chevron-right"></i>
-                                    </button>
+                                    {/* Navigation Buttons */}
+                                    <div className="d-flex align-items-center" style={{ gap: '12px' }}>
+                                        <button
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => {
+                                                const newDate = new Date(dutyWeek);
+                                                if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() - 7);
+                                                else newDate.setMonth(dutyWeek.getMonth() - 1);
+                                                setDutyWeek(newDate);
+                                            }}
+                                            style={{ padding: '6px 14px' }}
+                                        >
+                                            <i className="fas fa-chevron-left"></i> {dutyView === 'week' ? 'Tuần trước' : 'Tháng trước'}
+                                        </button>
+                                        <button
+                                            className="btn btn-sm btn-outline-primary"
+                                            onClick={() => setDutyWeek(new Date())}
+                                            style={{ padding: '6px 16px', fontWeight: '500' }}
+                                        >
+                                            Hôm nay
+                                        </button>
+                                        <button
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => {
+                                                const newDate = new Date(dutyWeek);
+                                                if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() + 7);
+                                                else newDate.setMonth(dutyWeek.getMonth() + 1);
+                                                setDutyWeek(newDate);
+                                            }}
+                                            style={{ padding: '6px 14px' }}
+                                        >
+                                            {dutyView === 'week' ? 'Tuần sau' : 'Tháng sau'} <i className="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
