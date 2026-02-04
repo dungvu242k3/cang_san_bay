@@ -260,6 +260,26 @@
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
+.btn-view {
+    background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%);
+    color: #fff;
+}
+
+.btn-view:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 202, 240, 0.3);
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+    color: #000;
+}
+
+.btn-edit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -446,8 +466,13 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .text-center {

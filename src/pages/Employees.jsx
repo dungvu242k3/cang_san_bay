@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CreateEmployeeWizard from '../components/CreateEmployeeWizard'
 import EmployeeDetail from '../components/EmployeeDetail'
 import ProfileMenu from '../components/ProfileMenu'
@@ -10,6 +10,7 @@ import './Employees.css'
 function Employees() {
     const { user, checkAction } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
     const [loading, setLoading] = useState(true)
@@ -39,6 +40,19 @@ function Employees() {
             detailRef.current.scrollIntoView({ behavior: 'smooth' })
         }
     }, [selectedEmployee])
+
+    // Handle navigation from other pages (e.g. UserManagement)
+    useEffect(() => {
+        if (!loading && employees.length > 0 && location.state?.selectedEmployeeCode) {
+            const { selectedEmployeeCode, mode } = location.state
+            const emp = employees.find(e => e.employee_code === selectedEmployeeCode)
+            if (emp) {
+                setSelectedEmployee(emp)
+                // Clear state to avoid re-selecting on refresh/updates (optional but good practice)
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        }
+    }, [loading, employees, location.state, navigate, location.pathname])
 
     const loadEmployees = async () => {
         try {

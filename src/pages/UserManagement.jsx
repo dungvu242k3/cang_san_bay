@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import './UserManagement.css'
 
 function UserManagement() {
     const { user } = useAuth()
+    const navigate = useNavigate()
     const [employees, setEmployees] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -14,6 +16,9 @@ function UserManagement() {
     const [newPassword, setNewPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [showUserModal, setShowUserModal] = useState(false)
+    const [modalMode, setModalMode] = useState('view') // 'view' or 'edit'
+    const [editingRole, setEditingRole] = useState('')
 
     useEffect(() => {
         loadEmployees()
@@ -22,7 +27,9 @@ function UserManagement() {
     const loadEmployees = async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
+
+            // 1. Fetch Profiles
+            const { data: profiles, error: profileError } = await supabase
                 .from('employee_profiles')
                 .select(`
                     id,
@@ -34,17 +41,31 @@ function UserManagement() {
                     department,
                     team,
                     password,
-                    current_position,
-                    user_roles(role_level)
+                    current_position
                 `)
                 .order('employee_code')
 
-            if (error) throw error
+            if (profileError) throw profileError
 
-            // Check if employees have password set (has account)
-            const employeesWithAuth = (data || []).map(emp => {
-                // Infer role if not explicitly set in user_roles
-                let role = emp.user_roles?.[0]?.role_level
+            // 2. Fetch All Roles
+            const { data: allRoles, error: rolesError } = await supabase
+                .from('user_roles')
+                .select('employee_code, role_level')
+
+            if (rolesError) throw rolesError
+
+            // Create a lookup map for roles
+            const roleMap = {}
+            if (allRoles) {
+                allRoles.forEach(r => {
+                    roleMap[r.employee_code] = r.role_level
+                })
+            }
+
+            // 3. Merge Data
+            const employeesWithAuth = (profiles || []).map(emp => {
+                // Get role from Map (DB), otherwise infer
+                let role = roleMap[emp.employee_code]
 
                 if (!role) {
                     const pos = emp.current_position || ''
@@ -208,6 +229,82 @@ function UserManagement() {
         }
     }
 
+    const handleViewUser = (employee) => {
+        setSelectedEmployee(employee)
+        setModalMode('view')
+        setShowUserModal(true)
+    }
+
+    const handleEditUser = (employee) => {
+        setSelectedEmployee(employee)
+        setEditingRole(employee.role)
+        setModalMode('edit')
+        setShowUserModal(true)
+    }
+
+    const handleUpdateRole = async () => {
+        if (!selectedEmployee) return
+
+        try {
+            // Check if role entry exists
+            const { data: existingRole } = await supabase
+                .from('user_roles')
+                .select('id')
+                .eq('employee_code', selectedEmployee.employee_code)
+                .maybeSingle()
+
+            // Calculate scopes based on the NEW role
+            let deptScope = null
+            let teamScope = null
+
+            // Logic: Assign scopes based on the Employee's current Department/Team
+            if (editingRole === 'DEPT_HEAD') {
+                deptScope = selectedEmployee.department
+            } else if (editingRole === 'TEAM_LEADER') {
+                deptScope = selectedEmployee.department
+                teamScope = selectedEmployee.team
+            }
+
+            const roleData = {
+                employee_code: selectedEmployee.employee_code,
+                role_level: editingRole,
+                dept_scope: deptScope,
+                team_scope: teamScope,
+                updated_at: new Date().toISOString()
+            }
+
+            let error;
+
+            if (existingRole) {
+                // Update existing rule
+                const { error: updateError } = await supabase
+                    .from('user_roles')
+                    .update({
+                        role_level: editingRole,
+                        dept_scope: deptScope,
+                        team_scope: teamScope
+                    })
+                    .eq('employee_code', selectedEmployee.employee_code)
+                error = updateError
+            } else {
+                // Insert new rule
+                const { error: insertError } = await supabase
+                    .from('user_roles')
+                    .insert(roleData)
+                error = insertError
+            }
+
+            if (error) throw error
+
+            alert(`Đã cập nhật vai trò: ${getRoleLabel(editingRole)}\nPhạm vi: ${deptScope || 'Toàn bộ'} / ${teamScope || '-'}`)
+            setShowUserModal(false)
+            loadEmployees() // Refresh list to update UI
+        } catch (err) {
+            console.error('Error updating role:', err)
+            alert('Lỗi cập nhật vai trò: ' + err.message)
+        }
+    }
+
     const filteredEmployees = employees.filter(emp => {
         const matchesSearch =
             emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -304,9 +401,16 @@ function UserManagement() {
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={`role-badge role-${emp.role.toLowerCase()}`}>
-                                            {emp.current_position || getRoleLabel(emp.role)}
-                                        </span>
+                                        <div className="role-display">
+                                            <span className={`role-badge role-${emp.role.toLowerCase()}`}>
+                                                {getRoleLabel(emp.role)}
+                                            </span>
+                                            {emp.current_position && emp.current_position !== getRoleLabel(emp.role) && (
+                                                <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem', display: 'block' }}>
+                                                    {emp.current_position}
+                                                </small>
+                                            )}
+                                        </div>
                                     </td>
                                     <td>
                                         {emp.hasAccount ? (
@@ -337,6 +441,20 @@ function UserManagement() {
                                     </td>
                                     <td className="text-center">
                                         <div className="action-buttons">
+                                            <button
+                                                className="btn-action btn-view"
+                                                onClick={() => handleViewUser(emp)}
+                                                title="Xem thông tin tài khoản"
+                                            >
+                                                <i className="fas fa-eye"></i> Xem
+                                            </button>
+                                            <button
+                                                className="btn-action btn-edit"
+                                                onClick={() => handleEditUser(emp)}
+                                                title="Phân quyền / Sửa vai trò"
+                                            >
+                                                <i className="fas fa-edit"></i> Sửa
+                                            </button>
                                             {!emp.hasAccount ? (
                                                 <button
                                                     className="btn-action btn-create"
@@ -371,6 +489,121 @@ function UserManagement() {
                     </tbody>
                 </table>
             </div>
+
+            {/* User Details / Role Edit Modal */}
+            {showUserModal && selectedEmployee && (
+                <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>
+                                <i className={`fas ${modalMode === 'edit' ? 'fa-user-cog' : 'fa-id-badge'}`}></i>
+                                {modalMode === 'edit' ? 'Phân quyền tài khoản' : 'Thông tin tài khoản'}
+                            </h2>
+                            <button className="close-btn" onClick={() => setShowUserModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="user-info-card">
+                                <div className="info-row">
+                                    <span className="label">Nhân viên:</span>
+                                    <span className="value"><strong>{selectedEmployee.employee_code}</strong> - {selectedEmployee.last_name} {selectedEmployee.first_name}</span>
+                                </div>
+                                <div className="info-row">
+                                    <span className="label">Phòng ban:</span>
+                                    <span className="value">{selectedEmployee.department || '-'}</span>
+                                </div>
+                                <div className="info-row">
+                                    <span className="label">Vị trí:</span>
+                                    <span className="value">{selectedEmployee.current_position || '-'}</span>
+                                </div>
+                            </div>
+
+                            {modalMode === 'edit' ? (
+                                <div className="form-group" style={{ marginTop: '20px' }}>
+                                    <label>Vai trò hệ thống (Phân quyền)</label>
+                                    <select
+                                        className="form-input"
+                                        value={editingRole}
+                                        onChange={(e) => setEditingRole(e.target.value)}
+                                    >
+                                        <option value="SUPER_ADMIN">Siêu quản trị (Super Admin)</option>
+                                        <option value="BOARD_DIRECTOR">Ban giám đốc (Director)</option>
+                                        <option value="DEPT_HEAD">Trưởng phòng (Department Head)</option>
+                                        <option value="TEAM_LEADER">Đội trưởng (Team Leader)</option>
+                                        <option value="STAFF">Nhân viên (Staff)</option>
+                                    </select>
+                                    <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '8px' }}>
+                                        <i className="fas fa-info-circle"></i> Việc thay đổi vai trò sẽ ảnh hưởng đến quyền hạn truy cập dữ liệu của nhân viên này trên toàn hệ thống.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="account-details-view" style={{ marginTop: '20px' }}>
+                                    <div className="info-row">
+                                        <span className="label">Tên đăng nhập:</span>
+                                        <span className="value" style={{ fontWeight: 'bold', color: '#0d6efd', fontSize: '1.1rem' }}>
+                                            {selectedEmployee.employee_code}
+                                        </span>
+                                    </div>
+                                    <div className="info-row">
+                                        <span className="label">Vai trò hiện tại:</span>
+                                        <span className={`role-badge role-${selectedEmployee.role?.toLowerCase()}`}>
+                                            {getRoleLabel(selectedEmployee.role)}
+                                        </span>
+                                    </div>
+                                    <div className="info-row">
+                                        <span className="label">Trạng thái:</span>
+                                        {selectedEmployee.hasAccount ? (
+                                            <span className={`status-badge ${selectedEmployee.authInfo?.confirmed ? 'status-active' : 'status-pending'}`}>
+                                                Đã kích hoạt
+                                            </span>
+                                        ) : (
+                                            <span className="status-badge status-inactive">Chưa có tài khoản</span>
+                                        )}
+                                    </div>
+                                    <div className="info-row">
+                                        <span className="label">Mật khẩu:</span>
+                                        <span className="value" style={{ fontFamily: 'monospace', color: '#6c757d', letterSpacing: '2px' }}>
+                                            {selectedEmployee.hasAccount ? '••••••••' : 'Chưa thiết lập'}
+                                        </span>
+                                        {selectedEmployee.hasAccount && (
+                                            <span style={{ fontSize: '0.8rem', color: '#dc3545', marginLeft: '8px', fontStyle: 'italic' }}>
+                                                (Đã mã hóa)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="info-row">
+                                        <span className="label">Đăng nhập lần cuối:</span>
+                                        <span className="value last-login">
+                                            {selectedEmployee.hasAccount && selectedEmployee.authInfo?.lastSignIn
+                                                ? new Date(selectedEmployee.authInfo.lastSignIn).toLocaleString('vi-VN')
+                                                : 'Chưa bao giờ'}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowUserModal(false)}>
+                                Đóng
+                            </button>
+                            {modalMode === 'view' && selectedEmployee.hasAccount && (
+                                <button className="btn btn-reset" onClick={() => {
+                                    setShowUserModal(false);
+                                    handleResetPassword(selectedEmployee);
+                                }}>
+                                    <i className="fas fa-key"></i> Đặt lại mật khẩu
+                                </button>
+                            )}
+                            {modalMode === 'edit' && (
+                                <button className="btn btn-primary" onClick={handleUpdateRole}>
+                                    <i className="fas fa-save"></i> Lưu thay đổi
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Password Reset Modal */}
             {showPasswordModal && selectedEmployee && (

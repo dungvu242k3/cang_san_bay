@@ -5,6 +5,51 @@
 }
 
 /* Customize React Big Calendar */
+/* Fix Agenda View Table Alignment */
+.rbc-agenda-view table.rbc-agenda-table {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.rbc-agenda-view table.rbc-agenda-table thead>tr>th {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #dde2e6;
+    text-align: left !important;
+    /* Force Left Align */
+    font-weight: 700;
+    color: #495057;
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody>tr>td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-top: 1px solid #e9ecef;
+    text-align: left !important;
+    /* Force Left Align */
+}
+
+/* Specific column widths for better layout */
+.rbc-agenda-date-cell {
+    width: 15%;
+    white-space: nowrap;
+    font-weight: 600;
+    vertical-align: top;
+    /* Ensure alignment if row-spanned */
+}
+
+.rbc-agenda-time-cell {
+    width: 15%;
+    white-space: nowrap;
+}
+
+.rbc-agenda-event-cell {
+    width: 70%;
+}
+
 .rbc-calendar {
     font-family: 'Inter', sans-serif;
     border: none;

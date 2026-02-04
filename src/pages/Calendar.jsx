@@ -26,6 +26,73 @@ const messages = {
     showMore: total => `+ Xem thêm (${total})`
 };
 
+// Custom Agenda View to force date repetition
+const CustomAgenda = ({ events, date }) => {
+    // 1. Filter events for current month
+    const startOfMonth = moment(date).startOf('month');
+    const endOfMonth = moment(date).endOf('month');
+
+    const filteredEvents = events.filter(event =>
+        moment(event.start).isBetween(startOfMonth, endOfMonth, null, '[]')
+    );
+
+    // 2. Sort events by date
+    const sortedEvents = [...filteredEvents].sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    if (sortedEvents.length === 0) {
+        return <div className="p-3 text-center text-muted">Không có sự kiện nào trong tháng này.</div>;
+    }
+
+    return (
+        <div className="rbc-agenda-view">
+            <table className="rbc-agenda-table">
+                <thead>
+                    <tr>
+                        <th className="rbc-header">Ngày</th>
+                        <th className="rbc-header">Thời gian</th>
+                        <th className="rbc-header">Sự kiện</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {sortedEvents.map((event, idx) => (
+                        <tr key={idx} style={{
+                            backgroundColor: event.color,
+                            color: event.textColor || '#fff',
+                            borderBottom: '1px solid rgba(255,255,255,0.2)'
+                        }}>
+                            <td className="rbc-agenda-date-cell" style={{ color: 'inherit', fontWeight: 'bold' }}>
+                                {moment(event.start).format('DD/MM/YYYY')}
+                            </td>
+                            <td className="rbc-agenda-time-cell" style={{ color: 'inherit' }}>
+                                {event.allDay ? 'Cả ngày' : moment(event.start).format('HH:mm')}
+                            </td>
+                            <td className="rbc-agenda-event-cell" style={{ color: 'inherit', fontWeight: '500' }}>
+                                {event.title}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+CustomAgenda.range = (date) => {
+    const start = moment(date).startOf('month').toDate();
+    const end = moment(date).endOf('month').toDate();
+    return { start, end }; // Show full month by default in Agenda
+};
+
+CustomAgenda.navigate = (date, action) => {
+    if (action === 'PREV') return moment(date).add(-1, 'month').toDate();
+    if (action === 'NEXT') return moment(date).add(1, 'month').toDate();
+    return date;
+};
+
+CustomAgenda.title = (date) => {
+    return `Tháng ${moment(date).format('MM/YYYY')}`;
+};
+
 export default function CalendarPage() {
     const { user } = useAuth();
     const [events, setEvents] = useState([]);
@@ -280,6 +347,12 @@ export default function CalendarPage() {
                         messages={messages}
                         view={view}
                         onView={setView}
+                        views={{
+                            month: true,
+                            week: true,
+                            day: true,
+                            agenda: CustomAgenda
+                        }}
                         date={date}
                         onNavigate={setDate}
                         selectable
@@ -287,6 +360,18 @@ export default function CalendarPage() {
                         onSelectEvent={handleSelectEvent}
                         eventPropGetter={eventStyleGetter}
                         popup
+                        formats={{
+                            monthHeaderFormat: 'MM/YYYY',
+                            dayHeaderFormat: 'DD/MM',
+                            dayRangeHeaderFormat: ({ start, end }, culture, local) =>
+                                local.format(start, 'DD/MM/YYYY', culture) + ' - ' +
+                                local.format(end, 'DD/MM/YYYY', culture),
+                            agendaDateFormat: 'DD/MM/YYYY',
+                            agendaTimeFormat: 'HH:mm',
+                            agendaHeaderFormat: ({ start, end }, culture, local) =>
+                                local.format(start, 'DD/MM/YYYY', culture) + ' - ' +
+                                local.format(end, 'DD/MM/YYYY', culture)
+                        }}
                     />
                 </div>
             </div>
