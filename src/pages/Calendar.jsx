@@ -26,6 +26,229 @@ const messages = {
     showMore: total => `+ Xem thêm (${total})`
 };
 
+const abbreviateName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length <= 1) return fullName;
+
+    // Abbreviate all but the last part
+    const abbreviated = parts.slice(0, -1).map(part => `${part.charAt(0).toUpperCase()}.`);
+    const lastName = parts[parts.length - 1];
+
+    return [...abbreviated, lastName].join('');
+};
+
+const MultiEmployeeSelector = ({
+    label,
+    selectedCodes = [],
+    onChange,
+    employees = [],
+    placeholder = "Chọn nhân viên..."
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const containerRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleEmployee = (code) => {
+        if (selectedCodes.includes(code)) {
+            onChange(selectedCodes.filter(c => c !== code));
+        } else {
+            onChange([...selectedCodes, code]);
+        }
+    };
+
+    const filtered = employees.filter(emp => {
+        const term = searchTerm.toLowerCase();
+        const name = `${emp.last_name || ''} ${emp.first_name || ''}`.trim().toLowerCase();
+        const code = (emp.employee_code || '').toLowerCase();
+        const dept = (emp.department || '').toLowerCase();
+        return name.includes(term) || code.includes(term) || dept.includes(term);
+    });
+
+    const selectedEmps = selectedCodes.map(code =>
+        employees.find(e => e.employee_code === code)
+    ).filter(Boolean);
+
+    // Handle missing employees (preserved codes that aren't in list)
+    const missingCodes = selectedCodes.filter(code => !employees.find(e => e.employee_code === code));
+
+    return (
+        <div className="mb-3" ref={containerRef}>
+            {label && <label className="form-label-premium">{label}</label>}
+            <div
+                className="employee-select-wrapper"
+                style={{ position: 'relative' }}
+            >
+                <div
+                    className="employee-select-input"
+                    onClick={() => setIsOpen(!isOpen)}
+                    style={{
+                        padding: '10px 12px',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        background: '#fdfdfd',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        minHeight: '42px',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    {selectedEmps.length > 0 || missingCodes.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+                            {selectedEmps.map(emp => (
+                                <span key={emp.employee_code} style={{
+                                    background: '#e3f2fd',
+                                    color: '#1976d2',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    border: '1px solid #bbdefb'
+                                }}>
+                                    {abbreviateName(`${emp.last_name || ''} ${emp.first_name || ''}`)}
+                                    <i className="fas fa-times ml-1"
+                                        style={{ cursor: 'pointer', opacity: 0.6 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleEmployee(emp.employee_code);
+                                        }}
+                                    ></i>
+                                </span>
+                            ))}
+                            {missingCodes.map(code => (
+                                <span key={code} style={{
+                                    background: '#f1f1f1',
+                                    color: '#666',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px'
+                                }}>
+                                    {code}
+                                    <i className="fas fa-times ml-1"
+                                        style={{ cursor: 'pointer', opacity: 0.6 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleEmployee(code);
+                                        }}
+                                    ></i>
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <span style={{ color: '#a0aec0', fontSize: '0.9rem' }}>{placeholder}</span>
+                    )}
+                    <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ marginLeft: 'auto', color: '#a0aec0', fontSize: '0.8rem' }}></i>
+                </div>
+                {isOpen && (
+                    <div className="employee-dropdown" style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        marginTop: '4px',
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                        zIndex: 1000,
+                        maxHeight: '250px',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    fontSize: '0.85rem'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                        </div>
+                        <div style={{ overflowY: 'auto', maxHeight: '200px' }}>
+                            {filtered.length > 0 ? (
+                                filtered.map(emp => {
+                                    const isSelected = selectedCodes.includes(emp.employee_code);
+                                    return (
+                                        <div
+                                            key={emp.employee_code}
+                                            onClick={() => toggleEmployee(emp.employee_code)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                background: isSelected ? '#f0f9ff' : 'white',
+                                                transition: 'background 0.2s',
+                                                borderLeft: isSelected ? '3px solid #1976d2' : '3px solid transparent'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) e.currentTarget.style.background = '#f7fafc';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) e.currentTarget.style.background = 'white';
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '28px', height: '28px', borderRadius: '50%',
+                                                background: '#e2e8f0', display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', fontSize: '12px', fontWeight: '600',
+                                                color: '#4a5568', overflow: 'hidden'
+                                            }}>
+                                                {emp.avatar_url ? (
+                                                    <img src={emp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    (emp.last_name?.[0] || '') + (emp.first_name?.[0] || '')
+                                                )}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#2d3748' }}>
+                                                    {emp.last_name} {emp.first_name}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: '#718096' }}>
+                                                    {emp.current_position || emp.department || emp.employee_code}
+                                                </div>
+                                            </div>
+                                            {isSelected && <i className="fas fa-check text-primary"></i>}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div style={{ padding: '12px', textAlign: 'center', color: '#a0aec0', fontSize: '0.9rem' }}>
+                                    Không tìm thấy kết quả
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // Custom Agenda View to force date repetition
 const CustomAgenda = ({ events, date }) => {
     // 1. Filter events for current month
@@ -132,38 +355,18 @@ export default function CalendarPage() {
     const [dutyWeek, setDutyWeek] = useState(new Date());
     const [dutyFormData, setDutyFormData] = useState({
         duty_date: '',
-        director_on_duty: '',
-        port_duty_officer: '',
-        office_duty: '',
-        finance_planning_duty: '',
-        operations_duty: '',
-        technical_duty: '',
-        atc_duty: ''
+        director_on_duty: [],
+        port_duty_officer: [],
+        office_duty: [],
+        finance_planning_duty: [],
+        operations_duty: [],
+        technical_duty: [],
+        atc_duty: []
     });
-    const [searchTerms, setSearchTerms] = useState({
-        director_on_duty: '',
-        port_duty_officer: '',
-        office_duty: '',
-        finance_planning_duty: '',
-        operations_duty: '',
-        technical_duty: '',
-        atc_duty: ''
-    });
-    const [openDropdowns, setOpenDropdowns] = useState({});
-    const dropdownRefs = useRef({});
-
-    // Close dropdowns when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            Object.keys(openDropdowns).forEach(field => {
-                if (openDropdowns[field] && dropdownRefs.current[field] && !dropdownRefs.current[field].contains(event.target)) {
-                    setOpenDropdowns(prev => ({ ...prev, [field]: false }))
-                }
-            })
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [openDropdowns])
+    // Removed searchTerms state as it is now handled internally by MultiEmployeeSelector
+    const [dutyView, setDutyView] = useState('week');
+    const [contactModalData, setContactModalData] = useState(null);
+    // Removed openDropdowns and dropdownRefs as they are no longer used
 
     useEffect(() => {
         loadMyProfile();
@@ -538,7 +741,7 @@ export default function CalendarPage() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, first_name, last_name, avatar_url, department')
+                .select('employee_code, first_name, last_name, avatar_url, department, current_position, phone')
                 .order('department')
                 .order('last_name')
                 .order('first_name')
@@ -552,20 +755,31 @@ export default function CalendarPage() {
 
     const loadDutySchedules = async () => {
         try {
-            // Get start and end of week (Monday to Sunday)
-            const startOfWeek = new Date(dutyWeek)
-            startOfWeek.setDate(dutyWeek.getDate() - dutyWeek.getDay() + 1) // Monday
-            startOfWeek.setHours(0, 0, 0, 0)
+            let startRange, endRange;
 
-            const endOfWeek = new Date(startOfWeek)
-            endOfWeek.setDate(startOfWeek.getDate() + 6) // Sunday
-            endOfWeek.setHours(23, 59, 59, 999)
+            if (dutyView === 'week') {
+                // Get start and end of week (Monday to Sunday)
+                const startOfWeek = new Date(dutyWeek)
+                startOfWeek.setDate(dutyWeek.getDate() - dutyWeek.getDay() + 1) // Monday
+                startOfWeek.setHours(0, 0, 0, 0)
+
+                const endOfWeek = new Date(startOfWeek)
+                endOfWeek.setDate(startOfWeek.getDate() + 6) // Sunday
+                endOfWeek.setHours(23, 59, 59, 999)
+
+                startRange = startOfWeek;
+                endRange = endOfWeek;
+            } else {
+                // Get start and end of MONTH
+                startRange = new Date(dutyWeek.getFullYear(), dutyWeek.getMonth(), 1);
+                endRange = new Date(dutyWeek.getFullYear(), dutyWeek.getMonth() + 1, 0, 23, 59, 59, 999);
+            }
 
             const { data, error } = await supabase
                 .from('duty_schedules')
                 .select('*')
-                .gte('duty_date', startOfWeek.toISOString().split('T')[0])
-                .lte('duty_date', endOfWeek.toISOString().split('T')[0])
+                .gte('duty_date', startRange.toISOString().split('T')[0])
+                .lte('duty_date', endRange.toISOString().split('T')[0])
                 .order('duty_date')
 
             if (error) throw error
@@ -574,6 +788,85 @@ export default function CalendarPage() {
             console.error('Error loading duty schedules:', error)
         }
     }
+
+    const getMonthDays = () => {
+        const year = dutyWeek.getFullYear();
+        const month = dutyWeek.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        // 0 = Sunday, 1 = Monday. We want start on Monday.
+        let startDay = firstDay.getDay();
+        if (startDay === 0) startDay = 7; // Convert Sun(0) to 7 for easier math if Mon is 1
+
+        // Days from prev month to fill row
+        const days = [];
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+        // Previous month filler
+        for (let i = startDay - 1; i > 0; i--) {
+            days.push({
+                date: new Date(year, month - 1, prevMonthLastDay - i + 1).toISOString().split('T')[0],
+                day: prevMonthLastDay - i + 1,
+                isCurrentMonth: false,
+                isToday: false
+            });
+        }
+
+        // Current month days
+        const todayStr = new Date().toISOString().split('T')[0];
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+            const dateStr = new Date(year, month, i).toISOString().split('T')[0];
+            days.push({
+                date: dateStr,
+                day: i,
+                isCurrentMonth: true,
+                isToday: dateStr === todayStr,
+                schedule: dutySchedules.find(s => s.duty_date === dateStr)
+            });
+        }
+
+        // Next month filler
+        const remainingCells = 42 - days.length; // 6 rows * 7 days
+        for (let i = 1; i <= remainingCells; i++) {
+            days.push({
+                date: new Date(year, month + 1, i).toISOString().split('T')[0],
+                day: i,
+                isCurrentMonth: false,
+                isToday: false
+            });
+        }
+
+        return days;
+    }
+
+    const handleDutyDateClick = (dateStr, schedule) => {
+        if (schedule) {
+            const split = (str) => str ? str.split(',').map(s => s.trim()).filter(Boolean) : [];
+            setDutyFormData({
+                duty_date: schedule.duty_date,
+                director_on_duty: split(schedule.director_on_duty),
+                port_duty_officer: split(schedule.port_duty_officer),
+                office_duty: split(schedule.office_duty),
+                finance_planning_duty: split(schedule.finance_planning_duty),
+                operations_duty: split(schedule.operations_duty),
+                technical_duty: split(schedule.technical_duty),
+                atc_duty: split(schedule.atc_duty)
+            });
+        } else {
+            setDutyFormData({
+                duty_date: dateStr,
+                director_on_duty: [],
+                port_duty_officer: [],
+                office_duty: [],
+                finance_planning_duty: [],
+                operations_duty: [],
+                technical_duty: [],
+                atc_duty: []
+            });
+        }
+        setShowDutyModal(true);
+    };
 
     const getWeekDays = () => {
         const startOfWeek = new Date(dutyWeek)
@@ -607,6 +900,46 @@ export default function CalendarPage() {
         return schedule[field] || ''
     }
 
+    const renderDutyEmployees = (codeString) => {
+        if (!codeString) return '-';
+        const codes = codeString.split(',').map(s => s.trim()).filter(Boolean);
+        if (codes.length === 0) return '-';
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {codes.map(code => {
+                    const emp = dutyEmployees.find(e => e.employee_code === code);
+                    const name = emp ? abbreviateName(`${emp.last_name || ''} ${emp.first_name || ''}`) : code;
+                    const phone = emp?.phone;
+
+                    return (
+                        <div key={code} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span>{name}</span>
+                            {phone && (
+                                <span
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setContactModalData({
+                                            name: emp ? `${emp.last_name || ''} ${emp.first_name || ''}`.trim() : code,
+                                            phone: phone,
+                                            avatar_url: emp?.avatar_url,
+                                            department: emp?.department,
+                                            position: emp?.current_position
+                                        });
+                                    }}
+                                    title={`Xem liên hệ: ${phone}`}
+                                    style={{ marginLeft: '6px', color: '#28a745', cursor: 'pointer' }}
+                                >
+                                    <i className="fas fa-phone-alt" style={{ fontSize: '0.9em' }}></i>
+                                </span>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
     const handleWeekChange = (direction) => {
         const newDate = new Date(dutyWeek)
         newDate.setDate(dutyWeek.getDate() + (direction === 'next' ? 7 : -7))
@@ -631,13 +964,13 @@ export default function CalendarPage() {
             const scheduleData = {
                 duty_date: dutyFormData.duty_date,
                 day_of_week: dayOfWeek,
-                director_on_duty: dutyFormData.director_on_duty || null,
-                port_duty_officer: dutyFormData.port_duty_officer || null,
-                office_duty: dutyFormData.office_duty || null,
-                finance_planning_duty: dutyFormData.finance_planning_duty || null,
-                operations_duty: dutyFormData.operations_duty || null,
-                technical_duty: dutyFormData.technical_duty || null,
-                atc_duty: dutyFormData.atc_duty || null,
+                director_on_duty: dutyFormData.director_on_duty.join(', '),
+                port_duty_officer: dutyFormData.port_duty_officer.join(', '),
+                office_duty: dutyFormData.office_duty.join(', '),
+                finance_planning_duty: dutyFormData.finance_planning_duty.join(', '),
+                operations_duty: dutyFormData.operations_duty.join(', '),
+                technical_duty: dutyFormData.technical_duty.join(', '),
+                atc_duty: dutyFormData.atc_duty.join(', '),
                 created_by: myProfile?.employee_code || user?.email || 'ADMIN'
             }
 
@@ -646,7 +979,7 @@ export default function CalendarPage() {
                 .from('duty_schedules')
                 .select('id')
                 .eq('duty_date', dutyFormData.duty_date)
-                .single()
+                .maybeSingle()
 
             if (existing) {
                 const { error } = await supabase
@@ -664,13 +997,13 @@ export default function CalendarPage() {
             setShowDutyModal(false)
             setDutyFormData({
                 duty_date: '',
-                director_on_duty: '',
-                port_duty_officer: '',
-                office_duty: '',
-                finance_planning_duty: '',
-                operations_duty: '',
-                technical_duty: '',
-                atc_duty: ''
+                director_on_duty: [],
+                port_duty_officer: [],
+                office_duty: [],
+                finance_planning_duty: [],
+                operations_duty: [],
+                technical_duty: [],
+                atc_duty: []
             })
             loadDutySchedules()
             alert('Đã lưu lịch trực thành công!')
@@ -695,30 +1028,46 @@ export default function CalendarPage() {
         return emp?.avatar_url || null
     }
 
-    const filteredEmployees = (field) => {
-        const searchTerm = searchTerms[field]?.toLowerCase() || ''
+    const getEligibleEmployees = (field) => {
         return dutyEmployees.filter(emp => {
-            const name = `${emp.last_name || ''} ${emp.first_name || ''}`.trim().toLowerCase()
-            const code = (emp.employee_code || '').toLowerCase()
             const dept = (emp.department || '').toLowerCase()
-            return name.includes(searchTerm) || code.includes(searchTerm) || dept.includes(searchTerm)
+            const pos = (emp.current_position || '').toLowerCase()
+
+            // Filter logic based on field
+            if (field === 'director_on_duty') {
+                const isDirectorDept = dept.includes('ban giám đốc');
+                const isDirectorTitle = pos.includes('giám đốc') && !pos.includes('thư ký');
+                if (!isDirectorDept && !isDirectorTitle) return false;
+            }
+            else if (field === 'office_duty') {
+                if (!dept.includes('văn phòng')) return false;
+            }
+            else if (field === 'finance_planning_duty') {
+                if (!dept.includes('tài chính') && !dept.includes('kế hoạch') && !dept.includes('tc-kh')) return false;
+            }
+            else if (field === 'operations_duty') {
+                if (!dept.includes('phục vụ mặt đất') && !dept.includes('pvmd')) return false;
+            }
+            else if (field === 'technical_duty') {
+                if (!dept.includes('kỹ thuật') && !dept.includes('hạ tầng') && !dept.includes('ktht')) return false;
+            }
+            else if (field === 'atc_duty') {
+                if (!dept.includes('điều hành') && !dept.includes('đhsb')) return false;
+            }
+            else if (field === 'port_duty_officer') {
+                // Trực ban cảng thường là lãnh đạo các phòng vận hành hoặc ban giám đốc
+                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc'];
+                const hasRelevantDept = relevantDepts.some(d => dept.includes(d));
+                const isDutyRole = pos.includes('trực ban') || pos.includes('đội trưởng');
+
+                if (!hasRelevantDept && !isDutyRole) return false;
+            }
+
+            return true;
         })
     }
 
-    const toggleDropdown = (field) => {
-        setOpenDropdowns(prev => ({
-            ...prev,
-            [field]: !prev[field]
-        }))
-    }
-
-    const handleEmployeeSelect = (field, employeeCode) => {
-        setDutyFormData(prev => ({
-            ...prev,
-            [field]: prev[field] === employeeCode ? '' : employeeCode
-        }))
-        setOpenDropdowns(prev => ({ ...prev, [field]: false }))
-    }
+    // Removed toggleDropdown and handleEmployeeSelect as they are replaced by MultiEmployeeSelector logic
 
     // Participants selector for events (multi-select)
     const filteredParticipants = () => {
@@ -1172,13 +1521,13 @@ export default function CalendarPage() {
                                 onClick={() => {
                                     setDutyFormData({
                                         duty_date: '',
-                                        director_on_duty: '',
-                                        port_duty_officer: '',
-                                        office_duty: '',
-                                        finance_planning_duty: '',
-                                        operations_duty: '',
-                                        technical_duty: '',
-                                        atc_duty: ''
+                                        director_on_duty: [],
+                                        port_duty_officer: [],
+                                        office_duty: [],
+                                        finance_planning_duty: [],
+                                        operations_duty: [],
+                                        technical_duty: [],
+                                        atc_duty: []
                                     });
                                     setShowDutyModal(true);
                                 }}
@@ -1249,305 +1598,273 @@ export default function CalendarPage() {
                         />
                     ) : (
                         <div className="duty-schedule-calendar-view">
+
                             <div className="d-flex justify-content-between align-items-center mb-3">
-                                <h6 className="mb-0">Tuần: {formatWeekRange()}</h6>
+                                <div className="d-flex align-items-center gap-3">
+                                    <h6 className="mb-0">
+                                        {dutyView === 'week' ? `Tuần: ${formatWeekRange()}` : `Tháng ${dutyWeek.getMonth() + 1}/${dutyWeek.getFullYear()}`}
+                                    </h6>
+                                    <div className="btn-group btn-group-sm">
+                                        <button
+                                            className={`btn ${dutyView === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                            onClick={() => setDutyView('week')}
+                                        >
+                                            Tuần
+                                        </button>
+                                        <button
+                                            className={`btn ${dutyView === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                            onClick={() => setDutyView('month')}
+                                        >
+                                            Tháng
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <button className="btn btn-sm btn-outline-secondary mr-2" onClick={() => handleWeekChange('prev')}>
-                                        <i className="fas fa-chevron-left"></i> Tuần trước
+                                    <button className="btn btn-sm btn-outline-secondary mr-2" onClick={() => {
+                                        const newDate = new Date(dutyWeek);
+                                        if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() - 7);
+                                        else newDate.setMonth(dutyWeek.getMonth() - 1);
+                                        setDutyWeek(newDate);
+                                    }}>
+                                        <i className="fas fa-chevron-left"></i> {dutyView === 'week' ? 'Tuần trước' : 'Tháng trước'}
                                     </button>
                                     <button className="btn btn-sm btn-outline-primary mr-2" onClick={() => setDutyWeek(new Date())}>
-                                        Tuần này
+                                        Hôm nay
                                     </button>
-                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => handleWeekChange('next')}>
-                                        Tuần sau <i className="fas fa-chevron-right"></i>
+                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => {
+                                        const newDate = new Date(dutyWeek);
+                                        if (dutyView === 'week') newDate.setDate(dutyWeek.getDate() + 7);
+                                        else newDate.setMonth(dutyWeek.getMonth() + 1);
+                                        setDutyWeek(newDate);
+                                    }}>
+                                        {dutyView === 'week' ? 'Tuần sau' : 'Tháng sau'} <i className="fas fa-chevron-right"></i>
                                     </button>
                                 </div>
                             </div>
-                            <div className="table-responsive">
-                                <table className="table table-bordered table-hover" style={{ fontSize: '0.9rem' }}>
-                                    <thead className="thead-light">
-                                        <tr>
-                                            <th style={{ minWidth: '150px', position: 'sticky', left: 0, background: '#f8f9fa', zIndex: 10 }}>Phòng ban / Vị trí</th>
-                                            {getWeekDays().map((day, idx) => (
-                                                <th key={idx} style={{ textAlign: 'center', minWidth: '120px' }}>
-                                                    <div style={{ fontWeight: '600', color: '#1976d2' }}>{day.dayName}</div>
-                                                    <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
-                                                        {day.day}/{day.month}
+
+                            {dutyView === 'week' ? (
+                                // WEEK VIEW
+                                <div className="table-responsive">
+                                    <table className="table table-bordered table-hover" style={{ fontSize: '0.9rem' }}>
+                                        <thead className="thead-light">
+                                            <tr>
+                                                <th style={{ minWidth: '150px', position: 'sticky', left: 0, background: '#f8f9fa', zIndex: 10 }}>Phòng ban / Vị trí</th>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <th key={idx} style={{ textAlign: 'center', minWidth: '120px' }}>
+                                                        <div style={{ fontWeight: '600', color: '#1976d2' }}>{day.dayName}</div>
+                                                        <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
+                                                            {day.day}/{day.month}
+                                                        </div>
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>Trực Giám đốc</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'director_on_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>Trực Ban Cảng (đ.c)</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'port_duty_officer'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>VĂN PHÒNG</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'office_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG TC-KH</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'finance_planning_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG PVMD</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'operations_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>P. KTHT</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'technical_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            <tr>
+                                                <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG ĐHSB</td>
+                                                {getWeekDays().map((day, idx) => (
+                                                    <td
+                                                        key={idx}
+                                                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDutyDateClick(day.date, day.schedule);
+                                                        }}
+                                                    >
+                                                        {renderDutyEmployees(getDutyFieldValue(day.schedule, 'atc_duty'))}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                // MONTH VIEW
+                                <div className="month-view-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(7, 1fr)',
+                                    gap: '1px',
+                                    background: '#e2e8f0',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Headers */}
+                                    {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(d => (
+                                        <div key={d} style={{
+                                            background: '#f8f9fa',
+                                            padding: '10px',
+                                            textAlign: 'center',
+                                            fontWeight: '600',
+                                            color: '#4a5568',
+                                            fontSize: '0.85rem'
+                                        }}>
+                                            {d}
+                                        </div>
+                                    ))}
+
+                                    {/* Days */}
+                                    {getMonthDays().map((day, idx) => {
+                                        const hasDuty = !!day.schedule;
+                                        const filledPositions = day.schedule ? [
+                                            day.schedule.director_on_duty,
+                                            day.schedule.port_duty_officer,
+                                            day.schedule.office_duty,
+                                            day.schedule.finance_planning_duty,
+                                            day.schedule.operations_duty,
+                                            day.schedule.technical_duty,
+                                            day.schedule.atc_duty
+                                        ].filter(Boolean).length : 0;
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                onClick={() => {
+                                                    if (day.isCurrentMonth || true) { // Allow clicking any visible date
+                                                        handleDutyDateClick(day.date, day.schedule);
+                                                    }
+                                                }}
+                                                style={{
+                                                    background: day.isToday ? '#e3f2fd' : (day.isCurrentMonth ? 'white' : '#f9fafb'),
+                                                    minHeight: '120px',
+                                                    padding: '8px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '4px',
+                                                    color: day.isCurrentMonth ? 'inherit' : '#a0aec0',
+                                                    transition: 'background 0.2s',
+                                                    border: day.isToday ? '1px solid #1976d2' : 'none'
+                                                }}
+                                                className="month-day-cell"
+                                            >
+                                                <div style={{
+                                                    fontWeight: day.isToday ? 'bold' : 'normal',
+                                                    color: day.isToday ? '#1976d2' : 'inherit',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    {day.day}
+                                                </div>
+
+                                                {hasDuty ? (
+                                                    <>
+                                                        {day.schedule.director_on_duty && (
+                                                            <div style={{ fontSize: '11px', background: '#eef2ff', color: '#4f46e5', padding: '2px 4px', borderRadius: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                GD: {renderDutyEmployees(day.schedule.director_on_duty)}
+                                                            </div>
+                                                        )}
+                                                        {day.schedule.port_duty_officer && (
+                                                            <div style={{ fontSize: '11px', background: '#f0fdf4', color: '#16a34a', padding: '2px 4px', borderRadius: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                TB: {renderDutyEmployees(day.schedule.port_duty_officer)}
+                                                            </div>
+                                                        )}
+                                                        {filledPositions > 2 && (
+                                                            <div style={{ fontSize: '11px', color: '#64748b', paddingLeft: '4px' }}>
+                                                                +{filledPositions - 2} vị trí khác
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : day.isCurrentMonth && (
+                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0 }} className="hover-show-add">
+                                                        <i className="fas fa-plus-circle text-muted"></i>
                                                     </div>
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>Trực Giám đốc</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'director_on_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>Trực Ban Cảng (đ.c)</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'port_duty_officer'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>VĂN PHÒNG</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'office_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG TC-KH</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'finance_planning_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG PVMD</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'operations_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>P. KTHT</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'technical_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                        <tr>
-                                            <td style={{ position: 'sticky', left: 0, background: 'white', fontWeight: '600', zIndex: 5 }}>PHÒNG ĐHSB</td>
-                                            {getWeekDays().map((day, idx) => (
-                                                <td
-                                                    key={idx}
-                                                    style={{ textAlign: 'center', cursor: 'pointer' }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (day.schedule) {
-                                                            setDutyFormData({
-                                                                duty_date: day.schedule.duty_date,
-                                                                director_on_duty: day.schedule.director_on_duty || '',
-                                                                port_duty_officer: day.schedule.port_duty_officer || '',
-                                                                office_duty: day.schedule.office_duty || '',
-                                                                finance_planning_duty: day.schedule.finance_planning_duty || '',
-                                                                operations_duty: day.schedule.operations_duty || '',
-                                                                technical_duty: day.schedule.technical_duty || '',
-                                                                atc_duty: day.schedule.atc_duty || ''
-                                                            });
-                                                        } else {
-                                                            setDutyFormData({
-                                                                duty_date: day.date,
-                                                                director_on_duty: '',
-                                                                port_duty_officer: '',
-                                                                office_duty: '',
-                                                                finance_planning_duty: '',
-                                                                operations_duty: '',
-                                                                technical_duty: '',
-                                                                atc_duty: ''
-                                                            });
-                                                        }
-                                                        setShowDutyModal(true);
-                                                    }}
-                                                >
-                                                    {getEmployeeName(getDutyFieldValue(day.schedule, 'atc_duty'))}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1555,307 +1872,414 @@ export default function CalendarPage() {
             </div>
 
             {/* Premium Detail Modal */}
-            {showDetailModal && selectedEvent && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="modal-content-premium" style={{ width: '500px' }}>
-                        <div className="modal-header-premium">
-                            <div className="modal-title">
-                                <i className="fas fa-info-circle"></i>
-                                <span>Chi tiết sự kiện</span>
+            {
+                showDetailModal && selectedEvent && (
+                    <div className="modal-overlay" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="modal-content-premium" style={{ width: '500px' }}>
+                            <div className="modal-header-premium">
+                                <div className="modal-title">
+                                    <i className="fas fa-info-circle"></i>
+                                    <span>Chi tiết sự kiện</span>
+                                </div>
+                                <button className="btn-close-modal" onClick={() => setShowDetailModal(false)}>
+                                    <i className="fas fa-times"></i>
+                                </button>
                             </div>
-                            <button className="btn-close-modal" onClick={() => setShowDetailModal(false)}>
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div className="modal-body-premium">
-                            <h4 className="text-primary font-weight-bold mb-3">{selectedEvent.title}</h4>
+                            <div className="modal-body-premium">
+                                <h4 className="text-primary font-weight-bold mb-3">{selectedEvent.title}</h4>
 
-                            <div className="mb-3 d-flex align-items-center text-muted">
-                                <i className="far fa-clock mr-2" style={{ width: '20px' }}></i>
-                                <span>
-                                    {moment(selectedEvent.start).format('HH:mm DD/MM')} - {moment(selectedEvent.end).format('HH:mm DD/MM/YYYY')}
-                                </span>
-                            </div>
-
-                            {selectedEvent.resource?.type === 'EVENT' && (
-                                <>
-                                    <div className="mb-3 d-flex align-items-center text-muted">
-                                        <i className="fas fa-map-marker-alt mr-2" style={{ width: '20px' }}></i>
-                                        <span>{selectedEvent.resource.data.location || 'Chưa cập nhật địa điểm'}</span>
-                                    </div>
-                                    <div className="mb-3 d-flex align-items-center text-muted">
-                                        <i className="fas fa-users mr-2" style={{ width: '20px' }}></i>
-                                        <span>
-                                            {selectedEvent.resource.data.participants
-                                                ? selectedEvent.resource.data.participants.split(',').map(code => {
-                                                    const codeTrimmed = code.trim();
-                                                    const emp = eventEmployees.find(e => e.employee_code === codeTrimmed);
-                                                    return emp
-                                                        ? `${emp.last_name || ''} ${emp.first_name || ''}`.trim()
-                                                        : codeTrimmed;
-                                                }).join(', ')
-                                                : 'Chưa cập nhật thành phần tham dự'
-                                            }
-                                        </span>
-                                    </div>
-                                    <div className="mb-3 d-flex align-items-center text-muted">
-                                        <i className="fas fa-align-left mr-2" style={{ width: '20px' }}></i>
-                                        <span>{selectedEvent.resource.data.description || 'Không có mô tả'}</span>
-                                    </div>
-                                    <div className="mb-3">
-                                        <span className={`badge badge-${selectedEvent.resource.data.scope === 'COMPANY' ? 'danger' : 'info'}`}>
-                                            {selectedEvent.resource.data.scope}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
-
-                            {selectedEvent.resource?.type === 'TASK' && (
-                                <div className="alert alert-light border">
-                                    <small className="d-block text-muted font-weight-bold mb-1">TRẠNG THÁI CÔNG VIỆC</small>
-                                    <span className={`badge badge-${selectedEvent.resource.data.status === 'Hoàn thành' ? 'success' : 'warning'}`}>
-                                        {selectedEvent.resource.data.status}
+                                <div className="mb-3 d-flex align-items-center text-muted">
+                                    <i className="far fa-clock mr-2" style={{ width: '20px' }}></i>
+                                    <span>
+                                        {moment(selectedEvent.start).format('HH:mm DD/MM')} - {moment(selectedEvent.end).format('HH:mm DD/MM/YYYY')}
                                     </span>
                                 </div>
-                            )}
 
-                            {selectedEvent.resource?.type === 'LEAVE' && (
-                                <div className="alert alert-warning border-warning">
-                                    <small className="d-block text-muted font-weight-bold mb-1">LOẠI NGHỈ PHÉP</small>
-                                    <span>{selectedEvent.resource.data.leave_type} - {selectedEvent.resource.data.reason}</span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="modal-footer-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                {selectedEvent?.resource?.type && selectedEvent.resource.type !== 'BIRTHDAY' && (
+                                {selectedEvent.resource?.type === 'EVENT' && (
                                     <>
-                                        <button
-                                            className="btn-primary-premium"
-                                            onClick={handleEditEvent}
-                                            style={{
-                                                background: 'linear-gradient(135deg, #28a745, #20c997)',
-                                                margin: 0
-                                            }}
-                                        >
-                                            <i className="fas fa-edit mr-2"></i> Sửa
-                                        </button>
-                                        <button
-                                            className="btn-secondary-premium"
-                                            onClick={handleDeleteEvent}
-                                            style={{
-                                                background: '#dc3545',
-                                                color: 'white',
-                                                border: 'none',
-                                                margin: 0
-                                            }}
-                                        >
-                                            <i className="fas fa-trash mr-2"></i> Xóa
-                                        </button>
+                                        <div className="mb-3 d-flex align-items-center text-muted">
+                                            <i className="fas fa-map-marker-alt mr-2" style={{ width: '20px' }}></i>
+                                            <span>{selectedEvent.resource.data.location || 'Chưa cập nhật địa điểm'}</span>
+                                        </div>
+                                        <div className="mb-3 d-flex align-items-center text-muted">
+                                            <i className="fas fa-users mr-2" style={{ width: '20px' }}></i>
+                                            <span>
+                                                {selectedEvent.resource.data.participants
+                                                    ? selectedEvent.resource.data.participants.split(',').map(code => {
+                                                        const codeTrimmed = code.trim();
+                                                        const emp = eventEmployees.find(e => e.employee_code === codeTrimmed);
+                                                        return emp
+                                                            ? `${emp.last_name || ''} ${emp.first_name || ''}`.trim()
+                                                            : codeTrimmed;
+                                                    }).join(', ')
+                                                    : 'Chưa cập nhật thành phần tham dự'
+                                                }
+                                            </span>
+                                        </div>
+                                        <div className="mb-3 d-flex align-items-center text-muted">
+                                            <i className="fas fa-align-left mr-2" style={{ width: '20px' }}></i>
+                                            <span>{selectedEvent.resource.data.description || 'Không có mô tả'}</span>
+                                        </div>
+                                        <div className="mb-3">
+                                            <span className={`badge badge-${selectedEvent.resource.data.scope === 'COMPANY' ? 'danger' : 'info'}`}>
+                                                {selectedEvent.resource.data.scope}
+                                            </span>
+                                        </div>
                                     </>
                                 )}
+
+                                {selectedEvent.resource?.type === 'TASK' && (
+                                    <div className="alert alert-light border">
+                                        <small className="d-block text-muted font-weight-bold mb-1">TRẠNG THÁI CÔNG VIỆC</small>
+                                        <span className={`badge badge-${selectedEvent.resource.data.status === 'Hoàn thành' ? 'success' : 'warning'}`}>
+                                            {selectedEvent.resource.data.status}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {selectedEvent.resource?.type === 'LEAVE' && (
+                                    <div className="alert alert-warning border-warning">
+                                        <small className="d-block text-muted font-weight-bold mb-1">LOẠI NGHỈ PHÉP</small>
+                                        <span>{selectedEvent.resource.data.leave_type} - {selectedEvent.resource.data.reason}</span>
+                                    </div>
+                                )}
                             </div>
-                            <button className="btn-secondary-premium" onClick={() => setShowDetailModal(false)} style={{ margin: 0 }}>Đóng</button>
+                            <div className="modal-footer-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    {selectedEvent?.resource?.type && selectedEvent.resource.type !== 'BIRTHDAY' && (
+                                        <>
+                                            <button
+                                                className="btn-primary-premium"
+                                                onClick={handleEditEvent}
+                                                style={{
+                                                    background: 'linear-gradient(135deg, #28a745, #20c997)',
+                                                    margin: 0
+                                                }}
+                                            >
+                                                <i className="fas fa-edit mr-2"></i> Sửa
+                                            </button>
+                                            <button
+                                                className="btn-secondary-premium"
+                                                onClick={handleDeleteEvent}
+                                                style={{
+                                                    background: '#dc3545',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    margin: 0
+                                                }}
+                                            >
+                                                <i className="fas fa-trash mr-2"></i> Xóa
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                                <button className="btn-secondary-premium" onClick={() => setShowDetailModal(false)} style={{ margin: 0 }}>Đóng</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* Contact Modal */}
+            {
+                contactModalData && (
+                    <div className="modal-overlay" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1070, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="modal-content-premium" style={{ width: '400px', textAlign: 'center', padding: '30px' }}>
+                            <div style={{
+                                width: '80px', height: '80px', borderRadius: '50%',
+                                background: '#e2e8f0', margin: '0 auto 20px', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                                border: '4px solid #fff', boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+                            }}>
+                                {contactModalData.avatar_url ? (
+                                    <img src={contactModalData.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#718096' }}>
+                                        {contactModalData.name.charAt(0)}
+                                    </span>
+                                )}
+                            </div>
+
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#2d3748', marginBottom: '5px' }}>
+                                {contactModalData.name}
+                            </h3>
+                            <p style={{ color: '#718096', fontSize: '0.9rem', marginBottom: '20px' }}>
+                                {contactModalData.position || 'Nhân viên'} - {contactModalData.department || 'Chưa phân loại'}
+                            </p>
+
+                            <div style={{
+                                background: '#f0fff4', border: '1px solid #c6f6d5',
+                                borderRadius: '12px', padding: '15px', marginBottom: '25px'
+                            }}>
+                                <div style={{ fontSize: '0.85rem', color: '#2f855a', marginBottom: '5px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                    Số điện thoại
+                                </div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#22543d', fontFamily: 'monospace' }}>
+                                    {contactModalData.phone}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    className="btn-secondary-premium"
+                                    onClick={() => setContactModalData(null)}
+                                    style={{ flex: 1 }}
+                                >
+                                    Đóng
+                                </button>
+                                <button
+                                    className="btn-primary-premium"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(contactModalData.phone);
+                                        alert('Đã sao chép số điện thoại!');
+                                    }}
+                                    style={{ flex: 1, background: '#28a745' }}
+                                >
+                                    <i className="fas fa-copy mr-2"></i> Sao chép
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Premium Event Modal */}
-            {showModal && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="modal-content-premium" style={{ width: '600px' }}>
+            {
+                showModal && (
+                    <div className="modal-overlay" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="modal-content-premium" style={{ width: '600px' }}>
 
-                        {/* Header */}
-                        <div className="modal-header-premium">
-                            <div className="modal-title">
-                                <i className="fas fa-calendar-plus"></i>
-                                <span>Tạo sự kiện mới</span>
-                            </div>
-                            <button className="btn-close-modal" onClick={() => setShowModal(false)}>
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="modal-body-premium">
-                            <div className="mb-4">
-                                <label className="form-label-premium"><i className="fas fa-heading text-primary"></i> Tiêu đề sự kiện</label>
-                                <input
-                                    className="form-control-premium"
-                                    value={newEvent.title}
-                                    onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
-                                    placeholder="Nhập tên cuộc họp, sự kiện..."
-                                    autoFocus
-                                />
-                            </div>
-
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    <label className="form-label-premium"><i className="far fa-clock text-success"></i> Bắt đầu</label>
-                                    <input
-                                        type="datetime-local"
-                                        className="form-control-premium"
-                                        value={moment(newEvent.start).format('YYYY-MM-DDTHH:mm')}
-                                        onChange={e => setNewEvent({ ...newEvent, start: new Date(e.target.value) })}
-                                    />
+                            {/* Header */}
+                            <div className="modal-header-premium">
+                                <div className="modal-title">
+                                    <i className="fas fa-calendar-plus"></i>
+                                    <span>Tạo sự kiện mới</span>
                                 </div>
-                                <div className="col-6">
-                                    <label className="form-label-premium"><i className="far fa-clock text-danger"></i> Kết thúc</label>
-                                    <input
-                                        type="datetime-local"
-                                        className="form-control-premium"
-                                        value={moment(newEvent.end).format('YYYY-MM-DDTHH:mm')}
-                                        onChange={e => setNewEvent({ ...newEvent, end: new Date(e.target.value) })}
-                                    />
-                                </div>
+                                <button className="btn-close-modal" onClick={() => setShowModal(false)}>
+                                    <i className="fas fa-times"></i>
+                                </button>
                             </div>
 
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    <label className="form-label-premium"><i className="fas fa-tag text-warning"></i> Loại sự kiện</label>
-                                    <select className="form-control-premium" value={newEvent.type} onChange={e => setNewEvent({ ...newEvent, type: e.target.value })}>
-                                        <option value="EVENT">📅 Sự kiện chung</option>
-                                        <option value="MEETING">🤝 Cuộc họp</option>
-                                        <option value="REMINDER">⏰ Nhắc nhở</option>
-                                    </select>
-                                </div>
-                                <div className="col-6">
-                                    <label className="form-label-premium"><i className="fas fa-globe text-info"></i> Phạm vi</label>
-                                    <select className="form-control-premium" value={newEvent.scope} onChange={e => setNewEvent({ ...newEvent, scope: e.target.value })}>
-                                        <option value="PERSONAL">👤 Cá nhân</option>
-                                        <option value="UNIT">🏢 Đơn vị</option>
-                                        <option value="OFFICE">🏢 Văn phòng</option>
-                                        <option value="COMPANY">🌍 Toàn công ty</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="checkbox-wrapper">
-                                    <input
-                                        type="checkbox"
-                                        className="checkbox-premium"
-                                        checked={newEvent.allDay}
-                                        onChange={e => setNewEvent({ ...newEvent, allDay: e.target.checked })}
-                                    />
-                                    <span className="text-secondary font-weight-bold">Sự kiện cả ngày (All Day)</span>
-                                </label>
-                            </div>
-
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    <label className="form-label-premium"><i className="fas fa-map-marker-alt text-primary"></i> Địa điểm</label>
+                            {/* Body */}
+                            <div className="modal-body-premium">
+                                <div className="mb-4">
+                                    <label className="form-label-premium"><i className="fas fa-heading text-primary"></i> Tiêu đề sự kiện</label>
                                     <input
                                         className="form-control-premium"
-                                        value={newEvent.location}
-                                        onChange={e => setNewEvent({ ...newEvent, location: e.target.value })}
-                                        placeholder="Nhập địa điểm..."
+                                        value={newEvent.title}
+                                        onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                                        placeholder="Nhập tên cuộc họp, sự kiện..."
+                                        autoFocus
                                     />
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <label className="form-label-premium"><i className="far fa-clock text-success"></i> Bắt đầu</label>
+                                        <input
+                                            type="datetime-local"
+                                            className="form-control-premium"
+                                            value={moment(newEvent.start).format('YYYY-MM-DDTHH:mm')}
+                                            onChange={e => setNewEvent({ ...newEvent, start: new Date(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="col-6">
+                                        <label className="form-label-premium"><i className="far fa-clock text-danger"></i> Kết thúc</label>
+                                        <input
+                                            type="datetime-local"
+                                            className="form-control-premium"
+                                            value={moment(newEvent.end).format('YYYY-MM-DDTHH:mm')}
+                                            onChange={e => setNewEvent({ ...newEvent, end: new Date(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <label className="form-label-premium"><i className="fas fa-tag text-warning"></i> Loại sự kiện</label>
+                                        <select className="form-control-premium" value={newEvent.type} onChange={e => setNewEvent({ ...newEvent, type: e.target.value })}>
+                                            <option value="EVENT">📅 Sự kiện chung</option>
+                                            <option value="MEETING">🤝 Cuộc họp</option>
+                                            <option value="REMINDER">⏰ Nhắc nhở</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-6">
+                                        <label className="form-label-premium"><i className="fas fa-globe text-info"></i> Phạm vi</label>
+                                        <select className="form-control-premium" value={newEvent.scope} onChange={e => setNewEvent({ ...newEvent, scope: e.target.value })}>
+                                            <option value="PERSONAL">👤 Cá nhân</option>
+                                            <option value="UNIT">🏢 Đơn vị</option>
+                                            <option value="OFFICE">🏢 Văn phòng</option>
+                                            <option value="COMPANY">🌍 Toàn công ty</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <label className="checkbox-wrapper">
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox-premium"
+                                            checked={newEvent.allDay}
+                                            onChange={e => setNewEvent({ ...newEvent, allDay: e.target.checked })}
+                                        />
+                                        <span className="text-secondary font-weight-bold">Sự kiện cả ngày (All Day)</span>
+                                    </label>
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <label className="form-label-premium"><i className="fas fa-map-marker-alt text-primary"></i> Địa điểm</label>
+                                        <input
+                                            className="form-control-premium"
+                                            value={newEvent.location}
+                                            onChange={e => setNewEvent({ ...newEvent, location: e.target.value })}
+                                            placeholder="Nhập địa điểm..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {renderParticipantsSelector()}
+
+                                <div className="mb-0">
+                                    <label className="form-label-premium"><i className="fas fa-align-left text-muted"></i> Mô tả chi tiết</label>
+                                    <textarea
+                                        className="form-control-premium"
+                                        rows="3"
+                                        value={newEvent.description}
+                                        onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
+                                        placeholder="Nội dung chi tiết, link họp online..."
+                                    ></textarea>
                                 </div>
                             </div>
 
-                            {renderParticipantsSelector()}
-
-                            <div className="mb-0">
-                                <label className="form-label-premium"><i className="fas fa-align-left text-muted"></i> Mô tả chi tiết</label>
-                                <textarea
-                                    className="form-control-premium"
-                                    rows="3"
-                                    value={newEvent.description}
-                                    onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
-                                    placeholder="Nội dung chi tiết, link họp online..."
-                                ></textarea>
+                            {/* Footer */}
+                            <div className="modal-footer-premium">
+                                <button className="btn-secondary-premium" onClick={() => setShowModal(false)}>
+                                    Đóng
+                                </button>
+                                <button className="btn-primary-premium" onClick={handleSaveEvent}>
+                                    <i className="fas fa-save mr-2"></i> Lưu sự kiện
+                                </button>
                             </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="modal-footer-premium">
-                            <button className="btn-secondary-premium" onClick={() => setShowModal(false)}>
-                                Đóng
-                            </button>
-                            <button className="btn-primary-premium" onClick={handleSaveEvent}>
-                                <i className="fas fa-save mr-2"></i> Lưu sự kiện
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Duty Schedule Modal */}
-            {showDutyModal && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="modal-content-premium" style={{ width: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div className="modal-header-premium">
-                            <div className="modal-title">
-                                <i className="fas fa-calendar-check"></i>
-                                <span>Thêm/Sửa lịch trực</span>
+            {
+                showDutyModal && (
+                    <div className="modal-overlay" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="modal-content-premium" style={{ width: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <div className="modal-header-premium">
+                                <div className="modal-title">
+                                    <i className="fas fa-calendar-check"></i>
+                                    <span>Thêm/Sửa lịch trực</span>
+                                </div>
+                                <button className="btn-close-modal" onClick={() => setShowDutyModal(false)}>
+                                    <i className="fas fa-times"></i>
+                                </button>
                             </div>
-                            <button className="btn-close-modal" onClick={() => setShowDutyModal(false)}>
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div className="modal-body-premium">
-                            <div className="mb-4">
-                                <label className="form-label-premium"><i className="far fa-calendar text-primary"></i> Ngày trực <span className="text-danger">*</span></label>
-                                <input
-                                    type="date"
-                                    className="form-control-premium"
-                                    value={dutyFormData.duty_date}
-                                    onChange={(e) => setDutyFormData({ ...dutyFormData, duty_date: e.target.value })}
-                                    required
+                            <div className="modal-body-premium">
+                                <div className="mb-4">
+                                    <label className="form-label-premium"><i className="far fa-calendar text-primary"></i> Ngày trực <span className="text-danger">*</span></label>
+                                    <input
+                                        type="date"
+                                        className="form-control-premium"
+                                        value={dutyFormData.duty_date}
+                                        onChange={(e) => setDutyFormData({ ...dutyFormData, duty_date: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-user-tie text-muted mr-1"></i> Trực Giám đốc</span>}
+                                            selectedCodes={dutyFormData.director_on_duty}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, director_on_duty: codes })}
+                                            employees={getEligibleEmployees('director_on_duty')}
+                                        />
+                                    </div>
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-user-shield text-muted mr-1"></i> Trực Ban Cảng (đ.c)</span>}
+                                            selectedCodes={dutyFormData.port_duty_officer}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, port_duty_officer: codes })}
+                                            employees={getEligibleEmployees('port_duty_officer')}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-building text-muted mr-1"></i> VĂN PHÒNG</span>}
+                                            selectedCodes={dutyFormData.office_duty}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, office_duty: codes })}
+                                            employees={getEligibleEmployees('office_duty')}
+                                        />
+                                    </div>
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-calculator text-muted mr-1"></i> PHÒNG TC-KH</span>}
+                                            selectedCodes={dutyFormData.finance_planning_duty}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, finance_planning_duty: codes })}
+                                            employees={getEligibleEmployees('finance_planning_duty')}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="row mb-4">
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-cogs text-muted mr-1"></i> PHÒNG PVMD</span>}
+                                            selectedCodes={dutyFormData.operations_duty}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, operations_duty: codes })}
+                                            employees={getEligibleEmployees('operations_duty')}
+                                        />
+                                    </div>
+                                    <div className="col-6">
+                                        <MultiEmployeeSelector
+                                            label={<span><i className="fas fa-tools text-muted mr-1"></i> P. KTHT</span>}
+                                            selectedCodes={dutyFormData.technical_duty}
+                                            onChange={(codes) => setDutyFormData({ ...dutyFormData, technical_duty: codes })}
+                                            employees={getEligibleEmployees('technical_duty')}
+                                        />
+                                    </div>
+                                </div>
+
+                                <MultiEmployeeSelector
+                                    label={<span><i className="fas fa-plane text-muted mr-1"></i> PHÒNG ĐHSB</span>}
+                                    selectedCodes={dutyFormData.atc_duty}
+                                    onChange={(codes) => setDutyFormData({ ...dutyFormData, atc_duty: codes })}
+                                    employees={getEligibleEmployees('atc_duty')}
                                 />
                             </div>
-
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    {renderEmployeeSelector('director_on_duty', 'Trực Giám đốc', 'fas fa-user-tie')}
-                                </div>
-                                <div className="col-6">
-                                    {renderEmployeeSelector('port_duty_officer', 'Trực Ban Cảng (đ.c)', 'fas fa-user-shield')}
-                                </div>
+                            <div className="modal-footer-premium">
+                                <button className="btn-secondary-premium" onClick={() => setShowDutyModal(false)}>
+                                    Đóng
+                                </button>
+                                <button className="btn-primary-premium" onClick={handleSaveDuty}>
+                                    <i className="fas fa-save mr-2"></i> Lưu lịch trực
+                                </button>
                             </div>
-
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    {renderEmployeeSelector('office_duty', 'VĂN PHÒNG', 'fas fa-building')}
-                                </div>
-                                <div className="col-6">
-                                    {renderEmployeeSelector('finance_planning_duty', 'PHÒNG TC-KH', 'fas fa-calculator')}
-                                </div>
-                            </div>
-
-                            <div className="row mb-4">
-                                <div className="col-6">
-                                    {renderEmployeeSelector('operations_duty', 'PHÒNG PVMD', 'fas fa-cogs')}
-                                </div>
-                                <div className="col-6">
-                                    {renderEmployeeSelector('technical_duty', 'P. KTHT', 'fas fa-tools')}
-                                </div>
-                            </div>
-
-                            {renderEmployeeSelector('atc_duty', 'PHÒNG ĐHSB', 'fas fa-plane')}
-                        </div>
-                        <div className="modal-footer-premium">
-                            <button className="btn-secondary-premium" onClick={() => setShowDutyModal(false)}>
-                                Đóng
-                            </button>
-                            <button className="btn-primary-premium" onClick={handleSaveDuty}>
-                                <i className="fas fa-save mr-2"></i> Lưu lịch trực
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
