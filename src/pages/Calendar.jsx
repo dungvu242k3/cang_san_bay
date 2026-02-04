@@ -368,6 +368,60 @@ export default function CalendarPage() {
     const [contactModalData, setContactModalData] = useState(null);
     // Removed openDropdowns and dropdownRefs as they are no longer used
 
+    // Filters
+    const [filterLocation, setFilterLocation] = useState('');
+    const [filterScope, setFilterScope] = useState('');
+
+    // Derived Filter Options
+    const getUniqueLocations = () => {
+        const locs = new Set();
+        events.forEach(e => {
+            if (e.resource?.type === 'EVENT' && e.resource?.data?.location) {
+                const loc = e.resource.data.location.trim();
+                if (loc) locs.add(loc);
+            }
+        });
+        return Array.from(locs).sort();
+    };
+
+    const getFilteredEvents = () => {
+        return events.filter(e => {
+            // 1. Apply Location Filter
+            if (filterLocation) {
+                // If the item is an EVENT, check its location
+                if (e.resource?.type === 'EVENT') {
+                    const eventLoc = (e.resource?.data?.location || '').trim();
+                    if (eventLoc !== filterLocation) return false;
+                } else {
+                    // For non-events (Tasks, Leaves, etc.), strictly hide them when filtering by location
+                    // because they don't have a location.
+                    return false;
+                }
+            }
+
+            // 2. Apply Scope Filter
+            if (filterScope) {
+                const itemType = e.resource?.type;
+
+                if (itemType === 'EVENT') {
+                    // Strict match for explicit Events
+                    if (e.resource?.data?.scope !== filterScope) return false;
+                }
+                else if (itemType === 'TASK' || itemType === 'LEAVE') {
+                    // Tasks and Leaves are considering 'PERSONAL'
+                    if (filterScope !== 'PERSONAL') return false;
+                }
+                else if (itemType === 'BIRTHDAY') {
+                    // Birthdays are considered 'OFFICE' (Department level) or 'UNIT' depending on view
+                    // Let's assume 'OFFICE' (Phòng ban) for now as they are fetched by Dept
+                    if (filterScope !== 'OFFICE') return false;
+                }
+            }
+
+            return true;
+        });
+    };
+
     useEffect(() => {
         loadMyProfile();
     }, [user]);
@@ -1484,36 +1538,85 @@ export default function CalendarPage() {
                         </button>
                     </div>
                     {/* Action button */}
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
                         {activeTab === 'calendar' && (
-                            <button
-                                className="btn-macos-primary"
-                                onClick={() => {
-                                    setNewEvent({ ...newEvent, start: new Date(), end: new Date() });
-                                    setSelectedParticipants([]);
-                                    setParticipantsSearchTerm('');
-                                    setShowModal(true);
-                                }}
-                                style={{
-                                    background: '#007aff',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    padding: '6px 14px',
-                                    fontSize: '13px',
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#0051d5'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = '#007aff'}
-                            >
-                                <i className="fas fa-plus"></i>
-                                <span>Tạo sự kiện</span>
-                            </button>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <select
+                                        value={filterLocation}
+                                        onChange={(e) => setFilterLocation(e.target.value)}
+                                        className="form-select-macos"
+                                        style={{
+                                            border: '1px solid #e5e5e7',
+                                            borderRadius: '6px',
+                                            padding: '6px 24px 6px 10px',
+                                            fontSize: '13px',
+                                            background: '#f5f5f7',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            minWidth: '130px',
+                                            height: '32px'
+                                        }}
+                                    >
+                                        <option value="">-- Tất cả địa điểm --</option>
+                                        {getUniqueLocations().map(loc => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        value={filterScope}
+                                        onChange={(e) => setFilterScope(e.target.value)}
+                                        className="form-select-macos"
+                                        style={{
+                                            border: '1px solid #e5e5e7',
+                                            borderRadius: '6px',
+                                            padding: '6px 24px 6px 10px',
+                                            fontSize: '13px',
+                                            background: '#f5f5f7',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            minWidth: '130px',
+                                            height: '32px'
+                                        }}
+                                    >
+                                        <option value="">-- Tất cả đơn vị --</option>
+                                        <option value="PERSONAL">Cá nhân</option>
+                                        <option value="UNIT">Đơn vị / Đội</option>
+                                        <option value="OFFICE">Phòng ban</option>
+                                        <option value="COMPANY">Công ty</option>
+                                    </select>
+                                </div>
+                                <button
+                                    className="btn-macos-primary"
+                                    onClick={() => {
+                                        setNewEvent({ ...newEvent, start: new Date(), end: new Date() });
+                                        setSelectedParticipants([]);
+                                        setParticipantsSearchTerm('');
+                                        setShowModal(true);
+                                    }}
+                                    style={{
+                                        background: '#007aff',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '0 14px',
+                                        height: '32px',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#0051d5'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = '#007aff'}
+                                >
+                                    <i className="fas fa-plus"></i>
+                                    <span>Tạo sự kiện</span>
+                                </button>
+                            </div>
                         )}
                         {activeTab === 'duty' && (
                             <button
@@ -1536,7 +1639,8 @@ export default function CalendarPage() {
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
-                                    padding: '6px 14px',
+                                    padding: '0 14px',
+                                    height: '32px',
                                     fontSize: '13px',
                                     fontWeight: 500,
                                     cursor: 'pointer',
@@ -1563,7 +1667,7 @@ export default function CalendarPage() {
                     {activeTab === 'calendar' ? (
                         <BigCalendar
                             localizer={localizer}
-                            events={events}
+                            events={getFilteredEvents()}
                             startAccessor="start"
                             endAccessor="end"
                             style={{ height: '100%' }}
