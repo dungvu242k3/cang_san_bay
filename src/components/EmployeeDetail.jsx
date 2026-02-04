@@ -171,7 +171,7 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee }) => {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee, employees = [], currentMonth }) => {
     const { user: authUser } = useAuth()
     const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
@@ -1023,6 +1023,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [selfComment, setSelfComment] = useState('')
     const [supervisorComment, setSupervisorComment] = useState('')
     const [isGradingLocked, setIsGradingLocked] = useState(false)
+    const [selectedGradingItem, setSelectedGradingItem] = useState(null)
 
     // Initialize data when employee changes
     useEffect(() => {
@@ -3162,7 +3163,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderGrading = () => {
         const renderTabs = () => (
-            <div className="grading-tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #ddd', paddingBottom: '10px' }}>
+            <div className="grading-tabs-wrapper">
+                <div className="grading-tabs">
                 <button
                     className={`btn ${activeGradingTab === 'grading' ? 'btn-primary' : 'btn-outline-secondary'}`}
                     onClick={() => setActiveGradingTab('grading')}
@@ -3184,6 +3186,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 >
                     <i className="fas fa-list-check"></i> Cần duyệt
                 </button>
+                </div>
             </div>
         )
 
@@ -3270,28 +3273,41 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-content">
                 {renderTabs()}
                 <div className="section-header-modern">
-                    <div>
-                        <h3 style={{ marginBottom: '5px' }}><i className="fas fa-star-half-alt"></i> {isMyScore ? 'Điểm của tôi' : 'Chấm điểm'} - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
-                        <div style={{ fontSize: '0.85rem', color: '#666' }}>
-                            Mẫu: <span className="badge badge-info" style={{ background: '#e1f5fe', color: '#01579b', border: 'none', padding: '2px 8px' }}>{
-                                {
-                                    'NVTT': 'Nhân viên trực tiếp (NVTT)',
-                                    'NVGT': 'Nhân viên gián tiếp (NVGT)',
-                                    'CBQL': 'Cán bộ quản lý (CBQL)'
-                                }[targetTemplate || 'NVTT'] || targetTemplate
-                            }</span>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <h3 className="grading-title"><i className="fas fa-star-half-alt"></i> {isMyScore ? 'Điểm của tôi' : 'Chấm điểm'} - Tháng</h3>
+                    <div className="grading-date-controls">
                         {isMyScore && (
                             <button className="btn btn-outline-secondary btn-sm" onClick={() => setMyScoreViewMode('LIST')}>
                                 <i className="fas fa-arrow-left"></i> Quay lại
                             </button>
                         )}
-                        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-control" style={{ width: 'auto', height: '32px', fontSize: '0.85rem' }} />
+                        {onSelectEmployee && employees && employees.length > 0 && (
+                            <select 
+                                className="form-control employee-select-dropdown"
+                                value={employee?.employeeId || ''}
+                                onChange={(e) => {
+                                    const selected = employees.find(emp => emp.employeeId === e.target.value)
+                                    if (selected && onSelectEmployee) {
+                                        onSelectEmployee(selected)
+                                    }
+                                }}
+                                style={{ width: 'auto', minWidth: '200px', height: '32px', fontSize: '0.85rem' }}
+                            >
+                                <option value="">-- Chọn nhân sự --</option>
+                                {employees.map(emp => (
+                                    <option key={emp.employeeId || emp.id} value={emp.employeeId}>
+                                        {emp.employeeId} - {emp.ho_va_ten}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        {!isMyScore && isLockedData && (
+                            <button className="btn btn-outline-secondary btn-sm" onClick={() => setIsGradingLocked(false)}>
+                                <i className="fas fa-pencil-alt"></i> Sửa
+                            </button>
+                        )}
+                        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="form-control grading-month-input" />
                     </div>
                 </div>
-                <p className="subtitle">{targetEmpCode} - {targetName}</p>
 
                 <div className="table-wrapper">
                     <div className="grading-table-container">
@@ -3319,15 +3335,20 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     </td>
                                 </tr>
                                 {criteria.find(c => c.section === 'A').items.map(item => (
-                                    <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
+                                    <tr 
+                                        key={item.id} 
+                                        className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}
+                                        onClick={() => !item.isHeader && setSelectedGradingItem({ ...item, section: 'A' })}
+                                        style={!item.isHeader ? { cursor: 'pointer' } : {}}
+                                    >
                                         <td className={item.isHeader ? 'pl-2' : 'pl-4'}>{item.id} {item.title}</td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                        <td className="text-center col-self">
+                                        <td className="text-center col-self" onClick={(e) => e.stopPropagation()}>
                                             {!item.isHeader && (
                                                 <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} disabled={disableSelf} />
                                             )}
                                         </td>
-                                        <td className="text-center col-supervisor">
+                                        <td className="text-center col-supervisor" onClick={(e) => e.stopPropagation()}>
                                             {!item.isHeader && (
                                                 <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} disabled={disableSupervisor} />
                                             )}
@@ -3342,15 +3363,20 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'B').items.map(item => (
-                                    <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
+                                    <tr 
+                                        key={item.id} 
+                                        className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}
+                                        onClick={() => !item.isHeader && setSelectedGradingItem({ ...item, section: 'B' })}
+                                        style={!item.isHeader ? { cursor: 'pointer' } : {}}
+                                    >
                                         <td className={item.isHeader ? 'pl-2' : 'pl-4'}>{item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}</td>
                                         <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                        <td className="text-center col-self">
+                                        <td className="text-center col-self" onClick={(e) => e.stopPropagation()}>
                                             {!item.isHeader && (
                                                 <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} min="0" max="10" disabled={disableSelf} />
                                             )}
                                         </td>
-                                        <td className="text-center col-supervisor">
+                                        <td className="text-center col-supervisor" onClick={(e) => e.stopPropagation()}>
                                             {!item.isHeader && (
                                                 <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} min="0" max="10" disabled={disableSupervisor} />
                                             )}
@@ -3365,13 +3391,18 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'C').items.map(item => (
-                                    <tr key={item.id} className="grading-item-row">
+                                    <tr 
+                                        key={item.id} 
+                                        className="grading-item-row"
+                                        onClick={() => setSelectedGradingItem({ ...item, section: 'C' })}
+                                        style={{ cursor: 'pointer' }}
+                                    >
                                         <td className="pl-2">{item.id} {item.title}</td>
                                         <td className="text-center">{item.range}</td>
-                                        <td className="text-center col-self">
+                                        <td className="text-center col-self" onClick={(e) => e.stopPropagation()}>
                                             <input type="number" className="grading-input" value={svData[item.id] || ''} onChange={(e) => handleSelfChange(item.id, e.target.value)} min="0" max="15" disabled={disableSelf} />
                                         </td>
-                                        <td className="text-center col-supervisor">
+                                        <td className="text-center col-supervisor" onClick={(e) => e.stopPropagation()}>
                                             <input type="number" className="grading-input" value={spData[item.id] || ''} onChange={(e) => handleSupervisorChange(item.id, e.target.value)} min="0" max="15" disabled={disableSupervisor} />
                                         </td>
                                     </tr>
@@ -3418,17 +3449,134 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     </div>
                 </div>
 
-                <div className="grading-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                    {isLockedData ? (
-                        <button className="btn-premium-outline btn-premium-sm" onClick={() => isMyScore ? setMyScoreData(prev => ({ ...prev, isLocked: false })) : setIsGradingLocked(false)}>
-                            <i className="fas fa-pencil-alt"></i> Sửa
-                        </button>
-                    ) : (
+                {!isLockedData && (
+                    <div className="grading-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
                         <button className="btn-premium btn-premium-sm" onClick={() => isMyScore ? handleMyGradingSave() : handleGradingSave()}>
                             <i className="fas fa-check"></i> Lưu
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
+
+                {/* Grading Item Detail Modal */}
+                {selectedGradingItem && (
+                    <div className="modal-overlay" onClick={() => setSelectedGradingItem(null)}>
+                        <div className="modal-content grading-item-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header" style={{ background: 'var(--primary)', color: '#fff', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
+                                    <i className="fas fa-star-half-alt" style={{ color: '#fff' }}></i> {selectedGradingItem.id} - {selectedGradingItem.title}
+                                </h4>
+                                <button 
+                                    onClick={() => setSelectedGradingItem(null)}
+                                    style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', padding: '0', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                    <i className="fas fa-times" style={{ color: '#fff' }}></i>
+                                </button>
+                            </div>
+                            <div className="modal-body" style={{ padding: '20px' }}>
+                                <div style={{ marginBottom: '20px' }}>
+                                    <h5 style={{ marginBottom: '10px', color: '#333', fontSize: '0.95rem' }}>Nội dung tiêu chí:</h5>
+                                    <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                                        {selectedGradingItem.title}
+                                    </p>
+                                    {selectedGradingItem.range && (
+                                        <p style={{ color: '#888', fontSize: '0.85rem', marginTop: '8px', marginBottom: 0 }}>
+                                            <strong>Khoảng điểm:</strong> {selectedGradingItem.range}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div style={{ borderTop: '1px solid #eee', paddingTop: '20px' }}>
+                                    <h5 style={{ marginBottom: '15px', color: '#333', fontSize: '0.95rem' }}>Chấm điểm:</h5>
+                                    
+                                    {isSelf ? (
+                                        // Cá nhân: Hiện ô điểm tự đánh giá, quản lý chỉ xem
+                                        <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
+                                                    Điểm tự đánh giá:
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    className="grading-input-modal"
+                                                    value={svData[selectedGradingItem.id] || ''} 
+                                                    onChange={(e) => {
+                                                        handleSelfChange(selectedGradingItem.id, e.target.value)
+                                                    }}
+                                                    onBlur={() => {
+                                                        // Có thể đóng popup khi blur nếu muốn, hoặc để người dùng tự đóng
+                                                    }}
+                                                    disabled={disableSelf}
+                                                    min="0"
+                                                    max={selectedGradingItem.maxScore || 15}
+                                                    style={{ width: '100%', padding: '10px', fontSize: '1rem', textAlign: 'center' }}
+                                                />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#999', fontSize: '0.9rem' }}>
+                                                    Điểm quản lý đánh giá (chỉ xem):
+                                                </label>
+                                                <div style={{ 
+                                                    width: '100%', 
+                                                    padding: '10px', 
+                                                    fontSize: '1rem', 
+                                                    textAlign: 'center',
+                                                    background: '#f5f5f5',
+                                                    border: '1px solid #ddd',
+                                                    borderRadius: '6px',
+                                                    color: '#666'
+                                                }}>
+                                                    {spData[selectedGradingItem.id] || '-'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        // Leader/Quản lý: Hiện 2 ô (điểm ứng viên đã chấm + điểm quản lý chấm)
+                                        <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
+                                                    Điểm ứng viên đã chấm:
+                                                </label>
+                                                <div style={{ 
+                                                    width: '100%', 
+                                                    padding: '10px', 
+                                                    fontSize: '1rem', 
+                                                    textAlign: 'center',
+                                                    background: '#e3f2fd',
+                                                    border: '1px solid #90caf9',
+                                                    borderRadius: '6px',
+                                                    color: '#1976d2',
+                                                    fontWeight: '600'
+                                                }}>
+                                                    {svData[selectedGradingItem.id] || '-'}
+                                                </div>
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
+                                                    Điểm quản lý chấm:
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    className="grading-input-modal"
+                                                    value={spData[selectedGradingItem.id] || ''} 
+                                                    onChange={(e) => {
+                                                        handleSupervisorChange(selectedGradingItem.id, e.target.value)
+                                                    }}
+                                                    onBlur={() => {
+                                                        // Có thể đóng popup khi blur nếu muốn, hoặc để người dùng tự đóng
+                                                    }}
+                                                    disabled={disableSupervisor}
+                                                    min="0"
+                                                    max={selectedGradingItem.maxScore || 15}
+                                                    style={{ width: '100%', padding: '10px', fontSize: '1rem', textAlign: 'center' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div >
         )
     }
@@ -4747,6 +4895,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     const renderManagementActions = () => {
         if (!employee) return null
+
+        // Hide "Nhân sự" button in grading mode if onSelectEmployee is provided (dropdown will be shown instead)
+        if (activeSection === 'grading' && onSelectEmployee) {
+            return null
+        }
 
         const handleClick = () => {
             if (onOpenEmployeeSelector) {

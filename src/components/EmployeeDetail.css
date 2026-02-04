@@ -222,6 +222,95 @@
     font-weight: 700;
 }
 
+.grading-title {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex-wrap: wrap;
+}
+
+.grading-title i {
+    flex-shrink: 0;
+}
+
+.grading-template-info {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.grading-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    margin-bottom: 8px;
+}
+
+.grading-title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.grading-date-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+}
+
+.grading-month-input {
+    width: auto !important;
+    min-width: 140px;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+    padding: 4px 8px !important;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    line-height: 32px;
+}
+
+.employee-select-dropdown {
+    min-width: 200px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 12px;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.employee-select-dropdown:hover {
+    border-color: #1976d2;
+}
+
+.employee-select-dropdown:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+.section-header-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
 .subtitle {
     color: #888;
     font-size: 0.85rem;
@@ -418,6 +507,39 @@
     overflow-y: auto;
 }
 
+.grading-item-modal {
+    width: 90%;
+    max-width: 500px;
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.grading-input-modal {
+    border: 2px solid #ced4da;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.grading-input-modal:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+}
+
+.grading-input-modal:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .grading-item-modal {
+        width: 95%;
+        max-width: 100%;
+    }
+}
+
 .modal-content h4 {
     margin: 0;
     font-size: 1.25rem;
@@ -445,6 +567,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .btn-sm {
@@ -460,6 +583,52 @@
 .btn-primary:hover {
     background: #1565c0;
     box-shadow: 0 2px 6px rgba(25, 118, 210, 0.3);
+}
+
+/* Grading tabs wrapper - scrollable */
+.grading-tabs-wrapper {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #ccc transparent;
+}
+
+.grading-tabs-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+
+.grading-tabs-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.grading-tabs-wrapper::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.grading-tabs-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Grading tabs buttons - ensure single line */
+.grading-tabs {
+    display: flex;
+    gap: 10px;
+    min-width: max-content;
+}
+
+.grading-tabs .btn {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 8px 14px;
+    flex-shrink: 0;
+}
+
+.grading-tabs .btn i {
+    flex-shrink: 0;
 }
 
 /* Employee Selector Button */
@@ -731,54 +900,105 @@ input.grading-input[type=number] {
         padding: 12px;
     }
 
+    .grading-title {
+        font-size: 1rem;
+        gap: 6px;
+        white-space: normal;
+        line-height: 1.3;
+        margin: 0;
+    }
+
+    .grading-template-info {
+        font-size: 0.75rem;
+    }
+
+    .grading-header-row {
+        gap: 8px;
+    }
+
+    .grading-date-controls {
+        margin-top: 12px;
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
     .table-wrapper {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
 
     .grading-table {
-        min-width: 600px;
-        font-size: 0.85rem;
-    }
-
-    .grading-table {
-        min-width: 500px;
+        min-width: 480px;
+        font-size: 0.7rem;
     }
 
     .grading-table th,
     .grading-table td {
-        padding: 6px 4px;
-        font-size: 0.8rem;
+        padding: 4px 3px;
+        font-size: 0.65rem;
     }
 
     .grading-table thead th {
-        font-size: 0.75rem;
-        padding: 8px 4px;
+        font-size: 0.6rem;
+        padding: 6px 3px;
+        letter-spacing: 0.2px;
     }
 
     input.grading-input {
-        width: 45px !important;
-        padding: 4px 0;
-        font-size: 0.8rem;
+        width: 38px !important;
+        padding: 3px 0;
+        font-size: 0.65rem;
     }
 
     .grading-item-row {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
+    }
+
+    .grading-section-header td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+
+    .grading-group-header td {
+        font-size: 0.7rem;
+        padding: 5px 3px;
     }
 
     .col-criteria {
-        min-width: 150px;
-        font-size: 0.8rem;
+        min-width: 100px;
+        max-width: 100px;
+        font-size: 0.65rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .col-weight {
-        min-width: 60px;
-        font-size: 0.8rem;
+        min-width: 40px;
+        max-width: 40px;
+        font-size: 0.65rem;
+        text-align: center;
     }
 
     .col-self,
     .col-supervisor {
-        min-width: 80px;
+        min-width: 55px;
+        max-width: 55px;
+    }
+
+    /* Summary rows (Tổng điểm, Xếp loại) */
+    .grading-table tbody tr:last-child td,
+    .grading-table tbody tr:nth-last-child(2) td {
+        font-size: 0.7rem;
+        padding: 5px 3px;
+        font-weight: 600;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+        padding: 3px 8px;
     }
 
     .modal-content {

@@ -157,10 +157,23 @@
     color: #212529;
 }
 
-.employee-code {
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin: 0 0 8px 0;
+.badges-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin: 8px 0;
+    flex-wrap: wrap;
+}
+
+.employee-code-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .role-badge {
@@ -208,6 +221,18 @@
 .nav-item i {
     width: 20px;
     text-align: center;
+}
+
+.nav-item.logout-nav-item {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e9ecef;
+    color: #dc3545;
+}
+
+.nav-item.logout-nav-item:hover {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
 }
 
 .profile-content {

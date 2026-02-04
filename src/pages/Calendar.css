@@ -1,7 +1,8 @@
-/* Calendar.css */
+/* Calendar.css - macOS Style */
 .calendar-page-container {
-    background-color: var(--bg);
+    background-color: #f5f5f7;
     min-height: 100vh;
+    padding: 20px;
 }
 
 /* Customize React Big Calendar */
@@ -51,70 +52,200 @@
 }
 
 .rbc-calendar {
-    font-family: 'Inter', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     border: none;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
 }
 
-.rbc-header {
-    padding: 12px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #495057;
-    background: #f8f9fa;
-    border-bottom: 2px solid #e9ecef !important;
-}
-
-.rbc-event {
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    font-size: 0.85rem;
-    padding: 4px 8px;
-    border: none !important;
-    transition: transform 0.2s;
-}
-
-.rbc-event:hover {
-    transform: scale(1.02);
-    z-index: 5;
-}
-
-.rbc-today {
-    background-color: rgba(13, 110, 253, 0.05);
-    /* Soft Primary Blue */
-}
-
-.rbc-off-range-bg {
-    background-color: #fcfcfc;
+/* Toolbar - macOS Style */
+.rbc-toolbar {
+    padding: 16px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5e7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .rbc-toolbar button {
-    border: 1px solid #ced4da;
-    color: #495057;
+    border: 1px solid #d1d1d6;
+    color: #1d1d1f;
     border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 400;
+    background: #ffffff;
+    transition: all 0.15s ease;
+    cursor: pointer;
 }
 
 .rbc-toolbar button:hover {
-    background-color: #f1f3f5;
-    color: #212529;
+    background-color: #f5f5f7;
+    border-color: #a1a1a6;
 }
 
 .rbc-toolbar button.rbc-active {
-    background-color: var(--primary);
+    background-color: #007aff;
     color: white;
-    border-color: var(--primary);
-    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+    border-color: #007aff;
+    font-weight: 500;
 }
 
-.rbc-time-view .rbc-header {
-    border-bottom: 2px solid #e9ecef;
+.rbc-toolbar-label {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1d1d1f;
+    letter-spacing: -0.01em;
+}
+
+/* Header - Days of week */
+.rbc-header {
+    padding: 10px 8px;
+    font-weight: 500;
+    font-size: 13px;
+    color: #86868b;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e5e7 !important;
+    border-right: 1px solid #e5e5e7 !important;
+    text-align: center;
+}
+
+.rbc-header:last-child {
+    border-right: none !important;
+}
+
+/* Month view cells */
+.rbc-month-view {
+    border: none;
+}
+
+.rbc-day-bg {
+    border-right: 1px solid #e5e5e7;
+    border-bottom: 1px solid #e5e5e7;
+    background: #ffffff;
+}
+
+.rbc-day-bg:last-child {
+    border-right: none;
+}
+
+.rbc-off-range-bg {
+    background-color: #fafafa;
+}
+
+.rbc-today {
+    background-color: #f0f9ff !important;
 }
 
 .rbc-current-time-indicator {
-    background-color: var(--danger);
+    background-color: #ff3b30;
     height: 2px;
+    z-index: 10;
+}
+
+/* Date numbers */
+.rbc-date-cell {
+    padding: 6px 8px;
+    text-align: right;
+    font-size: 13px;
+    color: #1d1d1f;
+}
+
+.rbc-off-range .rbc-date-cell {
+    color: #c7c7cc;
+}
+
+.rbc-today .rbc-date-cell {
+    font-weight: 600;
+    color: #007aff;
+}
+
+/* Events - macOS Style */
+.rbc-event {
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 3px 6px;
+    border: none !important;
+    margin: 1px 2px;
+    font-weight: 400;
+    line-height: 1.4;
+    box-shadow: none;
+    transition: all 0.15s ease;
+}
+
+.rbc-event:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 5;
+}
+
+.rbc-event-label {
+    display: none;
+}
+
+.rbc-event-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Week and Day views */
+.rbc-time-view {
+    border: none;
+}
+
+.rbc-time-view .rbc-header {
+    border-bottom: 1px solid #e5e5e7;
+    padding: 12px 8px;
+}
+
+.rbc-time-slot {
+    border-top: 1px solid #f5f5f7;
+}
+
+.rbc-time-slot.rbc-now {
+    background-color: #f0f9ff;
+}
+
+.rbc-day-slot .rbc-time-slot {
+    border-top: 1px solid #f5f5f7;
+}
+
+/* Agenda view */
+.rbc-agenda-view {
+    border: none;
+}
+
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+    padding: 12px;
+    border-bottom: 1px solid #e5e5e7;
+    color: #1d1d1f;
+    font-size: 13px;
+}
+
+.rbc-agenda-event-cell {
+    padding: 12px;
+    border-bottom: 1px solid #e5e5e7;
+}
+
+/* Show more link */
+.rbc-show-more {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #007aff;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+    display: inline-block;
+}
+
+.rbc-show-more:hover {
+    background-color: rgba(0, 122, 255, 0.1);
 }
 
 /* MODERN MODAL STYLES (Refined) */

@@ -74,6 +74,17 @@ function GradingPage() {
 
             if (error) throw error
 
+            // Get current month for checking grading status
+            const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+            
+            // Load performance reviews for current month to check who hasn't been graded
+            const { data: reviews } = await supabase
+                .from('performance_reviews')
+                .select('employee_code')
+                .eq('month', currentMonth)
+
+            const gradedEmployeeCodes = new Set((reviews || []).map(r => r.employee_code))
+
             const mappedData = (data || []).map(profile => ({
                 id: profile.id,
                 employeeId: profile.employee_code || '',
@@ -87,8 +98,18 @@ function GradingPage() {
                 ngay_sinh: profile.date_of_birth || '',
                 gioi_tinh: profile.gender || '',
                 score_template_code: profile.score_template_code,
+                hasGrading: gradedEmployeeCodes.has(profile.employee_code),
                 ...profile
             }))
+
+            // Sort: employees without grading first, then by name
+            mappedData.sort((a, b) => {
+                if (a.hasGrading !== b.hasGrading) {
+                    return a.hasGrading ? 1 : -1 // Chưa chấm điểm lên đầu
+                }
+                return (a.ho_va_ten || '').localeCompare(b.ho_va_ten || '')
+            })
+
             setEmployees(mappedData)
 
             if (!selectedEmployee && mappedData.length > 0) {
@@ -237,6 +258,8 @@ function GradingPage() {
                             onSectionChange={() => { }}
                             onOpenEmployeeSelector={handleOpenEmployeeSelector}
                             onSelectEmployee={setSelectedEmployee}
+                            employees={filteredEmployees}
+                            currentMonth={new Date().toISOString().slice(0, 7)}
                         />
                     </div>
                 ) : (
