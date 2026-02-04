@@ -113,6 +113,8 @@ body {
   min-height: calc(100vh - 130px);
   /* Header 80px + TopNavBar ~50px */
   position: relative;
+  padding-left: 0;
+  margin-left: 0;
 }
 
 @media (max-width: 768px) {
@@ -142,21 +144,7 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 260px;
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  padding: 20px 0;
-  position: sticky;
-  top: 130px;
-  /* Below header and TopNavBar */
-  height: calc(100vh - 130px);
-  overflow-y: auto;
-}
-
-@media (max-width: 768px) {
-  .sidebar:not(.mobile-open) {
-    display: none;
-  }
+  display: none;
 }
 
 .nav-item {
@@ -188,6 +176,8 @@ body {
 .main {
   flex: 1;
   padding: 0;
+  padding-left: 0;
+  margin-left: 0;
   overflow-y: auto;
   min-width: 0;
 }

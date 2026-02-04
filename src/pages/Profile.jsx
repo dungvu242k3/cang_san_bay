@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import './Profile.css'
 
 function Profile() {
-    const { user, refreshUser } = useAuth()
+    const { user, refreshUser, logout } = useAuth()
+    const navigate = useNavigate()
     const [activeTab, setActiveTab] = useState('info')
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -274,8 +275,10 @@ function Profile() {
                             </button>
                         )}
                         <h3>{profile.last_name} {profile.first_name}</h3>
-                        <p className="employee-code">{profile.employee_code}</p>
-                        <p className="role-badge">{user.role_level}</p>
+                        <div className="badges-container">
+                            <span className="employee-code-badge">{profile.employee_code}</span>
+                            <span className="role-badge">{user.role_level}</span>
+                        </div>
                     </div>
 
                     <div className="sidebar-nav">
@@ -296,6 +299,17 @@ function Profile() {
                             onClick={() => setActiveTab('history')}
                         >
                             <i className="fas fa-history"></i> Lịch sử đăng nhập
+                        </button>
+                        <button
+                            className="nav-item logout-nav-item"
+                            onClick={async () => {
+                                if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                                    await logout()
+                                    navigate('/login')
+                                }
+                            }}
+                        >
+                            <i className="fas fa-sign-out-alt"></i> Đăng xuất
                         </button>
                     </div>
                 </div>

@@ -41,8 +41,11 @@ function Layout({ children }) {
 
   return (
     <div>
-      <Header onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-      <TopNavBar />
+      <Header 
+        onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        isMenuOpen={isMobileMenuOpen}
+      />
+      <TopNavBar isMenuOpen={isMobileMenuOpen} />
       <div className="container">
         <Sidebar 
           className={isMobileMenuOpen ? 'mobile-open' : ''} 

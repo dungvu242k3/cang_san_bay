@@ -4,21 +4,28 @@
     border-bottom: 1px solid #e0e0e0;
     padding: 0 20px;
     position: sticky;
-    top: 80px;
+    top: 100px;
     /* Below header */
     z-index: 99;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 768px) {
+    .top-nav-bar.menu-open {
+        transform: translateY(-20px);
+    }
 }
 
 @media (max-width: 968px) {
     .top-nav-bar {
-        top: 75px;
+        top: 90px;
     }
 }
 
 @media (max-width: 768px) {
     .top-nav-bar {
-        top: 65px;
+        top: 75px;
         padding: 0 8px;
     }
 }

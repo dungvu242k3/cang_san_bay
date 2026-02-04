@@ -279,8 +279,9 @@
 
 .employee-header-info {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .employee-name {
@@ -289,6 +290,7 @@
     font-weight: 600;
     color: #1a1a1a;
     line-height: 1.4;
+    white-space: nowrap;
 }
 
 .employee-meta {
@@ -296,6 +298,7 @@
     gap: 12px;
     align-items: center;
     flex-wrap: wrap;
+    margin-left: auto;
 }
 
 .employee-code {

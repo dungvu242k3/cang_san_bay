@@ -1,0 +1,266 @@
+.duty-schedule-container {
+    padding: 20px;
+    background: #f8f9fa;
+    min-height: calc(100vh - 140px);
+}
+
+.duty-schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.duty-schedule-header h2 {
+    margin: 0;
+    color: #212529;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.week-input {
+    padding: 6px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.duty-schedule-table-wrapper {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+}
+
+.duty-schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.duty-schedule-table thead {
+    background: #1976d2;
+    color: white;
+}
+
+.duty-schedule-table th {
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.duty-schedule-table .sub-header {
+    background: #1565c0;
+}
+
+.duty-schedule-table .sub-header th {
+    padding: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.duty-schedule-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: background-color 0.2s;
+}
+
+.duty-schedule-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.duty-schedule-table td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid #dee2e6;
+}
+
+.day-cell {
+    position: relative;
+    min-width: 120px;
+    background: #f8f9fa;
+    font-weight: 500;
+}
+
+.day-cell strong {
+    display: block;
+    color: #1976d2;
+    font-size: 1rem;
+}
+
+.date-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.day-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: #1976d2;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.btn-icon:hover {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.btn-icon.text-danger {
+    color: #dc3545;
+}
+
+.btn-icon.text-danger:hover {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.duty-schedule-modal {
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    background: #1976d2;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+@media (max-width: 768px) {
+    .duty-schedule-container {
+        padding: 15px;
+    }
+
+    .duty-schedule-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-controls {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .header-controls button,
+    .header-controls input {
+        width: 100%;
+    }
+
+    .duty-schedule-table {
+        font-size: 0.85rem;
+    }
+
+    .duty-schedule-table th,
+    .duty-schedule-table td {
+        padding: 8px 4px;
+    }
+
+    .day-cell {
+        min-width: 100px;
+    }
+
+    .duty-schedule-modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+}

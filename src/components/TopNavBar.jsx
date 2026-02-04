@@ -18,14 +18,14 @@ const navItems = [
     { path: '/cai-dat', icon: 'fas fa-cog', label: 'Cài đặt', pKey: PERMISSIONS.SETTINGS },
 ]
 
-function TopNavBar() {
+function TopNavBar({ isMenuOpen = false }) {
     const location = useLocation()
     const { checkPermission, loading } = useAuth()
 
     if (loading) return <nav className="top-nav-bar"><div className="top-nav-container"></div></nav>
 
     return (
-        <nav className="top-nav-bar">
+        <nav className={`top-nav-bar ${isMenuOpen ? 'menu-open' : ''}`}>
             <div className="top-nav-container">
                 {navItems.map((item) => {
                     // Nếu có pKey thì check, không thì cho qua (Global)
