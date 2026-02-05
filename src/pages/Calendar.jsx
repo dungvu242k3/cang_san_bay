@@ -267,7 +267,7 @@ const CustomAgenda = ({ events, date }) => {
     }
 
     return (
-        <div className="rbc-agenda-view">
+        <div className="rbc-agenda-view" style={{ height: '100%', overflowY: 'auto' }}>
             <table className="rbc-agenda-table">
                 <thead>
                     <tr>
@@ -1842,9 +1842,9 @@ export default function CalendarPage() {
                             }}
                         />
                     ) : (
-                        <div className="duty-schedule-calendar-view">
+                        <div className="duty-schedule-calendar-view" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-                            <div className="d-flex flex-column mb-4" style={{ gap: '15px', paddingBottom: '15px', borderBottom: '1px solid #f0f0f0' }}>
+                            <div className="d-flex flex-column mb-4" style={{ gap: '15px', padding: '15px', borderBottom: '1px solid #f0f0f0' }}>
 
                                 {/* Row 1: Title */}
                                 <div>
@@ -1918,7 +1918,7 @@ export default function CalendarPage() {
                                 />
                             ) : dutyView === 'week' ? (
                                 // WEEK VIEW
-                                <div className="table-responsive">
+                                <div className="table-responsive" style={{ flex: 1, overflow: 'auto' }}>
                                     <table className="table table-bordered table-hover" style={{ fontSize: '0.9rem' }}>
                                         <thead className="thead-light">
                                             <tr>
@@ -2051,7 +2051,9 @@ export default function CalendarPage() {
                                     background: '#e2e8f0',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '8px',
-                                    overflow: 'hidden'
+                                    overflow: 'hidden',
+                                    overflowY: 'auto',
+                                    flex: 1
                                 }}>
                                     {/* Headers */}
                                     {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map(d => (
