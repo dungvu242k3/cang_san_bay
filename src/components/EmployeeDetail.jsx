@@ -2404,19 +2404,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 </div>
                 <div className="form-group">
                     <label>Chức vụ hiện tại</label>
-                    <select name="current_position" value={formData.current_position} onChange={handleChange} disabled={!isEditing}>
-                        <option value="Giám đốc">Giám đốc</option>
-                        <option value="Phó giám đốc">Phó giám đốc</option>
-                        <option value="Trưởng phòng">Trưởng phòng</option>
-                        <option value="Phó trưởng phòng">Phó trưởng phòng</option>
-                        <option value="Đội trưởng">Đội trưởng</option>
-                        <option value="Đội phó">Đội phó</option>
-                        <option value="Chủ đội">Chủ đội</option>
-                        <option value="Tổ trưởng">Tổ trưởng</option>
-                        <option value="Tổ phó">Tổ phó</option>
-                        <option value="Chủ tổ">Chủ tổ</option>
-                        <option value="Khác">Khác</option>
-                    </select>
+                    <input type="text" name="current_position" value={formData.current_position} onChange={handleChange} disabled={!isEditing} />
                 </div>
                 <div className="form-group">
                     <label>Ngày bổ nhiệm</label>
@@ -3165,27 +3153,27 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         const renderTabs = () => (
             <div className="grading-tabs-wrapper">
                 <div className="grading-tabs">
-                <button
-                    className={`btn ${activeGradingTab === 'grading' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => setActiveGradingTab('grading')}
-                >
-                    <i className="fas fa-user-edit"></i> Chấm điểm ({formData.ho_va_ten})
-                </button>
-                <button
-                    className={`btn ${activeGradingTab === 'my_score' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => {
-                        setActiveGradingTab('my_score')
-                        setMyScoreViewMode('LIST')
-                    }}
-                >
-                    <i className="fas fa-star"></i> Điểm của tôi
-                </button>
-                <button
-                    className={`btn ${activeGradingTab === 'approval' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => setActiveGradingTab('approval')}
-                >
-                    <i className="fas fa-list-check"></i> Cần duyệt
-                </button>
+                    <button
+                        className={`btn ${activeGradingTab === 'grading' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                        onClick={() => setActiveGradingTab('grading')}
+                    >
+                        <i className="fas fa-user-edit"></i> Chấm điểm ({formData.ho_va_ten})
+                    </button>
+                    <button
+                        className={`btn ${activeGradingTab === 'my_score' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                        onClick={() => {
+                            setActiveGradingTab('my_score')
+                            setMyScoreViewMode('LIST')
+                        }}
+                    >
+                        <i className="fas fa-star"></i> Điểm của tôi
+                    </button>
+                    <button
+                        className={`btn ${activeGradingTab === 'approval' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                        onClick={() => setActiveGradingTab('approval')}
+                    >
+                        <i className="fas fa-list-check"></i> Cần duyệt
+                    </button>
                 </div>
             </div>
         )
@@ -3281,7 +3269,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                             </button>
                         )}
                         {onSelectEmployee && employees && employees.length > 0 && (
-                            <select 
+                            <select
                                 className="form-control employee-select-dropdown"
                                 value={employee?.employeeId || ''}
                                 onChange={(e) => {
@@ -3335,8 +3323,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     </td>
                                 </tr>
                                 {criteria.find(c => c.section === 'A').items.map(item => (
-                                    <tr 
-                                        key={item.id} 
+                                    <tr
+                                        key={item.id}
                                         className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}
                                         onClick={() => !item.isHeader && setSelectedGradingItem({ ...item, section: 'A' })}
                                         style={!item.isHeader ? { cursor: 'pointer' } : {}}
@@ -3363,8 +3351,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'B').items.map(item => (
-                                    <tr 
-                                        key={item.id} 
+                                    <tr
+                                        key={item.id}
                                         className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}
                                         onClick={() => !item.isHeader && setSelectedGradingItem({ ...item, section: 'B' })}
                                         style={!item.isHeader ? { cursor: 'pointer' } : {}}
@@ -3391,8 +3379,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
                                 </tr>
                                 {criteria.find(c => c.section === 'C').items.map(item => (
-                                    <tr 
-                                        key={item.id} 
+                                    <tr
+                                        key={item.id}
                                         className="grading-item-row"
                                         onClick={() => setSelectedGradingItem({ ...item, section: 'C' })}
                                         style={{ cursor: 'pointer' }}
@@ -3465,7 +3453,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
                                     <i className="fas fa-star-half-alt" style={{ color: '#fff' }}></i> {selectedGradingItem.id} - {selectedGradingItem.title}
                                 </h4>
-                                <button 
+                                <button
                                     onClick={() => setSelectedGradingItem(null)}
                                     style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', padding: '0', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
@@ -3487,7 +3475,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
                                 <div style={{ borderTop: '1px solid #eee', paddingTop: '20px' }}>
                                     <h5 style={{ marginBottom: '15px', color: '#333', fontSize: '0.95rem' }}>Chấm điểm:</h5>
-                                    
+
                                     {isSelf ? (
                                         // Cá nhân: Hiện ô điểm tự đánh giá, quản lý chỉ xem
                                         <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', alignItems: 'flex-end' }}>
@@ -3495,10 +3483,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
                                                     Điểm tự đánh giá:
                                                 </label>
-                                                <input 
-                                                    type="number" 
+                                                <input
+                                                    type="number"
                                                     className="grading-input-modal"
-                                                    value={svData[selectedGradingItem.id] || ''} 
+                                                    value={svData[selectedGradingItem.id] || ''}
                                                     onChange={(e) => {
                                                         handleSelfChange(selectedGradingItem.id, e.target.value)
                                                     }}
@@ -3515,10 +3503,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#999', fontSize: '0.9rem' }}>
                                                     Điểm quản lý đánh giá (chỉ xem):
                                                 </label>
-                                                <div style={{ 
-                                                    width: '100%', 
-                                                    padding: '10px', 
-                                                    fontSize: '1rem', 
+                                                <div style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    fontSize: '1rem',
                                                     textAlign: 'center',
                                                     background: '#f5f5f5',
                                                     border: '1px solid #ddd',
@@ -3536,10 +3524,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
                                                     Điểm ứng viên đã chấm:
                                                 </label>
-                                                <div style={{ 
-                                                    width: '100%', 
-                                                    padding: '10px', 
-                                                    fontSize: '1rem', 
+                                                <div style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    fontSize: '1rem',
                                                     textAlign: 'center',
                                                     background: '#e3f2fd',
                                                     border: '1px solid #90caf9',
@@ -3554,10 +3542,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '0.9rem' }}>
                                                     Điểm quản lý chấm:
                                                 </label>
-                                                <input 
-                                                    type="number" 
+                                                <input
+                                                    type="number"
                                                     className="grading-input-modal"
-                                                    value={spData[selectedGradingItem.id] || ''} 
+                                                    value={spData[selectedGradingItem.id] || ''}
                                                     onChange={(e) => {
                                                         handleSupervisorChange(selectedGradingItem.id, e.target.value)
                                                     }}

@@ -152,6 +152,8 @@ function EmployeeImport() {
                 'chức danh đầy đủ': 'job_title',
                 'chức danh': 'job_title',
                 'chức vụ/chức danh chính quyền': 'current_position',
+                'vị trí': 'job_position',
+                'vị trí công việc': 'job_position',
                 'ngày vào làm việc tại tct': 'join_date',
                 'ngày vào làm': 'join_date',
                 'ngày chính thức': 'official_date',
@@ -350,6 +352,7 @@ function EmployeeImport() {
             let successCount = 0
             let failCount = 0
             const failDetails = []
+            const warningDetails = [] // For sub-table errors
 
             for (const row of previewData) {
                 try {
@@ -358,10 +361,8 @@ function EmployeeImport() {
                     const firstName = nameParts.pop() || ''
                     const lastName = (row.last_name || '').trim() + (nameParts.length > 0 ? ' ' + nameParts.join(' ') : '')
 
-                    // Normalize current_position to valid DB values
-                    const validPositions = ['Giám đốc', 'Phó giám đốc', 'Trưởng phòng', 'Phó trưởng phòng', 'Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ', 'Khác']
-                    const rawPosition = row.current_position?.toString().trim() || ''
-                    const normalizedPosition = validPositions.includes(rawPosition) ? rawPosition : (rawPosition ? 'Khác' : null)
+                    // Keep original current_position exact value
+                    const normalizedPosition = row.current_position?.toString().trim() || null
 
                     const employeeData = {
                         employee_code: row.employee_code.toString().trim().toUpperCase(),
@@ -395,6 +396,7 @@ function EmployeeImport() {
                         // Job & Political
                         job_title: row.job_title || null,
                         current_position: normalizedPosition,
+                        job_position: row.job_position || null,
                         join_date: row.join_date || null,
                         official_date: row.official_date || null, // Job official date
 
@@ -452,11 +454,15 @@ function EmployeeImport() {
                             }
                             await supabase.from('employee_salaries').insert([salaryPayload])
                         } catch (e) {
-                            console.warn(`Salary insert failed for ${employeeData.employee_code}:`, e.message)
+                            warningDetails.push({
+                                row: row._rowNum,
+                                employee_code: row.employee_code,
+                                message: `Lỗi Salary: ${e.message}`
+                            })
                         }
                     }
 
-                    // Insert Bank Account (If data exists) - ignore errors
+                    // Insert Bank Account (If data exists)
                     if (row.bank_account_number) {
                         try {
                             const bankPayload = {
@@ -468,25 +474,33 @@ function EmployeeImport() {
                             }
                             await supabase.from('employee_bank_accounts').insert([bankPayload])
                         } catch (e) {
-                            console.warn(`Bank insert failed for ${employeeData.employee_code}:`, e.message)
+                            warningDetails.push({
+                                row: row._rowNum,
+                                employee_code: row.employee_code,
+                                message: `Lỗi Bank: ${e.message}`
+                            })
                         }
                     }
 
-                    // Insert Labor Contract (If data exists) - ignore errors
+                    // Insert Labor Contract (If data exists)
                     if (row.contract_number) {
                         try {
                             const contractPayload = {
                                 employee_code: employeeData.employee_code,
                                 contract_number: row.contract_number?.toString().trim(),
-                                contract_type: row.contract_type || 'Khai báo Import',
-                                signed_date: row.contract_signed_date || employeeData.join_date,
-                                effective_date: row.contract_signed_date || employeeData.join_date,
+                                contract_type: row.contract_type || null, // Remove default 'Khai báo Import'
+                                signed_date: row.contract_signed_date || employeeData.join_date || null,
+                                effective_date: row.contract_signed_date || employeeData.join_date || null,
                                 expiration_date: row.contract_expiration_date || null,
                                 note: 'Import từ Excel'
                             }
                             await supabase.from('labor_contracts').insert([contractPayload])
                         } catch (e) {
-                            console.warn(`Contract insert failed for ${employeeData.employee_code}:`, e.message)
+                            warningDetails.push({
+                                row: row._rowNum,
+                                employee_code: row.employee_code,
+                                message: `Lỗi Contract: ${e.message}`
+                            })
                         }
                     }
 
@@ -549,7 +563,7 @@ function EmployeeImport() {
                     total_records: previewData.length,
                     success_count: successCount,
                     fail_count: failCount,
-                    details: JSON.stringify(failDetails)
+                    details: JSON.stringify([...failDetails, ...warningDetails])
                 }])
             } catch (auditError) {
                 console.warn('Could not log audit:', auditError)
@@ -559,10 +573,11 @@ function EmployeeImport() {
                 total: previewData.length,
                 success: successCount,
                 fail: failCount,
-                details: failDetails
+                details: [...failDetails, ...warningDetails] // Include warnings in display
             })
 
-            alert(`Import hoàn tất!\nThành công: ${successCount}\nThất bại: ${failCount}`)
+            const warnMsg = warningDetails.length > 0 ? `\n(Có ${warningDetails.length} cảnh báo lỗi dữ liệu phụ)` : ''
+            alert(`Import hoàn tất!\nThành công: ${successCount}\nThất bại: ${failCount}${warnMsg}`)
         } catch (err) {
             console.error('Import error:', err)
             alert('Lỗi import: ' + err.message)
@@ -673,6 +688,7 @@ function EmployeeImport() {
                                         <th>Dòng</th>
                                         <th>Mã NV</th>
                                         <th>Họ tên</th>
+                                        <th>Chức vụ hiện tại</th>
                                         <th>Email</th>
                                         <th>Phòng ban</th>
                                         <th>Trạng thái</th>
@@ -680,11 +696,12 @@ function EmployeeImport() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {previewData.slice(0, 50).map((row, index) => (
+                                    {previewData.slice(0, 500).map((row, index) => (
                                         <tr key={index}>
                                             <td>{row._rowNum}</td>
                                             <td>{row.employee_code}</td>
                                             <td>{row.last_name} {row.first_name}</td>
+                                            <td>{row.current_position || ''}</td>
                                             <td>{row.email_acv}</td>
                                             <td>{row.department}</td>
                                             <td>{row.status}</td>
@@ -693,9 +710,9 @@ function EmployeeImport() {
                                     ))}
                                 </tbody>
                             </table>
-                            {previewData.length > 50 && (
+                            {previewData.length > 500 && (
                                 <p className="preview-note">
-                                    Hiển thị 50 dòng đầu tiên. Tổng cộng {previewData.length} dòng hợp lệ.
+                                    Hiển thị 500 dòng đầu tiên. Tổng cộng {previewData.length} dòng hợp lệ.
                                 </p>
                             )}
                         </div>
