@@ -4,7 +4,8 @@
 
 .grading-page-container {
     display: flex;
-    height: calc(100vh - 130px); /* Header (80px) + TopNavBar (~50px) */
+    height: calc(100vh - 130px);
+    /* Header (80px) + TopNavBar (~50px) */
     background: #f5f7fa;
     overflow: hidden;
     position: relative;
@@ -12,13 +13,15 @@
 
 @media (max-width: 968px) {
     .grading-page-container {
-        height: calc(100vh - 125px); /* Header (75px) + TopNavBar (~50px) */
+        height: calc(100vh - 125px);
+        /* Header (75px) + TopNavBar (~50px) */
     }
 }
 
 @media (max-width: 768px) {
     .grading-page-container {
-        height: calc(100vh - 115px); /* Header (65px) + TopNavBar (~50px) */
+        height: calc(100vh - 115px);
+        /* Header (65px) + TopNavBar (~50px) */
     }
 }
 
@@ -44,6 +47,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -394,24 +398,34 @@
 @media (max-width: 768px) {
     .grading-page-container {
         flex-direction: column;
-        height: calc(100vh - 110px); /* Header (56px) + TopNavBar (~54px) */
+        height: calc(100vh - 110px);
+        /* Header (56px) + TopNavBar (~54px) */
         overflow: visible;
     }
 
     .mobile-overlay {
         display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 90;
     }
 
     .grading-sidebar {
         position: fixed;
-        top: 0;
         left: 0;
-        height: 100vh;
+        top: 0;
+        bottom: 0;
         width: 85%;
         max-width: 320px;
         transform: translateX(-100%);
-        z-index: 999;
-        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+        box-shadow: 16px 0 32px rgba(0, 0, 0, 0.1);
+        height: 100vh;
     }
 
     .grading-sidebar.mobile-open {
@@ -523,6 +537,7 @@
    ============================================ */
 
 @media (hover: none) and (pointer: coarse) {
+
     /* Touch devices */
     .employee-item:hover {
         background: transparent;
@@ -548,6 +563,7 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
     .grading-sidebar,
     .employee-item,
     .mobile-overlay {

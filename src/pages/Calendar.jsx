@@ -316,90 +316,166 @@ CustomAgenda.title = (date) => {
     return `Tháng ${moment(date).format('MM/YYYY')}`;
 };
 
+const MobileDutySchedule = ({ days, onDateClick, renderEmployees }) => {
+    return (
+        <div className="mobile-duty-container">
+            {days.map((day, idx) => (
+                <div
+                    key={idx}
+                    className={`mobile-duty-card ${day.isToday ? 'today' : ''}`}
+                    onClick={() => onDateClick(day.date, day.schedule)}
+                >
+                    <div className="card-date-header">
+                        <span className="day-name">{day.dayName}</span>
+                        <span className="date-str">{day.day}/{day.month}</span>
+                    </div>
+                    {day.schedule ? (
+                        <div className="card-content">
+                            <div className="duty-row">
+                                <span className="label">GĐ:</span>
+                                <span className="value">{renderEmployees(day.schedule.director_on_duty)}</span>
+                            </div>
+                            <div className="duty-row">
+                                <span className="label">TB Cảng:</span>
+                                <span className="value">{renderEmployees(day.schedule.port_duty_officer)}</span>
+                            </div>
+                            <div className="duty-row">
+                                <span className="label">VP:</span>
+                                <span className="value">{renderEmployees(day.schedule.office_duty)}</span>
+                            </div>
+                            <div className="more-indicator text-primary mt-2" style={{ fontSize: '11px' }}>
+                                <i className="fas fa-info-circle mr-1"></i> Chạm để xem chi tiết
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="no-duty text-muted" style={{ fontSize: '12px', padding: '10px 0' }}>
+                            Chưa có lịch trực
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const CalendarToolbar = (toolbar) => {
     const { label, view, views, onNavigate, onView, localizer, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations } = toolbar;
+    const [showFilters, setShowFilters] = useState(false);
+    const isMobile = window.innerWidth < 768;
 
-    const goToBack = () => {
-        onNavigate('PREV');
-    };
-
-    const goToNext = () => {
-        onNavigate('NEXT');
-    };
-
-    const goToToday = () => {
-        onNavigate('TODAY');
-    };
+    const goToBack = () => onNavigate('PREV');
+    const goToNext = () => onNavigate('NEXT');
+    const goToToday = () => onNavigate('TODAY');
 
     return (
-        <div className="rbc-toolbar">
-            <span className="rbc-btn-group">
-                <button type="button" onClick={goToBack}><i className="fas fa-chevron-left"></i></button>
-                <button type="button" onClick={goToToday}>Hôm nay</button>
-                <button type="button" onClick={goToNext}><i className="fas fa-chevron-right"></i></button>
-            </span>
-
-            <span className="rbc-toolbar-label">{label}</span>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <select
-                    value={filterLocation}
-                    onChange={(e) => setFilterLocation(e.target.value)}
-                    className="form-select-macos"
-                    style={{
-                        border: '1px solid #e5e5e7',
-                        borderRadius: '6px',
-                        padding: '4px 24px 4px 10px',
-                        fontSize: '12px',
-                        background: '#f5f5f7',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        minWidth: '120px',
-                        height: '30px'
-                    }}
-                >
-                    <option value="">-- Địa điểm --</option>
-                    {getUniqueLocations().map(loc => (
-                        <option key={loc} value={loc}>{loc}</option>
-                    ))}
-                </select>
-
-                <select
-                    value={filterScope}
-                    onChange={(e) => setFilterScope(e.target.value)}
-                    className="form-select-macos"
-                    style={{
-                        border: '1px solid #e5e5e7',
-                        borderRadius: '6px',
-                        padding: '4px 24px 4px 10px',
-                        fontSize: '12px',
-                        background: '#f5f5f7',
-                        cursor: 'pointer',
-                        outline: 'none',
-                        minWidth: '120px',
-                        height: '30px'
-                    }}
-                >
-                    <option value="">-- Đơn vị --</option>
-                    <option value="PERSONAL">Cá nhân</option>
-                    <option value="UNIT">Đội</option>
-                    <option value="OFFICE">Phòng</option>
-                    <option value="COMPANY">Cảng</option>
-                </select>
-
+        <div className={`rbc-toolbar ${isMobile ? 'flex-column align-items-stretch gap-2' : ''}`}>
+            <div className="d-flex justify-content-between align-items-center w-100">
                 <span className="rbc-btn-group">
-                    {views.map(v => (
-                        <button
-                            key={v}
-                            type="button"
-                            className={view === v ? 'rbc-active' : ''}
-                            onClick={() => onView(v)}
-                        >
-                            {messages[v] || v}
-                        </button>
-                    ))}
+                    <button type="button" onClick={goToBack}><i className="fas fa-chevron-left"></i></button>
+                    {!isMobile && <button type="button" onClick={goToToday}>Hôm nay</button>}
+                    <button type="button" onClick={goToNext}><i className="fas fa-chevron-right"></i></button>
                 </span>
+
+                <span className="rbc-toolbar-label" style={isMobile ? { fontSize: '15px' } : {}}>{label}</span>
+
+                {isMobile ? (
+                    <button
+                        type="button"
+                        className={`btn-filter-mobile ${showFilters ? 'active' : ''}`}
+                        onClick={() => setShowFilters(!showFilters)}
+                        style={{
+                            border: '1px solid #d1d1d6',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            background: showFilters ? '#007aff' : '#fff',
+                            color: showFilters ? '#fff' : '#1d1d1f'
+                        }}
+                    >
+                        <i className="fas fa-filter"></i>
+                    </button>
+                ) : (
+                    <span className="rbc-btn-group">
+                        {views.map(v => (
+                            <button
+                                key={v}
+                                type="button"
+                                className={view === v ? 'rbc-active' : ''}
+                                onClick={() => onView(v)}
+                            >
+                                {messages[v] || v}
+                            </button>
+                        ))}
+                    </span>
+                )}
             </div>
+
+            {(showFilters || !isMobile) && (
+                <div style={{ display: 'flex', gap: isMobile ? '8px' : '8px', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row', marginTop: isMobile ? '8px' : '0', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0', background: isMobile ? '#f8f9fa' : 'transparent', borderRadius: isMobile ? '8px' : '0' }}>
+                    <select
+                        value={filterLocation}
+                        onChange={(e) => setFilterLocation(e.target.value)}
+                        className="form-select-macos"
+                        style={{
+                            border: '1px solid #e5e5e7',
+                            borderRadius: '6px',
+                            padding: '4px 24px 4px 10px',
+                            fontSize: '12px',
+                            background: isMobile ? '#fff' : '#f5f5f7',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            minWidth: isMobile ? '100%' : '120px',
+                            height: isMobile ? '32px' : '30px'
+                        }}
+                    >
+                        <option value="">-- Địa điểm --</option>
+                        {getUniqueLocations().map(loc => (
+                            <option key={loc} value={loc}>{loc}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={filterScope}
+                        onChange={(e) => setFilterScope(e.target.value)}
+                        className="form-select-macos"
+                        style={{
+                            border: '1px solid #e5e5e7',
+                            borderRadius: '6px',
+                            padding: '4px 24px 4px 10px',
+                            fontSize: '12px',
+                            background: isMobile ? '#fff' : '#f5f5f7',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            minWidth: isMobile ? '100%' : '120px',
+                            height: isMobile ? '32px' : '30px'
+                        }}
+                    >
+                        <option value="">-- Đơn vị --</option>
+                        <option value="PERSONAL">Cá nhân</option>
+                        <option value="UNIT">Đội</option>
+                        <option value="OFFICE">Phòng</option>
+                        <option value="COMPANY">Cảng</option>
+                    </select>
+
+                    {isMobile && (
+                        <div className="rbc-btn-group w-100 mt-1">
+                            {views.map(v => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    className={`flex-fill ${view === v ? 'rbc-active' : ''}`}
+                                    onClick={() => {
+                                        onView(v);
+                                        setShowFilters(false);
+                                    }}
+                                    style={{ fontSize: '11px' }}
+                                >
+                                    {messages[v] || v}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -408,10 +484,21 @@ export default function CalendarPage() {
     const { user } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState('month');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [view, setView] = useState(window.innerWidth < 768 ? 'agenda' : 'month');
     const [date, setDate] = useState(new Date());
     const [myProfile, setMyProfile] = useState(null)
     const [activeTab, setActiveTab] = useState('calendar'); // 'calendar' or 'duty'
+
+    // Handles resize for mobile detection
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Detail Modal State
     const [selectedEvent, setSelectedEvent] = useState(null);
@@ -1823,7 +1910,13 @@ export default function CalendarPage() {
                                 </div>
                             </div>
 
-                            {dutyView === 'week' ? (
+                            {isMobile ? (
+                                <MobileDutySchedule
+                                    days={dutyView === 'week' ? getWeekDays() : getMonthDays()}
+                                    onDateClick={handleDutyDateClick}
+                                    renderEmployees={renderDutyEmployees}
+                                />
+                            ) : dutyView === 'week' ? (
                                 // WEEK VIEW
                                 <div className="table-responsive">
                                     <table className="table table-bordered table-hover" style={{ fontSize: '0.9rem' }}>

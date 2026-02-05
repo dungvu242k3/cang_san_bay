@@ -23,11 +23,10 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, 
-        rgba(255, 215, 0, 0.8) 0%,
-        rgba(255, 255, 255, 0.6) 50%,
-        rgba(255, 215, 0, 0.8) 100%
-    );
+    background: linear-gradient(90deg,
+            rgba(255, 215, 0, 0.8) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(255, 215, 0, 0.8) 100%);
 }
 
 .page-header h1 {
@@ -448,8 +447,13 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 968px) {

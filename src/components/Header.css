@@ -30,11 +30,11 @@
         padding: 14px 0 14px 0;
         gap: 12px;
     }
-    
+
     .header .logo {
         margin-left: 8px;
     }
-    
+
     .user-info {
         margin-right: 0;
         padding-right: 0;
@@ -51,17 +51,17 @@
         top: 0;
         overflow: hidden;
     }
-    
+
     .header .logo {
         margin-left: 6px;
     }
-    
+
     .user-info {
         margin-right: 0;
         padding-right: 0;
         gap: 6px;
     }
-    
+
     .user-profile {
         padding: 3px 8px;
         margin-right: 0;
@@ -219,7 +219,7 @@
         font-size: 0.85rem;
         line-height: 1.15;
     }
-    
+
     .logo-sub-text {
         font-size: 0.6rem;
     }
@@ -234,12 +234,12 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    
+
     .logo-divider {
         height: 1px;
         margin: 1px 0;
     }
-    
+
     .logo-sub-text {
         font-size: 0.45rem;
         letter-spacing: 0.3px;
@@ -251,20 +251,22 @@
         font-size: 0.55rem;
         line-height: 1;
     }
-    
+
     .logo-main-text:first-of-type {
-        display: none; /* Ẩn "Cảng hàng không" trên màn hình nhỏ */
+        display: none;
+        /* Ẩn "Cảng hàng không" trên màn hình nhỏ */
     }
-    
+
     .logo-divider {
         height: 0.5px;
         margin: 1px 0;
     }
-    
+
     .logo-sub-text {
-        display: none; /* Ẩn text tiếng Anh trên màn hình nhỏ */
+        display: none;
+        /* Ẩn text tiếng Anh trên màn hình nhỏ */
     }
-    
+
     .logo-text {
         gap: 1px;
     }
@@ -275,30 +277,31 @@
         font-size: 0.5rem;
         line-height: 1;
     }
-    
+
     .logo-text {
-        display: none; /* Ẩn toàn bộ text, chỉ giữ logo image */
+        display: none;
+        /* Ẩn toàn bộ text, chỉ giữ logo image */
     }
-    
+
     .mobile-menu-btn {
         width: 24px;
         height: 24px;
         font-size: 0.75rem;
         margin-right: 2px;
     }
-    
+
     .user-avatar {
         width: 28px;
         height: 28px;
         font-size: 0.7rem;
     }
-    
+
     .logout-btn {
         width: 28px;
         height: 28px;
         font-size: 0.75rem;
     }
-    
+
     .header {
         height: 50px;
         min-height: 50px;
@@ -318,7 +321,8 @@
 
 @media (max-width: 768px) {
     .header-center {
-        display: none; /* Ẩn identity switcher trên mobile */
+        display: none;
+        /* Ẩn identity switcher trên mobile */
     }
 }
 
@@ -628,7 +632,7 @@
         height: 32px;
         font-size: 0.85rem;
     }
-    
+
     .user-profile {
         padding: 3px 5px;
         margin-right: 0;
@@ -651,7 +655,7 @@
         height: 30px;
         font-size: 0.8rem;
     }
-    
+
     .user-profile {
         padding: 2px 4px;
     }

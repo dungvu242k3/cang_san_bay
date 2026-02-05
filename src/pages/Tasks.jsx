@@ -1,8 +1,73 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import KanbanBoard from '../components/KanbanBoard';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
-import KanbanBoard from '../components/KanbanBoard';
 import './Tasks.css';
+
+const renderAssignee = (code, type) => {
+    return (
+        <span className="assignee-badge">
+            <i className={`fas ${type === 'UNIT' ? 'fa-users' : 'fa-user'} mr-1`}></i>
+            {code}
+        </span>
+    );
+};
+
+const MobileTaskCard = ({ task, onEdit, onQuickAction, getPriorityClass, getStatusClass }) => {
+    return (
+        <div className="mobile-task-card" onClick={(e) => onEdit(task, e)}>
+            <div className="card-header-flex">
+                <span className={`status-badge ${getStatusClass(task.status)}`}>{task.status}</span>
+                <span className={getPriorityClass(task.priority)}>
+                    {task.priority === 'Khẩn cấp' && <i className="fas fa-fire mr-1"></i>}
+                    {task.priority}
+                </span>
+            </div>
+            <div className="card-title-main">{task.title}</div>
+
+            <div className="card-meta-grid">
+                <div className="meta-item">
+                    <i className="fas fa-user-circle"></i>
+                    {task.primary ? renderAssignee(task.primary.assignee_code, task.primary.assignee_type) : '-'}
+                </div>
+                <div className="meta-item">
+                    <i className="fas fa-calendar-alt"></i>
+                    <span className={task.due_date && new Date(task.due_date) < new Date() ? 'text-danger' : ''}>
+                        {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : '-'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="card-progress-section">
+                <div className="progress-label">Tiến độ: {task.progress || 0}%</div>
+                <div className="progress thin">
+                    <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
+                </div>
+            </div>
+
+            <div className="card-actions-row">
+                {['Mới giao'].includes(task.status) && (
+                    <button className="btn-mobile-action primary" onClick={(e) => { e.stopPropagation(); onQuickAction(task, 'start'); }}>
+                        <i className="fas fa-play"></i> Nhận
+                    </button>
+                )}
+                {['Đang làm'].includes(task.status) && (
+                    <button className="btn-mobile-action success" onClick={(e) => { e.stopPropagation(); onQuickAction(task, 'complete'); }}>
+                        <i className="fas fa-check"></i> Xong
+                    </button>
+                )}
+                {['Mới giao', 'Đang làm'].includes(task.status) && (
+                    <button className="btn-mobile-action danger" onClick={(e) => { e.stopPropagation(); onQuickAction(task, 'reject'); }}>
+                        <i className="fas fa-times"></i> Từ chối
+                    </button>
+                )}
+                <button className="btn-mobile-action light" onClick={(e) => { e.stopPropagation(); onEdit(task, e); }}>
+                    <i className="fas fa-pen"></i> Sửa
+                </button>
+            </div>
+        </div>
+    );
+};
 
 function Tasks() {
     const { user } = useAuth()
@@ -19,6 +84,7 @@ function Tasks() {
     const [subTab, setSubTab] = useState('received') // 'received' | 'sent' | 'unassigned'
     const [viewMode, setViewMode] = useState('list') // 'list' | 'kanban'
     const [editingProgress, setEditingProgress] = useState(null)
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     // Filters
     const [filterStatus, setFilterStatus] = useState('')
@@ -46,18 +112,25 @@ function Tasks() {
     })
 
     const [rejectionModal, setRejectionModal] = useState({ show: false, task: null, reason: '' })
-    
+
     // Discussion/Comments state
     const [taskComments, setTaskComments] = useState([])
     const [newComment, setNewComment] = useState('')
     const [loadingComments, setLoadingComments] = useState(false)
     const [sendingComment, setSendingComment] = useState(false)
-    
+
     // Attachments state
     const [taskAttachments, setTaskAttachments] = useState([])
     const [loadingAttachments, setLoadingAttachments] = useState(false)
     const [uploadingFile, setUploadingFile] = useState(false)
     const fileInputRef = useRef(null)
+
+    // Resize listener for mobile detection
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Load Initial Data
     useEffect(() => {
@@ -299,14 +372,14 @@ function Tasks() {
 
             // Set modal tab to detail
             setModalTab('detail')
-            
+
             // Set editing task
             setEditingTask(task)
-            
+
             // Extract primary assignee and collaborators
             const primary = task.primary || {}
             const collabs = task.collabs || []
-            
+
             // Populate form data
             setFormData({
                 title: task.title || '',
@@ -317,23 +390,23 @@ function Tasks() {
                 progress: task.progress || 0,
                 primary_assignee_type: primary.assignee_type || 'PERSON',
                 primary_assignee_code: primary.assignee_code || '',
-                collab_assignees: collabs.map(c => ({ 
-                    code: c.assignee_code || '', 
-                    type: c.assignee_type || 'PERSON' 
+                collab_assignees: collabs.map(c => ({
+                    code: c.assignee_code || '',
+                    type: c.assignee_type || 'PERSON'
                 })),
                 rejection_reason: task.rejection_reason || ''
             })
-            
+
             // Show modal
             setShowModal(true)
-            
+
             // Load related data (comments and attachments) when opening task
             if (task.id) {
                 // Load comments in background
                 loadTaskComments(task.id).catch(err => {
                     console.error('❌ [Edit Task] Error loading comments:', err)
                 })
-                
+
                 // Load attachments in background
                 loadTaskAttachments(task.id).catch(err => {
                     console.error('❌ [Edit Task] Error loading attachments:', err)
@@ -349,7 +422,7 @@ function Tasks() {
 
     const loadTaskComments = async (taskId) => {
         if (!taskId) return
-        
+
         try {
             setLoadingComments(true)
             const { data, error } = await supabase
@@ -460,7 +533,7 @@ function Tasks() {
 
     const loadTaskAttachments = async (taskId) => {
         if (!taskId) return
-        
+
         try {
             setLoadingAttachments(true)
             const { data, error } = await supabase
@@ -551,7 +624,7 @@ function Tasks() {
 
             // Reload attachments
             await loadTaskAttachments(editingTask.id)
-            
+
             // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = ''
@@ -778,15 +851,15 @@ function Tasks() {
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <div className="custom-tabs" style={{ margin: 0 }}>
-                        <button 
-                            className={`btn ${viewMode === 'list' ? 'btn-primary' : ''}`} 
+                        <button
+                            className={`btn ${viewMode === 'list' ? 'btn-primary' : ''}`}
                             onClick={() => setViewMode('list')}
                             title="Danh sách"
                         >
                             <i className="fas fa-list"></i>
                         </button>
-                        <button 
-                            className={`btn ${viewMode === 'kanban' ? 'btn-primary' : ''}`} 
+                        <button
+                            className={`btn ${viewMode === 'kanban' ? 'btn-primary' : ''}`}
                             onClick={() => setViewMode('kanban')}
                             title="Kanban"
                         >
@@ -800,9 +873,9 @@ function Tasks() {
             </div>
 
             {/* Filters */}
-            <div className="task-filters mb-4">
+            <div className={`task-filters ${isMobile ? 'mobile-filters' : 'mb-4'}`}>
                 {(activeTab === 'mine' || filterEmployee) && (
-                    <div className="custom-tabs mr-4">
+                    <div className={`custom-tabs ${isMobile ? 'mb-2' : 'mr-4'}`}>
                         <button className={`btn ${subTab === 'received' ? 'btn-info' : ''}`} onClick={() => setSubTab('received')}>Đã nhận</button>
                         <button className={`btn ${subTab === 'actions' ? 'btn-info' : ''}`} onClick={() => setSubTab('actions')}>Cần xử lý</button>
                         <button className={`btn ${subTab === 'sent' ? 'btn-info' : ''}`} onClick={() => setSubTab('sent')}>Đã giao</button>
@@ -811,7 +884,7 @@ function Tasks() {
                 )}
 
                 <div className="task-filter-group">
-                    <div className="search-input-wrapper" style={{ maxWidth: '220px' }}>
+                    <div className="search-input-wrapper" style={isMobile ? { width: '100%', maxWidth: 'none' } : { maxWidth: '220px' }}>
                         <i className="fas fa-user-tag"></i>
                         <select
                             className="input-styled"
@@ -819,7 +892,7 @@ function Tasks() {
                             value={filterEmployee}
                             onChange={e => setFilterEmployee(e.target.value)}
                         >
-                            <option value="">-- Tất cả nhân viên --</option>
+                            <option value="">-- {isMobile ? 'Nhân viên' : 'Tất cả nhân viên'} --</option>
                             {getVisibleEmployees()
                                 .map(e => (
                                     <option key={e.code} value={e.code}>{e.name}</option>
@@ -827,7 +900,7 @@ function Tasks() {
                         </select>
                     </div>
 
-                    <div className="search-input-wrapper">
+                    <div className="search-input-wrapper" style={isMobile ? { width: '100%', flex: 'none' } : {}}>
                         <i className="fas fa-search"></i>
                         <input
                             className="input-styled"
@@ -837,7 +910,7 @@ function Tasks() {
                         />
                     </div>
 
-                    <div className="date-filter-container" title="Lọc theo ngày hết hạn">
+                    <div className="date-filter-container" title="Lọc theo ngày hết hạn" style={isMobile ? { width: '100%', justifyContent: 'space-between' } : {}}>
                         <i className="far fa-calendar-alt text-muted"></i>
                         <input type="date" className="date-filter-input" value={fromDate} onChange={e => setFromDate(e.target.value)} />
                         <span className="text-muted">-</span>
@@ -846,7 +919,7 @@ function Tasks() {
 
                     <select
                         className="select-styled"
-                        style={{ width: '150px' }}
+                        style={isMobile ? { width: '100%' } : { width: '150px' }}
                         value={filterStatus}
                         onChange={e => setFilterStatus(e.target.value)}
                     >
@@ -863,132 +936,153 @@ function Tasks() {
 
             {/* View Toggle */}
             {viewMode === 'list' ? (
-                <div className="task-table-container">
-                <table className="table task-table mb-0">
-                    <thead>
-                        <tr>
-                            <th width="30%">Tiêu đề</th>
-                            <th width="10%">Mức độ</th>
-                            <th width="12%">Trạng thái</th>
-                            <th width="10%">Tiến độ</th>
-                            <th width="14%">Xử lý chính</th>
-                            <th width="10%">Hạn xử lý</th>
-                            <th width="14%" className="text-center" style={{ color: 'var(--primary)', fontWeight: '700' }}>Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                isMobile ? (
+                    <div className="mobile-task-list">
                         {loading ? (
-                            <tr><td colSpan="7" className="text-center p-4">Đang tải dữ liệu...</td></tr>
+                            <div className="text-center p-4">Đang tải dữ liệu...</div>
                         ) : getFilteredTasks().length === 0 ? (
-                            <tr><td colSpan="7" className="text-center p-4 text-muted">Không tìm thấy công việc nào.</td></tr>
+                            <div className="text-center p-4 text-muted">Không tìm thấy công việc nào.</div>
                         ) : (
                             getFilteredTasks().map(task => (
-                                <tr key={task.id}>
-                                    <td>
-                                        <div className="task-title">{task.title}</div>
-                                        {task.collabs && task.collabs.length > 0 && (
-                                            <small className="text-muted"><i className="fas fa-users mr-1"></i> {task.collabs.length} phối hợp</small>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <span className={getPriorityClass(task.priority)}>
-                                            {task.priority === 'Khẩn cấp' && <i className="fas fa-fire mr-1"></i>}
-                                            {task.priority}
-                                        </span>
-                                    </td>
-                                    <td><span className={`status-badge ${getStatusClass(task.status)}`}>{task.status}</span></td>
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                            {editingProgress === task.id ? (
-                                                <div className="progress-editable-wrapper" onClick={(e) => e.stopPropagation()}>
-                                                    <input
-                                                        type="range"
-                                                        min="0"
-                                                        max="100"
-                                                        value={task.progress || 0}
-                                                        onChange={(e) => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })}
-                                                        onBlur={() => setEditingProgress(null)}
-                                                        onMouseDown={(e) => e.stopPropagation()}
-                                                        className="progress-range-input"
-                                                        autoFocus
-                                                    />
-                                                    <div className="progress" style={{ marginTop: '4px' }}>
-                                                        <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
-                                                    </div>
-                                                    <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea', marginTop: '4px' }}>
-                                                        {task.progress || 0}%
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div 
-                                                        className="progress-clickable" 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            setEditingProgress(task.id)
-                                                        }}
-                                                        onMouseDown={(e) => e.stopPropagation()}
-                                                    >
-                                                        <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
-                                                    </div>
-                                                    <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea' }}>
-                                                        {task.progress || 0}%
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {task.primary ? renderAssignee(task.primary.assignee_code, task.primary.assignee_type) : '-'}
-                                    </td>
-                                    <td className={task.due_date && new Date(task.due_date) < new Date() ? 'text-danger font-weight-bold' : ''}>
-                                        {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : '-'}
-                                    </td>
-                                    <td className="text-center action-column-premium">
-                                        <div className="action-uniform-container">
-                                            {['Mới giao'].includes(task.status) && (
-                                                <button className="btn-task-action btn-task-action-primary" title="Nhận việc" onClick={() => handleQuickAction(task, 'start')}>
-                                                    <i className="fas fa-play"></i>
-                                                </button>
-                                            )}
-                                            {['Đang làm'].includes(task.status) && (
-                                                <button className="btn-task-action btn-task-action-success" title="Xác nhận xong" onClick={() => handleQuickAction(task, 'complete')}>
-                                                    <i className="fas fa-check"></i>
-                                                </button>
-                                            )}
-                                            {['Mới giao', 'Đang làm'].includes(task.status) && (
-                                                <button className="btn-task-action btn-task-action-danger" title="Từ chối" onClick={() => handleQuickAction(task, 'reject')}>
-                                                    <i className="fas fa-times"></i>
-                                                </button>
-                                            )}
-                                            {['Hoàn thành', 'Từ chối', 'Hủy'].includes(task.status) && (
-                                                <button className="btn-task-action btn-task-action-danger" title="Xóa vĩnh viễn" onClick={() => handleDeleteTask(task)}>
-                                                    <i className="fas fa-trash-alt"></i>
-                                                </button>
-                                            )}
-                                            <button 
-                                                className="btn-task-action btn-task-action-light" 
-                                                title="Sửa chi tiết" 
-                                                onClick={(e) => handleOpenEdit(task, e)}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = 'scale(1.1)'
-                                                    e.currentTarget.style.transition = 'all 0.2s ease'
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = 'scale(1)'
-                                                }}
-                                                aria-label={`Sửa công việc: ${task.title}`}
-                                            >
-                                                <i className="fas fa-pen"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <MobileTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    onEdit={handleOpenEdit}
+                                    onQuickAction={handleQuickAction}
+                                    getPriorityClass={getPriorityClass}
+                                    getStatusClass={getStatusClass}
+                                />
                             ))
                         )}
-                    </tbody>
-                </table>
-            </div>
+                    </div>
+                ) : (
+                    <div className="task-table-container">
+                        <table className="table task-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th width="30%">Tiêu đề</th>
+                                    <th width="10%">Mức độ</th>
+                                    <th width="12%">Trạng thái</th>
+                                    <th width="10%">Tiến độ</th>
+                                    <th width="14%">Xử lý chính</th>
+                                    <th width="10%">Hạn xử lý</th>
+                                    <th width="14%" className="text-center" style={{ color: 'var(--primary)', fontWeight: '700' }}>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr><td colSpan="7" className="text-center p-4">Đang tải dữ liệu...</td></tr>
+                                ) : getFilteredTasks().length === 0 ? (
+                                    <tr><td colSpan="7" className="text-center p-4 text-muted">Không tìm thấy công việc nào.</td></tr>
+                                ) : (
+                                    getFilteredTasks().map(task => (
+                                        <tr key={task.id}>
+                                            <td>
+                                                <div className="task-title">{task.title}</div>
+                                                {task.collabs && task.collabs.length > 0 && (
+                                                    <small className="text-muted"><i className="fas fa-users mr-1"></i> {task.collabs.length} phối hợp</small>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span className={getPriorityClass(task.priority)}>
+                                                    {task.priority === 'Khẩn cấp' && <i className="fas fa-fire mr-1"></i>}
+                                                    {task.priority}
+                                                </span>
+                                            </td>
+                                            <td><span className={`status-badge ${getStatusClass(task.status)}`}>{task.status}</span></td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                    {editingProgress === task.id ? (
+                                                        <div className="progress-editable-wrapper" onClick={(e) => e.stopPropagation()}>
+                                                            <input
+                                                                type="range"
+                                                                min="0"
+                                                                max="100"
+                                                                value={task.progress || 0}
+                                                                onChange={(e) => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })}
+                                                                onBlur={() => setEditingProgress(null)}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                className="progress-range-input"
+                                                                autoFocus
+                                                            />
+                                                            <div className="progress" style={{ marginTop: '4px' }}>
+                                                                <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
+                                                            </div>
+                                                            <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea', marginTop: '4px' }}>
+                                                                {task.progress || 0}%
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div
+                                                                className="progress-clickable"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    setEditingProgress(task.id)
+                                                                }}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                            >
+                                                                <div className={`progress-bar ${task.progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${task.progress || 0}%` }}></div>
+                                                            </div>
+                                                            <div className="progress-percentage" style={{ textAlign: 'center', fontSize: '0.85rem', fontWeight: '600', color: '#667eea' }}>
+                                                                {task.progress || 0}%
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {task.primary ? renderAssignee(task.primary.assignee_code, task.primary.assignee_type) : '-'}
+                                            </td>
+                                            <td className={task.due_date && new Date(task.due_date) < new Date() ? 'text-danger font-weight-bold' : ''}>
+                                                {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : '-'}
+                                            </td>
+                                            <td className="text-center action-column-premium">
+                                                <div className="action-uniform-container">
+                                                    {['Mới giao'].includes(task.status) && (
+                                                        <button className="btn-task-action btn-task-action-primary" title="Nhận việc" onClick={() => handleQuickAction(task, 'start')}>
+                                                            <i className="fas fa-play"></i>
+                                                        </button>
+                                                    )}
+                                                    {['Đang làm'].includes(task.status) && (
+                                                        <button className="btn-task-action btn-task-action-success" title="Xác nhận xong" onClick={() => handleQuickAction(task, 'complete')}>
+                                                            <i className="fas fa-check"></i>
+                                                        </button>
+                                                    )}
+                                                    {['Mới giao', 'Đang làm'].includes(task.status) && (
+                                                        <button className="btn-task-action btn-task-action-danger" title="Từ chối" onClick={() => handleQuickAction(task, 'reject')}>
+                                                            <i className="fas fa-times"></i>
+                                                        </button>
+                                                    )}
+                                                    {['Hoàn thành', 'Từ chối', 'Hủy'].includes(task.status) && (
+                                                        <button className="btn-task-action btn-task-action-danger" title="Xóa vĩnh viễn" onClick={() => handleDeleteTask(task)}>
+                                                            <i className="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="btn-task-action btn-task-action-light"
+                                                        title="Sửa chi tiết"
+                                                        onClick={(e) => handleOpenEdit(task, e)}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1.1)'
+                                                            e.currentTarget.style.transition = 'all 0.2s ease'
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1)'
+                                                        }}
+                                                        aria-label={`Sửa công việc: ${task.title}`}
+                                                    >
+                                                        <i className="fas fa-pen"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )
             ) : (
                 <KanbanBoard
                     tasks={getFilteredTasks()}
@@ -996,6 +1090,7 @@ function Tasks() {
                     onTaskClick={handleOpenEdit}
                     getPriorityClass={getPriorityClass}
                     getStatusClass={getStatusClass}
+                    isMobile={isMobile}
                 />
             )}
 
@@ -1200,7 +1295,7 @@ function Tasks() {
                                                 {taskComments.map((comment) => {
                                                     const sender = comment.employee_profiles
                                                     const isMyComment = comment.sender_code === user?.employee_code
-                                                    const senderName = sender 
+                                                    const senderName = sender
                                                         ? `${sender.last_name || ''} ${sender.first_name || ''}`.trim() || sender.employee_code
                                                         : comment.sender_code
 
@@ -1238,7 +1333,7 @@ function Tasks() {
                                                                     <div>
                                                                         <strong style={{ color: '#212529', fontSize: '0.9rem' }}>{senderName}</strong>
                                                                         {isMyComment && (
-                                                                            <span style={{ 
+                                                                            <span style={{
                                                                                 marginLeft: '8px',
                                                                                 padding: '2px 8px',
                                                                                 background: '#0d6efd',
@@ -1272,7 +1367,7 @@ function Tasks() {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div style={{ 
+                                                                <div style={{
                                                                     color: '#495057',
                                                                     fontSize: '0.9rem',
                                                                     lineHeight: '1.5',
@@ -1318,8 +1413,8 @@ function Tasks() {
                                                 disabled={!newComment.trim() || sendingComment}
                                                 style={{
                                                     padding: '10px 20px',
-                                                    background: sendingComment || !newComment.trim() 
-                                                        ? '#6c757d' 
+                                                    background: sendingComment || !newComment.trim()
+                                                        ? '#6c757d'
                                                         : 'linear-gradient(135deg, #0d6efd, #0b5ed7)',
                                                     color: '#fff',
                                                     border: 'none',
@@ -1408,7 +1503,7 @@ function Tasks() {
                                                 {taskAttachments.map((attachment) => {
                                                     const uploader = attachment.employee_profiles
                                                     const isMyAttachment = attachment.uploaded_by === user?.employee_code
-                                                    const uploaderName = uploader 
+                                                    const uploaderName = uploader
                                                         ? `${uploader.last_name || ''} ${uploader.first_name || ''}`.trim() || uploader.employee_code
                                                         : attachment.uploaded_by
 
@@ -1527,35 +1622,38 @@ function Tasks() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Rejection Modal */}
-            {rejectionModal.show && (
-                <div className="modal-overlay" style={{ zIndex: 2000 }}>
-                    <div className="modal-content-premium fade-in" style={{ width: '450px' }}>
-                        <div className="modal-header-premium border-bottom-0">
-                            <div className="modal-title font-weight-bold text-danger">Báo cáo Từ chối công việc</div>
-                            <button className="btn-close-modal" onClick={() => setRejectionModal({ show: false, task: null, reason: '' })}><i className="fas fa-times"></i></button>
-                        </div>
-                        <div className="modal-body-premium pt-0">
-                            <p className="mb-3 text-muted">Bạn đang từ chối việc: <strong>{rejectionModal.task?.title}</strong>. Vui lòng ghi rõ lý do chi tiết:</p>
-                            <textarea
-                                className="form-control-premium border-danger"
-                                rows="4"
-                                value={rejectionModal.reason}
-                                onChange={e => setRejectionModal({ ...rejectionModal, reason: e.target.value })}
-                                placeholder="Ghi chú lý do..."
-                                autoFocus
-                            />
-                        </div>
-                        <div className="modal-footer-premium border-top-0">
-                            <button className="btn btn-secondary-premium btn-sm" onClick={() => setRejectionModal({ show: false, task: null, reason: '' })}>Quay lại</button>
-                            <button className="btn btn-primary-premium bg-danger border-0" style={{ background: '#dc3545', color: 'white' }} onClick={confirmReject}>Xác nhận Từ chối</button>
+            {
+                rejectionModal.show && (
+                    <div className="modal-overlay" style={{ zIndex: 2000 }}>
+                        <div className="modal-content-premium fade-in" style={{ width: '450px' }}>
+                            <div className="modal-header-premium border-bottom-0">
+                                <div className="modal-title font-weight-bold text-danger">Báo cáo Từ chối công việc</div>
+                                <button className="btn-close-modal" onClick={() => setRejectionModal({ show: false, task: null, reason: '' })}><i className="fas fa-times"></i></button>
+                            </div>
+                            <div className="modal-body-premium pt-0">
+                                <p className="mb-3 text-muted">Bạn đang từ chối việc: <strong>{rejectionModal.task?.title}</strong>. Vui lòng ghi rõ lý do chi tiết:</p>
+                                <textarea
+                                    className="form-control-premium border-danger"
+                                    rows="4"
+                                    value={rejectionModal.reason}
+                                    onChange={e => setRejectionModal({ ...rejectionModal, reason: e.target.value })}
+                                    placeholder="Ghi chú lý do..."
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="modal-footer-premium border-top-0">
+                                <button className="btn btn-secondary-premium btn-sm" onClick={() => setRejectionModal({ show: false, task: null, reason: '' })}>Quay lại</button>
+                                <button className="btn btn-primary-premium bg-danger border-0" style={{ background: '#dc3545', color: 'white' }} onClick={confirmReject}>Xác nhận Từ chối</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }
 

@@ -3,9 +3,10 @@ import './KanbanBoard.css'
 
 const STATUSES = ['Mới giao', 'Đang làm', 'Hoàn thành', 'Từ chối', 'Tạm dừng', 'Hủy']
 
-function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, getPriorityClass, getStatusClass }) {
+function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, getPriorityClass, getStatusClass, isMobile }) {
     const [draggedTask, setDraggedTask] = useState(null)
     const [editingProgress, setEditingProgress] = useState(null)
+    const [activeStatusTab, setActiveStatusTab] = useState(STATUSES[0])
 
     const handleDragStart = (e, task) => {
         setDraggedTask(task)
@@ -91,94 +92,105 @@ function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, getPriorityClass, getSt
     }
 
     return (
-        <div className="kanban-board">
-            {STATUSES.map(status => {
-                const statusTasks = getTasksByStatus(status)
-                return (
-                    <div
-                        key={status}
-                        className="kanban-column"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, status)}
-                    >
-                        <div className="kanban-column-header">
-                            <h3>{status}</h3>
-                            <span className="task-count">{statusTasks.length}</span>
-                        </div>
-                        <div className="kanban-column-content">
-                            {statusTasks.map(task => (
-                                <div
-                                    key={task.id}
-                                    className="kanban-card"
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, task)}
-                                    onClick={(e) => {
-                                        // Prevent opening edit when clicking on progress bar
-                                        if (e.target.closest('.progress-bar-wrapper') || 
-                                            e.target.closest('.progress-input') ||
-                                            e.target.closest('.progress-bar-editable')) {
-                                            return
-                                        }
-                                        onTaskClick(task, e)
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)'
-                                        e.currentTarget.style.transition = 'all 0.2s ease'
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
+        <div className={`kanban-container ${isMobile ? 'mobile-kanban' : ''}`}>
+            {isMobile && (
+                <div className="kanban-mobile-tabs">
+                    {STATUSES.map(status => (
+                        <button
+                            key={status}
+                            className={`kanban-tab-btn ${activeStatusTab === status ? 'active' : ''}`}
+                            onClick={() => setActiveStatusTab(status)}
+                        >
+                            {status}
+                            <span className="tab-count">{tasks.filter(t => t.status === status).length}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <div className="kanban-board">
+                {STATUSES.map(status => {
+                    const statusTasks = getTasksByStatus(status)
+
+                    if (isMobile && activeStatusTab !== status) return null;
+
+                    return (
+                        <div
+                            key={status}
+                            className="kanban-column"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, status)}
+                        >
+                            <div className="kanban-column-header">
+                                <h3>{status}</h3>
+                                <span className="task-count">{statusTasks.length}</span>
+                            </div>
+                            <div className="kanban-column-content">
+                                {statusTasks.map(task => (
+                                    <div
+                                        key={task.id}
+                                        className="kanban-card"
+                                        draggable={!isMobile}
+                                        onDragStart={(e) => handleDragStart(e, task)}
+                                        onClick={(e) => {
+                                            // Prevent opening edit when clicking on progress bar
+                                            if (e.target.closest('.progress-bar-wrapper') ||
+                                                e.target.closest('.progress-input') ||
+                                                e.target.closest('.progress-bar-editable')) {
+                                                return
+                                            }
                                             onTaskClick(task, e)
-                                        }
-                                    }}
-                                    aria-label={`Công việc: ${task.title}. Nhấn Enter để mở chi tiết`}
-                                >
-                                    <div className="kanban-card-header">
-                                        <span className={getPriorityClass(task.priority)}>
-                                            {task.priority === 'Khẩn cấp' && <i className="fas fa-fire"></i>}
-                                            {task.priority}
-                                        </span>
-                                        <span className={`status-badge ${getStatusClass(task.status)}`}>
-                                            {task.status}
-                                        </span>
-                                    </div>
-                                    <div className="kanban-card-title">{task.title}</div>
-                                    {task.description && (
-                                        <div className="kanban-card-description">
-                                            {task.description.substring(0, 100)}
-                                            {task.description.length > 100 && '...'}
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                onTaskClick(task, e)
+                                            }
+                                        }}
+                                        aria-label={`Công việc: ${task.title}. Nhấn Enter để mở chi tiết`}
+                                    >
+                                        <div className="kanban-card-header">
+                                            <span className={getPriorityClass(task.priority)}>
+                                                {task.priority === 'Khẩn cấp' && <i className="fas fa-fire"></i>}
+                                                {task.priority}
+                                            </span>
+                                            <span className={`status-badge ${getStatusClass(task.status)}`}>
+                                                {task.status}
+                                            </span>
                                         </div>
-                                    )}
-                                    <div className="kanban-card-progress">
-                                        {renderProgressBar(task)}
-                                    </div>
-                                    <div className="kanban-card-footer">
-                                        {task.primary && (
-                                            <div className="assignee">
-                                                <i className="fas fa-user"></i>
-                                                {task.primary.assignee_code}
+                                        <div className="kanban-card-title">{task.title}</div>
+                                        {task.description && (
+                                            <div className="kanban-card-description">
+                                                {task.description.substring(0, 100)}
+                                                {task.description.length > 100 && '...'}
                                             </div>
                                         )}
-                                        {task.due_date && (
-                                            <div className={`due-date ${new Date(task.due_date) < new Date() ? 'overdue' : ''}`}>
-                                                <i className="fas fa-calendar"></i>
-                                                {new Date(task.due_date).toLocaleDateString('vi-VN')}
-                                            </div>
-                                        )}
+                                        <div className="kanban-card-progress">
+                                            {renderProgressBar(task)}
+                                        </div>
+                                        <div className="kanban-card-footer">
+                                            {task.primary && (
+                                                <div className="assignee">
+                                                    <i className="fas fa-user"></i>
+                                                    {task.primary.assignee_code}
+                                                </div>
+                                            )}
+                                            {task.due_date && (
+                                                <div className={`due-date ${new Date(task.due_date) < new Date() ? 'overdue' : ''}`}>
+                                                    <i className="fas fa-calendar"></i>
+                                                    {new Date(task.due_date).toLocaleDateString('vi-VN')}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )
-            })}
+                    )
+                })}
+            </div>
         </div>
     )
 }

@@ -882,6 +882,132 @@ textarea.form-control-premium {
         min-width: 120px;
     }
 
+
+    .mobile-filters {
+        background: #fff;
+        padding: 12px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 16px;
+    }
+
+    .mobile-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .mobile-task-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border-left: 5px solid #667eea;
+        transition: transform 0.2s;
+    }
+
+    .mobile-task-card:active {
+        transform: scale(0.98);
+        background: #f8f9fa;
+    }
+
+    .card-header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .card-title-main {
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #1e293b;
+        margin-bottom: 12px;
+        line-height: 1.4;
+    }
+
+    .card-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .card-progress-section {
+        margin-bottom: 16px;
+        background: #f1f5f9;
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .progress-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 6px;
+    }
+
+    .progress.thin {
+        height: 8px !important;
+        border-radius: 4px !important;
+        background: #e2e8f0 !important;
+    }
+
+    .card-actions-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 12px;
+    }
+
+    .btn-mobile-action {
+        flex: 1;
+        min-width: 80px;
+        padding: 8px;
+        border-radius: 8px;
+        border: none;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+
+    .btn-mobile-action.primary {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .btn-mobile-action.success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .btn-mobile-action.danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .btn-mobile-action.light {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .btn-mobile-action:active {
+        opacity: 0.7;
+    }
+
     .action-uniform-container {
         flex-wrap: wrap;
         gap: 8px;

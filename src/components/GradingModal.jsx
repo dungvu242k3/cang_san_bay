@@ -66,6 +66,13 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
     const [supervisorComment, setSupervisorComment] = useState('');
     const [isGradingLocked, setIsGradingLocked] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (isOpen && employee) {
@@ -285,174 +292,250 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                 </div>
                             </div>
 
-                            <div className="grading-table-wrapper">
-                                <table className="grading-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Tiêu chí đánh giá</th>
-                                            <th className="text-center">Max</th>
-                                            <th className="text-center col-self">Tự ĐG</th>
-                                            <th className="text-center col-supervisor">QL ĐG</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {/* Section A */}
-                                        <tr className="grading-section-header section-negative">
-                                            <td>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
-                                            <td className="text-center">20</td>
-                                            <td className="text-center text-danger font-weight-bold col-self">{selfTotals.scoreA}</td>
-                                            <td className="text-center text-danger font-weight-bold col-supervisor">{supervisorTotals.scoreA}</td>
-                                        </tr>
-                                        {criteria.find(c => c.section === 'A')?.items.map(item => (
-                                            <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
-                                                <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
-                                                    {item.id} {item.title}
-                                                </td>
-                                                <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                                <td className="text-center col-self">
-                                                    {!item.isHeader && (
-                                                        <input
-                                                            type="number"
-                                                            className="grading-input"
-                                                            value={selfAssessment[item.id] || ''}
-                                                            onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                            disabled={disableSelf}
-                                                            min="0"
-                                                            max="20"
-                                                        />
-                                                    )}
-                                                </td>
-                                                <td className="text-center col-supervisor">
-                                                    {!item.isHeader && (
-                                                        <input
-                                                            type="number"
-                                                            className="grading-input"
-                                                            value={supervisorAssessment[item.id] || ''}
-                                                            onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                            disabled={disableSupervisor}
-                                                            min="0"
-                                                            max="20"
-                                                        />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                            {isMobile ? (
+                                <div className="grading-mobile-list">
+                                    {getCriteria(employee.gradeTemplateCode).map(section => (
+                                        <div key={section.section} className="grading-mobile-section">
+                                            <div className={`grading-mobile-section-header section-${section.section === 'A' ? 'negative' : section.section === 'B' ? 'positive' : 'bonus'}`}>
+                                                <span>Phần {section.section}: {
+                                                    section.section === 'A' ? 'Điểm trừ' :
+                                                        section.section === 'B' ? 'Điểm đạt' : 'Điểm cộng'
+                                                }</span>
+                                                <div className="section-scores-group">
+                                                    <span className="section-score self">Tự: {section.section === 'A' ? selfTotals.scoreA : section.section === 'B' ? selfTotals.scoreB : selfTotals.scoreC}</span>
+                                                    <span className="section-score supervisor">QL: {section.section === 'A' ? supervisorTotals.scoreA : section.section === 'B' ? supervisorTotals.scoreB : supervisorTotals.scoreC}</span>
+                                                </div>
+                                            </div>
+                                            {section.items.map(item => (
+                                                <div key={item.id} className={`grading-mobile-card ${item.isHeader ? 'is-header' : ''}`}>
+                                                    <div className="card-header-row">
+                                                        <span className="card-title">{item.id} {item.title}</span>
+                                                        <span className="card-max">{item.isHeader ? `Max: ${item.maxScore}` : `Khoảng: ${item.range}`}</span>
+                                                    </div>
 
-                                        {/* Section B */}
-                                        <tr className="grading-section-header section-positive">
-                                            <td>B. KHUNG ĐIỂM ĐẠT</td>
-                                            <td className="text-center">80</td>
-                                            <td className="text-center text-success font-weight-bold col-self">{selfTotals.scoreB}</td>
-                                            <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
-                                        </tr>
-                                        {criteria.find(c => c.section === 'B')?.items.map(item => (
-                                            <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
-                                                <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
-                                                    {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
-                                                </td>
-                                                <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
-                                                <td className="text-center col-self">
                                                     {!item.isHeader && (
-                                                        <input
-                                                            type="number"
-                                                            className="grading-input"
-                                                            value={selfAssessment[item.id] || ''}
-                                                            onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                            disabled={disableSelf}
-                                                            min="0"
-                                                            max="10"
-                                                        />
+                                                        <div className="card-inputs">
+                                                            <div className="input-group">
+                                                                <label>Tôi ĐG</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={selfAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSelf}
+                                                                    min="0"
+                                                                    max={section.section === 'A' ? '20' : section.section === 'B' ? '10' : '15'}
+                                                                />
+                                                            </div>
+                                                            <div className="input-group">
+                                                                <label>QL ĐG</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={supervisorAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSupervisor}
+                                                                    min="0"
+                                                                    max={section.section === 'A' ? '20' : section.section === 'B' ? '10' : '15'}
+                                                                />
+                                                            </div>
+                                                        </div>
                                                     )}
-                                                </td>
-                                                <td className="text-center col-supervisor">
-                                                    {!item.isHeader && (
-                                                        <input
-                                                            type="number"
-                                                            className="grading-input"
-                                                            value={supervisorAssessment[item.id] || ''}
-                                                            onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                            disabled={disableSupervisor}
-                                                            min="0"
-                                                            max="10"
-                                                        />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grading-table-wrapper">
+                                        <table className="grading-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tiêu chí đánh giá</th>
+                                                    <th className="text-center">Max</th>
+                                                    <th className="text-center col-self">Tự ĐG</th>
+                                                    <th className="text-center col-supervisor">QL ĐG</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {/* Section A */}
+                                                <tr className="grading-section-header section-negative">
+                                                    <td>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
+                                                    <td className="text-center">20</td>
+                                                    <td className="text-center text-danger font-weight-bold col-self">{selfTotals.scoreA}</td>
+                                                    <td className="text-center text-danger font-weight-bold col-supervisor">{supervisorTotals.scoreA}</td>
+                                                </tr>
+                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'A')?.items.map(item => (
+                                                    <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
+                                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
+                                                            {item.id} {item.title}
+                                                        </td>
+                                                        <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
+                                                        <td className="text-center col-self">
+                                                            {!item.isHeader && (
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={selfAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSelf}
+                                                                    min="0"
+                                                                    max="20"
+                                                                />
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center col-supervisor">
+                                                            {!item.isHeader && (
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={supervisorAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSupervisor}
+                                                                    min="0"
+                                                                    max="20"
+                                                                />
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
 
-                                        {/* Section C */}
-                                        <tr className="grading-section-header section-bonus">
-                                            <td>C. KHUNG ĐIỂM CỘNG</td>
-                                            <td className="text-center">15</td>
-                                            <td className="text-center text-primary font-weight-bold col-self">{selfTotals.scoreC}</td>
-                                            <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
-                                        </tr>
-                                        {criteria.find(c => c.section === 'C')?.items.map(item => (
-                                            <tr key={item.id} className="grading-item-row">
-                                                <td className="pl-2">
-                                                    {item.id} {item.title}
-                                                </td>
-                                                <td className="text-center">{item.range}</td>
-                                                <td className="text-center col-self">
-                                                    <input
-                                                        type="number"
-                                                        className="grading-input"
-                                                        value={selfAssessment[item.id] || ''}
-                                                        onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
-                                                        disabled={disableSelf}
-                                                        min="0"
-                                                        max="15"
-                                                    />
-                                                </td>
-                                                <td className="text-center col-supervisor">
-                                                    <input
-                                                        type="number"
-                                                        className="grading-input"
-                                                        value={supervisorAssessment[item.id] || ''}
-                                                        onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
-                                                        disabled={disableSupervisor}
-                                                        min="0"
-                                                        max="15"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                {/* Section B */}
+                                                <tr className="grading-section-header section-positive">
+                                                    <td>B. KHUNG ĐIỂM ĐẠT</td>
+                                                    <td className="text-center">80</td>
+                                                    <td className="text-center text-success font-weight-bold col-self">{selfTotals.scoreB}</td>
+                                                    <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
+                                                </tr>
+                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'B')?.items.map(item => (
+                                                    <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
+                                                        <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
+                                                            {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
+                                                        </td>
+                                                        <td className="text-center">{item.isHeader ? item.maxScore : item.range}</td>
+                                                        <td className="text-center col-self">
+                                                            {!item.isHeader && (
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={selfAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSelf}
+                                                                    min="0"
+                                                                    max="10"
+                                                                />
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center col-supervisor">
+                                                            {!item.isHeader && (
+                                                                <input
+                                                                    type="number"
+                                                                    className="grading-input"
+                                                                    value={supervisorAssessment[item.id] || ''}
+                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    disabled={disableSupervisor}
+                                                                    min="0"
+                                                                    max="10"
+                                                                />
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+
+                                                {/* Section C */}
+                                                <tr className="grading-section-header section-bonus">
+                                                    <td>C. KHUNG ĐIỂM CỘNG</td>
+                                                    <td className="text-center">15</td>
+                                                    <td className="text-center text-primary font-weight-bold col-self">{selfTotals.scoreC}</td>
+                                                    <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
+                                                </tr>
+                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'C')?.items.map(item => (
+                                                    <tr key={item.id} className="grading-item-row">
+                                                        <td className="pl-2">
+                                                            {item.id} {item.title}
+                                                        </td>
+                                                        <td className="text-center">{item.range}</td>
+                                                        <td className="text-center col-self">
+                                                            <input
+                                                                type="number"
+                                                                className="grading-input"
+                                                                value={selfAssessment[item.id] || ''}
+                                                                onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                disabled={disableSelf}
+                                                                min="0"
+                                                                max="15"
+                                                            />
+                                                        </td>
+                                                        <td className="text-center col-supervisor">
+                                                            <input
+                                                                type="number"
+                                                                className="grading-input"
+                                                                value={supervisorAssessment[item.id] || ''}
+                                                                onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                disabled={disableSupervisor}
+                                                                min="0"
+                                                                max="15"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Summary */}
-                            <div className="grading-summary">
-                                <table className="grading-summary-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Tiêu chí tổng hợp</th>
-                                            <th className="text-center">Tự ĐG</th>
-                                            <th className="text-center">Quản lý ĐG</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Tổng điểm</td>
-                                            <td className="text-center font-weight-bold text-primary">{selfTotals.total}</td>
-                                            <td className="text-center font-weight-bold text-primary">{supervisorTotals.total}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Xếp loại</td>
-                                            <td className="text-center">
-                                                <span className={`badge badge-${['A', 'A1'].includes(selfGrade) ? 'success' : selfGrade === 'B' ? 'primary' : 'warning'}`}>
-                                                    {selfGrade}
-                                                </span>
-                                            </td>
-                                            <td className="text-center">
-                                                <span className={`badge badge-${['A', 'A1'].includes(supervisorGrade) ? 'success' : supervisorGrade === 'B' ? 'primary' : 'warning'}`}>
-                                                    {supervisorGrade}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            {isMobile ? (
+                                <div className="grading-mobile-summary-card">
+                                    <h3>Kết quả đánh giá</h3>
+                                    <div className="summary-result-grid">
+                                        <div className="result-item self">
+                                            <span className="label">Bạn tự chấm</span>
+                                            <span className="score">{selfTotals.total}</span>
+                                            <span className={`grade-badge grade-${selfGrade.toLowerCase()}`}>{selfGrade}</span>
+                                        </div>
+                                        <div className="result-item supervisor">
+                                            <span className="label">Quản lý chấm</span>
+                                            <span className="score">{supervisorTotals.total}</span>
+                                            <span className={`grade-badge grade-${supervisorGrade.toLowerCase()}`}>{supervisorGrade}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grading-summary">
+                                    <table className="grading-summary-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tiêu chí tổng hợp</th>
+                                                <th className="text-center">Tự ĐG</th>
+                                                <th className="text-center">Quản lý ĐG</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Tổng điểm</td>
+                                                <td className="text-center font-weight-bold text-primary">{selfTotals.total}</td>
+                                                <td className="text-center font-weight-bold text-primary">{supervisorTotals.total}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Xếp loại</td>
+                                                <td className="text-center">
+                                                    <span className={`badge badge-${['A', 'A1'].includes(selfGrade) ? 'success' : selfGrade === 'B' ? 'primary' : 'warning'}`}>
+                                                        {selfGrade}
+                                                    </span>
+                                                </td>
+                                                <td className="text-center">
+                                                    <span className={`badge badge-${['A', 'A1'].includes(supervisorGrade) ? 'success' : supervisorGrade === 'B' ? 'primary' : 'warning'}`}>
+                                                        {supervisorGrade}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
 
                             {/* Comments */}
                             <div className="grading-comments">

@@ -11,6 +11,13 @@ export default function LeavesPage() {
     const [leaves, setLeaves] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // UI States
     const [showModal, setShowModal] = useState(false);
@@ -343,79 +350,133 @@ export default function LeavesPage() {
                 </div>
             </div>
 
-            {/* List Table */}
-            <div className="leaves-table-container">
-                <table className="leaves-table">
-                    <thead>
-                        <tr>
-                            <th>Mã NV</th>
-                            <th>Họ và tên</th>
-                            <th>Loại nghỉ</th>
-                            <th>Từ ngày</th>
-                            <th>Đến ngày</th>
-                            <th>Số ngày</th>
-                            <th>Lý do</th>
-                            <th>Trạng thái</th>
-                            <th>Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedDates.map(dateKey => (
-                            <Fragment key={dateKey}>
-                                <tr key={`header-${dateKey}`} className="group-header-row">
-                                    <td colSpan="9">
-                                        <i className="far fa-calendar-alt mr-2"></i> {dateKey}
-                                    </td>
-                                </tr>
-                                {groupedLeaves[dateKey].map(leave => (
-                                    <tr key={leave.id}>
-                                        <td className="font-weight-bold">{leave.employee_code}</td>
-                                        <td style={{ fontWeight: '600', color: '#2d3748' }}>{leave.employee_name}</td>
-                                        <td>{leave.leave_type}</td>
-                                        <td>{moment(leave.from_date).format('DD/MM/YYYY')}</td>
-                                        <td>{moment(leave.to_date).format('DD/MM/YYYY')}</td>
-                                        <td>{leave.leave_days}</td>
-                                        <td>{leave.reason}</td>
-                                        <td>
-                                            <span className={`badge-status status-${leave.status.toLowerCase().replace(/ /g, '-')}`}>
-                                                {leave.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {leave.status === 'Chờ duyệt' && (
-                                                <div className="d-flex">
-                                                    <button
-                                                        className="btn-action-approve"
-                                                        title="Duyệt"
-                                                        onClick={() => handleApprove(leave.id)}
-                                                    >
-                                                        <i className="fas fa-check"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn-action-reject"
-                                                        title="Từ chối"
-                                                        onClick={() => initiateReject(leave.id)}
-                                                    >
-                                                        <i className="fas fa-times"></i>
-                                                    </button>
-                                                </div>
-                                            )}
+            {/* List Table or Mobile Cards */}
+            {isMobile ? (
+                <div className="mobile-leaves-list">
+                    {sortedDates.map(dateKey => (
+                        <div key={dateKey} className="mobile-date-group">
+                            <div className="mobile-date-header">
+                                <i className="far fa-calendar-alt"></i> {dateKey}
+                            </div>
+                            {groupedLeaves[dateKey].map(leave => (
+                                <div key={leave.id} className="mobile-leave-card">
+                                    <div className="card-header">
+                                        <div className="emp-info">
+                                            <span className="emp-code">{leave.employee_code}</span>
+                                            <span className="emp-name">{leave.employee_name}</span>
+                                        </div>
+                                        <span className={`badge-status status-${leave.status.toLowerCase().replace(/ /g, '-')}`}>
+                                            {leave.status}
+                                        </span>
+                                    </div>
+                                    <div className="card-body">
+                                        <div className="info-row">
+                                            <span className="label">Loại nghỉ:</span>
+                                            <span className="value">{leave.leave_type} ({leave.leave_days} ngày)</span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="label">Thời gian:</span>
+                                            <span className="value">{moment(leave.from_date).format('DD/MM')} - {moment(leave.to_date).format('DD/MM')}</span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="label">Lý do:</span>
+                                            <span className="value">{leave.reason}</span>
+                                        </div>
+                                    </div>
+                                    {leave.status === 'Chờ duyệt' && (
+                                        <div className="card-footer">
+                                            <button className="btn-mobile-approve" onClick={() => handleApprove(leave.id)}>
+                                                <i className="fas fa-check"></i> Duyệt
+                                            </button>
+                                            <button className="btn-mobile-reject" onClick={() => initiateReject(leave.id)}>
+                                                <i className="fas fa-times"></i> Từ chối
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                    {sortedDates.length === 0 && (
+                        <div className="text-center p-5 text-muted bg-white rounded-lg shadow-sm">
+                            {filterStatus === 'Chờ duyệt' ? 'Không có đơn chờ duyệt nào' : 'Không tìm thấy dữ liệu'}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="leaves-table-container">
+                    <table className="leaves-table">
+                        <thead>
+                            <tr>
+                                <th>Mã NV</th>
+                                <th>Họ và tên</th>
+                                <th>Loại nghỉ</th>
+                                <th>Từ ngày</th>
+                                <th>Đến ngày</th>
+                                <th>Số ngày</th>
+                                <th>Lý do</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedDates.map(dateKey => (
+                                <Fragment key={dateKey}>
+                                    <tr key={`header-${dateKey}`} className="group-header-row">
+                                        <td colSpan="9">
+                                            <i className="far fa-calendar-alt mr-2"></i> {dateKey}
                                         </td>
                                     </tr>
-                                ))}
-                            </Fragment>
-                        ))}
+                                    {groupedLeaves[dateKey].map(leave => (
+                                        <tr key={leave.id}>
+                                            <td className="font-weight-bold">{leave.employee_code}</td>
+                                            <td style={{ fontWeight: '600', color: '#2d3748' }}>{leave.employee_name}</td>
+                                            <td>{leave.leave_type}</td>
+                                            <td>{moment(leave.from_date).format('DD/MM/YYYY')}</td>
+                                            <td>{moment(leave.to_date).format('DD/MM/YYYY')}</td>
+                                            <td>{leave.leave_days}</td>
+                                            <td>{leave.reason}</td>
+                                            <td>
+                                                <span className={`badge-status status-${leave.status.toLowerCase().replace(/ /g, '-')}`}>
+                                                    {leave.status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {leave.status === 'Chờ duyệt' && (
+                                                    <div className="d-flex">
+                                                        <button
+                                                            className="btn-action-approve"
+                                                            title="Duyệt"
+                                                            onClick={() => handleApprove(leave.id)}
+                                                        >
+                                                            <i className="fas fa-check"></i>
+                                                        </button>
+                                                        <button
+                                                            className="btn-action-reject"
+                                                            title="Từ chối"
+                                                            onClick={() => initiateReject(leave.id)}
+                                                        >
+                                                            <i className="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </Fragment>
+                            ))}
 
-                        {sortedDates.length === 0 && (
-                            <tr>
-                                <td colSpan="9" className="text-center p-5 text-muted">
-                                    {filterStatus === 'Chờ duyệt' ? 'Không có đơn chờ duyệt nào' : 'Không tìm thấy dữ liệu'}
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            {sortedDates.length === 0 && (
+                                <tr>
+                                    <td colSpan="9" className="text-center p-5 text-muted">
+                                        {filterStatus === 'Chờ duyệt' ? 'Không có đơn chờ duyệt nào' : 'Không tìm thấy dữ liệu'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Premium Create Modal */}
             {showModal && (

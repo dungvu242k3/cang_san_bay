@@ -84,6 +84,58 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .reports-page {
+        padding: 20px 16px;
+    }
+
+    .reports-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .reports-header p {
+        font-size: 0.9rem;
+    }
+
+    .reports-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .report-card {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .report-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+        border-radius: 12px;
+    }
+
+    .report-info h3 {
+        font-size: 1.5rem;
+    }
+
+    .report-info p {
+        font-size: 0.9rem;
+    }
+
+    .loading-state {
+        padding: 60px 20px;
+    }
 }

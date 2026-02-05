@@ -23,6 +23,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -46,6 +47,7 @@
         transform: translateY(20px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -66,6 +68,213 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
+
+/* Mobile Card Styles (Preserving Original Palette) */
+@media (max-width: 768px) {
+    .grading-mobile-list {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 16px;
+    }
+
+    .grading-mobile-section {
+        background: #f8fafc;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .grading-mobile-section-header {
+        padding: 12px 16px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .grading-mobile-section-header.section-negative {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .grading-mobile-section-header.section-positive {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grading-mobile-section-header.section-bonus {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .section-scores-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .section-score {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        background: rgba(255, 255, 255, 0.4);
+        color: inherit;
+        font-weight: 500;
+    }
+
+    .section-score.self {
+        border: 1px dashed rgba(0, 0, 0, 0.1);
+    }
+
+    .section-score.supervisor {
+        background: rgba(25, 118, 210, 0.15);
+        border: 1px solid rgba(25, 118, 210, 0.2);
+    }
+
+    .grading-mobile-summary-card {
+        margin: 20px 16px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .grading-mobile-summary-card h3 {
+        margin: 0 0 16px 0;
+        font-size: 1rem;
+        color: #1e293b;
+        text-align: center;
+    }
+
+    .summary-result-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .result-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .result-item.self {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+
+    .result-item.supervisor {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+    }
+
+    .result-item .label {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .result-item .score {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .grade-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .grade-badge.grade-a,
+    .grade-badge.grade-a1 {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grade-badge.grade-b {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .grade-badge.grade-c {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .grading-mobile-card {
+        padding: 16px;
+        background: white;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .grading-mobile-card:last-child {
+        border-bottom: none;
+    }
+
+    .grading-mobile-card.is-header {
+        background: #f8f9ff;
+        border-bottom: 1px solid #eef2ff;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #333;
+        line-height: 1.4;
+    }
+
+    .card-max {
+        font-size: 0.75rem;
+        color: #666;
+        white-space: nowrap;
+    }
+
+    .card-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .input-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #777;
+    }
+
+    .input-group .grading-input {
+        width: 100% !important;
+        height: 40px;
+        font-size: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 0 8px;
+    }
+}
+
 
 .grading-modal-title h3 {
     margin: 0;
@@ -504,6 +713,7 @@
         from {
             transform: translateY(100%);
         }
+
         to {
             transform: translateY(0);
         }
@@ -580,6 +790,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .grading-modal-overlay,
     .grading-modal-content {
         animation: none;

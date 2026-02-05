@@ -292,3 +292,187 @@
     gap: 1rem;
     /* Specifically requested spacing */
 }
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .leaves-page-container {
+        padding: 1rem !important;
+    }
+
+    .leaves-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .leaves-title h2 {
+        font-size: 1.35rem;
+    }
+
+    .header-actions {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 0.5rem;
+    }
+
+    .btn-create-leave,
+    .btn-export-excel {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+        justify-content: center;
+    }
+
+    .leave-dashboard {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .leave-card {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .leave-card-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+    }
+
+    .leave-card-info h3 {
+        font-size: 1.5rem;
+    }
+
+    .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .filter-select,
+    .filter-date {
+        font-size: 0.85rem;
+        padding: 0.6rem;
+    }
+
+    /* Mobile Cards */
+    .mobile-date-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .mobile-date-header {
+        background-color: #ebf8ff;
+        color: #2b6cb0;
+        font-weight: 700;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mobile-leave-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border: 1px solid #edf2f7;
+    }
+
+    .mobile-leave-card .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed #edf2f7;
+    }
+
+    .mobile-leave-card .emp-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mobile-leave-card .emp-code {
+        font-size: 0.7rem;
+        color: #718096;
+        font-weight: 600;
+    }
+
+    .mobile-leave-card .emp-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    .mobile-leave-card .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.4rem;
+        font-size: 0.85rem;
+    }
+
+    .mobile-leave-card .label {
+        color: #718096;
+    }
+
+    .mobile-leave-card .value {
+        color: #2d3748;
+        font-weight: 500;
+        text-align: right;
+    }
+
+    .mobile-leave-card .card-footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #edf2f7;
+    }
+
+    .btn-mobile-approve,
+    .btn-mobile-reject {
+        padding: 0.5rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .btn-mobile-approve {
+        background-color: #c6f6d5;
+        color: #22543d;
+    }
+
+    .btn-mobile-reject {
+        background-color: #fed7d7;
+        color: #742a2a;
+    }
+
+    /* Modal adjustments */
+    .modal-content-premium {
+        width: 95% !important;
+        margin: auto;
+    }
+
+    .modal-body-premium {
+        padding: 1.25rem !important;
+    }
+
+    .col-6 {
+        width: 100% !important;
+        margin-bottom: 1rem;
+    }
+}

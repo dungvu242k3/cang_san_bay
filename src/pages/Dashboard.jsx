@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../services/supabase'
-import { useAuth } from '../contexts/AuthContext'
 import {
-    LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Line,
+    LineChart,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis, YAxis
 } from 'recharts'
+import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../services/supabase'
 import './Dashboard.css'
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe']
@@ -24,6 +36,13 @@ function Dashboard() {
     const [taskStatusData, setTaskStatusData] = useState([])
     const [leaveTrend, setLeaveTrend] = useState([])
     const [monthlyStats, setMonthlyStats] = useState([])
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768)
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
     useEffect(() => {
         loadDashboardData()
@@ -187,94 +206,111 @@ function Dashboard() {
 
             {/* Charts Grid */}
             <div className="charts-grid">
-                {/* Personnel Trend */}
-                <div className="chart-card">
-                    <h3>Xu hướng nhân sự</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={personnelTrend}>
-                            <defs>
-                                <linearGradient id="colorEmployees" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#667eea" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#764ba2" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="employees" stroke="#667eea" fillOpacity={1} fill="url(#colorEmployees)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
+                {(isMobile ? [taskStatusData, personnelTrend, departmentData, leaveTrend, monthlyStats] :
+                    [personnelTrend, departmentData, taskStatusData, leaveTrend, monthlyStats]).map((data, idx) => {
 
-                {/* Department Distribution */}
-                <div className="chart-card">
-                    <h3>Phân bố theo phòng ban</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={departmentData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                            >
-                                {departmentData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
+                        // Personnel Trend
+                        if (data === personnelTrend) return (
+                            <div key="personnel-trend" className="chart-card">
+                                <h3>Xu hướng nhân sự</h3>
+                                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                                    <AreaChart data={personnelTrend}>
+                                        <defs>
+                                            <linearGradient id="colorEmployees" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#667eea" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#764ba2" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Area type="monotone" dataKey="employees" stroke="#667eea" fillOpacity={1} fill="url(#colorEmployees)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
 
-                {/* Task Status */}
-                <div className="chart-card">
-                    <h3>Trạng thái công việc</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={taskStatusData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#667eea" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                        // Department Distribution
+                        if (data === departmentData) return (
+                            <div key="dept-dist" className="chart-card">
+                                <h3>Phân bố theo phòng ban</h3>
+                                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={departmentData}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={isMobile ? null : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                            outerRadius={isMobile ? 70 : 80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {departmentData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        {!isMobile && <Legend />}
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
 
-                {/* Leave Trend */}
-                <div className="chart-card">
-                    <h3>Xu hướng nghỉ phép</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={leaveTrend}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="leaves" stroke="#f093fb" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                        // Task Status
+                        if (data === taskStatusData) return (
+                            <div key="task-status" className="chart-card">
+                                <h3>Trạng thái công việc</h3>
+                                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                                    <BarChart data={taskStatusData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Bar dataKey="value" fill="#667eea" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
 
-                {/* Monthly Statistics */}
-                <div className="chart-card full-width">
-                    <h3>Thống kê theo tháng</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={monthlyStats}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="tasks" fill="#667eea" />
-                            <Bar dataKey="employees" fill="#764ba2" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                        // Leave Trend
+                        if (data === leaveTrend) return (
+                            <div key="leave-trend" className="chart-card">
+                                <h3>Xu hướng nghỉ phép</h3>
+                                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                                    <LineChart data={leaveTrend}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="leaves" stroke="#f093fb" strokeWidth={2} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
+
+                        // Monthly Statistics
+                        if (data === monthlyStats) return (
+                            <div key="monthly-stats" className="chart-card full-width">
+                                <h3>Thống kê theo tháng</h3>
+                                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                                    <BarChart data={monthlyStats}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Bar dataKey="tasks" fill="#667eea" />
+                                        <Bar dataKey="employees" fill="#764ba2" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        );
+
+                        return null;
+                    })}
             </div>
         </div>
     )

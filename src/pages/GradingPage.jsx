@@ -76,7 +76,7 @@ function GradingPage() {
 
             // Get current month for checking grading status
             const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
-            
+
             // Load performance reviews for current month to check who hasn't been graded
             const { data: reviews } = await supabase
                 .from('performance_reviews')
@@ -123,6 +123,13 @@ function GradingPage() {
             setLoading(false)
         }
     }
+
+    const handleSelectEmployee = (emp) => {
+        setSelectedEmployee(emp);
+        if (isMobile) {
+            setIsMobileMenuOpen(false);
+        }
+    };
 
     const filterEmployees = () => {
         let filtered = employees.filter(item => {
