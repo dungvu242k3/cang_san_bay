@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SearchableDropdown from '../components/SearchableDropdown'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import './UserManagement.css'
@@ -304,6 +305,55 @@ function UserManagement() {
             alert('Lỗi cập nhật vai trò: ' + err.message)
         }
     }
+    const handleUpdateDepartment = async (employee, newDept) => {
+        try {
+            const { error } = await supabase
+                .from('employee_profiles')
+                .update({
+                    department: newDept,
+                    bo_phan: newDept // Update both fields to be safe
+                })
+                .eq('employee_code', employee.employee_code)
+
+            if (error) throw error
+
+            // Optimistic update
+            setEmployees(prev => prev.map(emp =>
+                emp.employee_code === employee.employee_code
+                    ? { ...emp, department: newDept }
+                    : emp
+            ))
+        } catch (err) {
+            console.error('Error updating department:', err)
+            alert('Lỗi cập nhật phòng ban: ' + err.message)
+            loadEmployees() // Revert on error
+        }
+    }
+
+    const handleUpdateTeam = async (employee, newTeam) => {
+        try {
+            const { error } = await supabase
+                .from('employee_profiles')
+                .update({
+                    team: newTeam,
+                    doi: newTeam // Update both fields if needed (assuming 'doi' might be used loosely)
+                })
+                .eq('employee_code', employee.employee_code)
+
+            if (error) throw error
+
+            // Optimistic update
+            setEmployees(prev => prev.map(emp =>
+                emp.employee_code === employee.employee_code
+                    ? { ...emp, team: newTeam }
+                    : emp
+            ))
+        } catch (err) {
+            console.error('Error updating team:', err)
+            alert('Lỗi cập nhật đội: ' + err.message)
+            loadEmployees() // Revert on error
+        }
+    }
 
     const filteredEmployees = employees.filter(emp => {
         const matchesSearch =
@@ -312,6 +362,10 @@ function UserManagement() {
         const matchesRole = !filterRole || emp.role === filterRole
         return matchesSearch && matchesRole
     })
+
+    // Get unique departments and teams for dropdowns
+    const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort()
+    const teams = [...new Set(employees.map(e => e.team).filter(Boolean))].sort()
 
     const getRoleLabel = (role) => {
         const labels = {
@@ -394,10 +448,26 @@ function UserManagement() {
                                 <tr key={emp.id}>
                                     <td className="font-weight-bold">{emp.employee_code}</td>
                                     <td>{emp.last_name} {emp.first_name}</td>
-                                    <td>
-                                        <div className="dept-team">
-                                            <span className="dept">{emp.department || '-'}</span>
-                                            {emp.team && <span className="team">{emp.team}</span>}
+                                    <td style={{ minWidth: '250px' }}>
+                                        <div className="dept-team-edit">
+                                            <div style={{ marginBottom: '5px' }}>
+                                                <SearchableDropdown
+                                                    options={departments}
+                                                    value={emp.department}
+                                                    onChange={(val) => handleUpdateDepartment(emp, val)}
+                                                    placeholder="Chọn phòng ban..."
+                                                    allowCustom={true}
+                                                />
+                                            </div>
+                                            <div>
+                                                <SearchableDropdown
+                                                    options={teams}
+                                                    value={emp.team}
+                                                    onChange={(val) => handleUpdateTeam(emp, val)}
+                                                    placeholder="Chọn đội..."
+                                                    allowCustom={true}
+                                                />
+                                            </div>
                                         </div>
                                     </td>
                                     <td>
