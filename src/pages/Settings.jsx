@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import { PERMISSIONS } from '../utils/rbac'
 import './Settings.css'
@@ -23,6 +25,8 @@ const MODULES = [
 ]
 
 function Settings() {
+    const { user, checkAction } = useAuth()
+    const navigate = useNavigate()
     const [activeTab, setActiveTab] = useState('roles') // 'roles', 'matrix', or 'leaves'
     const [employees, setEmployees] = useState([])
     const [rolesMap, setRolesMap] = useState({})
@@ -41,6 +45,10 @@ function Settings() {
     }, [])
 
     const fetchData = async () => {
+        if (!checkAction('view', { module: 'settings' })) {
+            navigate('/')
+            return
+        }
         try {
             setLoading(true)
 
@@ -50,15 +58,64 @@ function Settings() {
                 .select('employee_code, first_name, last_name, department, team, group_name, current_position')
                 .range(0, 5000)
 
-            // 2. Fetch Assigned Roles (Source of truth for sorting)
+            // 2. Fetch Assigned Roles (only for SUPER_ADMIN override)
             const { data: roleData } = await supabase.from('user_roles').select('*')
 
             // 3. Fetch Matrix
             const { data: matrixData } = await supabase.from('rbac_matrix').select('*')
 
-            // Build Roles Map First
+            // Helper function to infer role from current_position
+            const inferRoleFromPosition = (position) => {
+                const pos = (position || '').toLowerCase()
+                if (pos.includes('giám đốc') && !pos.includes('phó')) {
+                    return 'BOARD_DIRECTOR'
+                } else if (pos.includes('phó giám đốc')) {
+                    return 'BOARD_DIRECTOR'
+                } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
+                    return 'DEPT_HEAD'
+                } else if (pos.includes('phó trưởng phòng')) {
+                    return 'DEPT_HEAD'
+                } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
+                    return 'TEAM_LEADER'
+                } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
+                    return 'TEAM_LEADER'
+                } else {
+                    return 'STAFF'
+                }
+            }
+
+            // Build Roles Map: Infer from position, override with SUPER_ADMIN only
+            const superAdminSet = new Set()
+            if (roleData) {
+                roleData.forEach(r => {
+                    if (r.role_level === 'SUPER_ADMIN') {
+                        superAdminSet.add(r.employee_code)
+                    }
+                })
+            }
+
+            // Build role map based on current_position with SUPER_ADMIN override
             const rMap = {}
-            if (roleData) roleData.forEach(r => { rMap[r.employee_code] = r })
+            if (empData) {
+                empData.forEach(emp => {
+                    let inferredRole = inferRoleFromPosition(emp.current_position)
+
+                    // Override with SUPER_ADMIN if set in user_roles
+                    if (superAdminSet.has(emp.employee_code)) {
+                        inferredRole = 'SUPER_ADMIN'
+                    }
+
+                    // Find existing user_roles entry for scope data
+                    const existingRole = roleData?.find(r => r.employee_code === emp.employee_code)
+
+                    rMap[emp.employee_code] = {
+                        employee_code: emp.employee_code,
+                        role_level: inferredRole,
+                        dept_scope: existingRole?.dept_scope || emp.department,
+                        team_scope: existingRole?.team_scope || emp.team
+                    }
+                })
+            }
             setRolesMap(rMap)
             setMatrix(matrixData || [])
 
@@ -107,6 +164,10 @@ function Settings() {
     }
 
     const handleUpdateUserRole = async (empCode, updates) => {
+        if (!checkAction('edit', { module: 'settings' })) {
+            alert('Bạn không có quyền sửa cài đặt!')
+            return
+        }
         try {
             setSaving(empCode)
             const existing = rolesMap[empCode]
@@ -123,6 +184,10 @@ function Settings() {
     }
 
     const handleUpdateMatrix = async (roleLevel, moduleKey, field, value) => {
+        if (!checkAction('edit', { module: 'settings' })) {
+            alert('Bạn không có quyền sửa phân quyền!')
+            return
+        }
         if (roleLevel === 'SUPER_ADMIN') return // Always full access for super admin
 
         // 1. Optimistic Update
@@ -190,6 +255,10 @@ function Settings() {
     }
 
     const handleBatchUpdate = async (type, id, value) => {
+        if (!checkAction('edit', { module: 'settings' })) {
+            alert('Bạn không có quyền sửa phân quyền!')
+            return
+        }
         if (type === 'column' && id === 'SUPER_ADMIN') return
 
         const confirmMsg = value ? `Cấp toàn bộ quyền?` : `Gỡ bỏ toàn bộ quyền?`
@@ -240,6 +309,10 @@ function Settings() {
     })
 
     const handleSaveLeaveSetting = async (setting) => {
+        if (!checkAction('edit', { module: 'settings' })) {
+            alert('Bạn không có quyền sửa cài đặt nghỉ phép!')
+            return
+        }
         try {
             setSaving(`leave-${setting.department}`)
             const payload = {
@@ -269,6 +342,10 @@ function Settings() {
     }
 
     const handleDeleteLeaveSetting = async (id) => {
+        if (!checkAction('edit', { module: 'settings' })) {
+            alert('Bạn không có quyền xóa cài đặt nghỉ phép!')
+            return
+        }
         if (!window.confirm('Bạn có chắc chắn muốn xóa cài đặt này?')) return
 
         try {
@@ -358,7 +435,7 @@ function Settings() {
                                                 <td>
                                                     <div className="emp-label">
                                                         <strong>{emp.last_name} {emp.first_name}</strong>
-                                                        <small>{emp.employee_code} • {emp.department} / {emp.team} / {emp.group_name || 'N/A'}</small>
+                                                        <small>{emp.employee_code} • {emp.department} / {emp.team}{emp.group_name ? ` / ${emp.group_name}` : ''}</small>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -371,7 +448,7 @@ function Settings() {
                                                     </select>
                                                 </td>
                                                 <td>
-                                                    {(r?.role_level === 'DEPT_HEAD' || r?.role_level === 'TEAM_LEADER') && (
+                                                    {r?.role_level !== 'SUPER_ADMIN' && (
                                                         <select
                                                             className="scope-sel"
                                                             value={r?.dept_scope || ''}
@@ -383,7 +460,7 @@ function Settings() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    {r?.role_level === 'TEAM_LEADER' && (
+                                                    {r?.role_level !== 'SUPER_ADMIN' && (
                                                         <select
                                                             className="scope-sel"
                                                             value={r?.team_scope || ''}
@@ -499,7 +576,7 @@ function Settings() {
                         <div className="add-leave-setting-card">
                             <h4><i className="fas fa-plus-circle"></i> Thêm cài đặt mới</h4>
                             <div className="leave-setting-form">
-                                <div className="form-group">
+                                <div className="form-group full-width">
                                     <label>Phòng ban</label>
                                     <select
                                         value={newLeaveSetting.department}

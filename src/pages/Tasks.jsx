@@ -61,16 +61,18 @@ const MobileTaskCard = ({ task, onEdit, onQuickAction, getPriorityClass, getStat
                         <i className="fas fa-times"></i> Từ chối
                     </button>
                 )}
-                <button className="btn-mobile-action light" onClick={(e) => { e.stopPropagation(); onEdit(task, e); }}>
-                    <i className="fas fa-pen"></i> Sửa
-                </button>
+                {checkAction('edit', { module: 'tasks', ...task }) && (
+                    <button className="btn-mobile-action light" onClick={(e) => { e.stopPropagation(); onEdit(task, e); }}>
+                        <i className="fas fa-pen"></i> Sửa
+                    </button>
+                )}
             </div>
         </div>
     );
 };
 
 function Tasks() {
-    const { user } = useAuth()
+    const { user, checkAction } = useAuth()
     const [myProfile, setMyProfile] = useState(null)
     const [tasks, setTasks] = useState([])
     const [loading, setLoading] = useState(true)
@@ -157,16 +159,16 @@ function Tasks() {
         let profile = null
         const selectStr = '*, user_roles(role_level, dept_scope, team_scope)'
 
-        if (user?.email) {
+        if (user?.employee_code) {
+            const { data } = await supabase.from('employee_profiles')
+                .select(selectStr)
+                .eq('employee_code', user.employee_code)
+                .maybeSingle()
+            profile = data
+        } else if (user?.email) {
             const { data } = await supabase.from('employee_profiles')
                 .select(selectStr)
                 .or(`email_acv.eq.${user.email},email_personal.eq.${user.email}`)
-                .maybeSingle()
-            profile = data
-        } else {
-            const { data } = await supabase.from('employee_profiles')
-                .select(selectStr)
-                .limit(1)
                 .maybeSingle()
             profile = data
         }
@@ -367,6 +369,12 @@ function Tasks() {
             if (!task || !task.id) {
                 console.warn('⚠️ [Edit Task] Invalid task data:', task)
                 alert('Không thể mở chỉnh sửa: Dữ liệu công việc không hợp lệ')
+                return
+            }
+
+            // PERMISSION CHECK
+            if (!checkAction('edit', { module: 'tasks', ...task })) {
+                alert('Bạn không có quyền sửa công việc này!')
                 return
             }
 
@@ -1054,26 +1062,28 @@ function Tasks() {
                                                             <i className="fas fa-times"></i>
                                                         </button>
                                                     )}
-                                                    {['Hoàn thành', 'Từ chối', 'Hủy'].includes(task.status) && (
+                                                    {['Hoàn thành', 'Từ chối', 'Hủy'].includes(task.status) && checkAction('delete', { module: 'tasks', ...task }) && (
                                                         <button className="btn-task-action btn-task-action-danger" title="Xóa vĩnh viễn" onClick={() => handleDeleteTask(task)}>
                                                             <i className="fas fa-trash-alt"></i>
                                                         </button>
                                                     )}
-                                                    <button
-                                                        className="btn-task-action btn-task-action-light"
-                                                        title="Sửa chi tiết"
-                                                        onClick={(e) => handleOpenEdit(task, e)}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = 'scale(1.1)'
-                                                            e.currentTarget.style.transition = 'all 0.2s ease'
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = 'scale(1)'
-                                                        }}
-                                                        aria-label={`Sửa công việc: ${task.title}`}
-                                                    >
-                                                        <i className="fas fa-pen"></i>
-                                                    </button>
+                                                    {checkAction('edit', { module: 'tasks', ...task }) && (
+                                                        <button
+                                                            className="btn-task-action btn-task-action-light"
+                                                            title="Sửa chi tiết"
+                                                            onClick={(e) => handleOpenEdit(task, e)}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.transform = 'scale(1.1)'
+                                                                e.currentTarget.style.transition = 'all 0.2s ease'
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.transform = 'scale(1)'
+                                                            }}
+                                                            aria-label={`Sửa công việc: ${task.title}`}
+                                                        >
+                                                            <i className="fas fa-pen"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1122,9 +1132,35 @@ function Tasks() {
                                 <>
                                     <div className={`modal-nav-item ${modalTab === 'discussion' ? 'active' : ''}`} onClick={() => setModalTab('discussion')}>
                                         <i className="far fa-comments mr-2"></i> Thảo luận
+                                        {taskComments.length > 0 && (
+                                            <span style={{
+                                                marginLeft: '8px',
+                                                padding: '2px 8px',
+                                                background: modalTab === 'discussion' ? '#fff' : '#0d6efd',
+                                                color: modalTab === 'discussion' ? '#0d6efd' : '#fff',
+                                                borderRadius: '12px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '700',
+                                                minWidth: '20px',
+                                                textAlign: 'center'
+                                            }}>{taskComments.length}</span>
+                                        )}
                                     </div>
                                     <div className={`modal-nav-item ${modalTab === 'attachments' ? 'active' : ''}`} onClick={() => setModalTab('attachments')}>
                                         <i className="fas fa-paperclip mr-2"></i> Đính kèm
+                                        {taskAttachments.length > 0 && (
+                                            <span style={{
+                                                marginLeft: '8px',
+                                                padding: '2px 8px',
+                                                background: modalTab === 'attachments' ? '#fff' : '#198754',
+                                                color: modalTab === 'attachments' ? '#198754' : '#fff',
+                                                borderRadius: '12px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '700',
+                                                minWidth: '20px',
+                                                textAlign: 'center'
+                                            }}>{taskAttachments.length}</span>
+                                        )}
                                     </div>
                                 </>
                             )}

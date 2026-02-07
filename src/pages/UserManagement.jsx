@@ -65,20 +65,28 @@ function UserManagement() {
 
             // 3. Merge Data
             const employeesWithAuth = (profiles || []).map(emp => {
-                // Get role from Map (DB), otherwise infer
-                let role = roleMap[emp.employee_code]
+                // ALWAYS infer role from current_position first
+                const pos = (emp.current_position || '').toLowerCase()
+                let role = 'STAFF' // default
 
-                if (!role) {
-                    const pos = emp.current_position || ''
-                    if (['Giám đốc', 'Phó giám đốc'].includes(pos)) {
-                        role = 'BOARD_DIRECTOR'
-                    } else if (['Trưởng phòng', 'Phó trưởng phòng'].includes(pos)) {
-                        role = 'DEPT_HEAD'
-                    } else if (['Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ'].includes(pos)) {
-                        role = 'TEAM_LEADER'
-                    } else {
-                        role = 'STAFF'
-                    }
+                // Use flexible matching with includes()
+                if (pos.includes('giám đốc') && !pos.includes('phó')) {
+                    role = 'BOARD_DIRECTOR'
+                } else if (pos.includes('phó giám đốc')) {
+                    role = 'BOARD_DIRECTOR'
+                } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
+                    role = 'DEPT_HEAD'
+                } else if (pos.includes('phó trưởng phòng')) {
+                    role = 'DEPT_HEAD'
+                } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
+                    role = 'TEAM_LEADER'
+                } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
+                    role = 'TEAM_LEADER'
+                }
+
+                // ONLY override if user_roles has SUPER_ADMIN (for special admin accounts)
+                if (roleMap[emp.employee_code] === 'SUPER_ADMIN') {
+                    role = 'SUPER_ADMIN'
                 }
 
                 return {

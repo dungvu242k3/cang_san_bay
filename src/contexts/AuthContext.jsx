@@ -51,9 +51,6 @@ export function AuthProvider({ children }) {
         try {
             setLoading(true)
 
-            // Special handling removed - Fetch from DB
-
-
             console.log('🔍 [Login Flow] Fetching user data...')
             console.log('   👤 Employee code:', employeeCode)
             console.log('   🔑 Source: employee_profiles table (database)')
@@ -77,39 +74,43 @@ export function AuthProvider({ children }) {
 
             console.log('   ✅ Profile found:', profile?.last_name, profile?.first_name)
 
-            // 2. Fetch Assigned Role & Scope from user_roles table
-            const { data: roleData, error: roleError } = await supabase
-                .from('user_roles')
-                .select('*')
-                .eq('employee_code', employeeCode)
-                .maybeSingle()
+            // 2. Logic synchronized with UserManagement.jsx (Roles Tab)
+            const pos = (profile.current_position || '').toLowerCase()
+            let userLevel = 'STAFF' // default
+            let deptScope = null
+            let teamScope = null
 
-            if (roleError) {
-                console.warn('⚠️ [Login Flow] Role error:', roleError)
+            // Use flexible matching with includes() - SAME AS UserManagement.jsx
+            if (pos.includes('giám đốc') && !pos.includes('phó')) {
+                userLevel = 'BOARD_DIRECTOR'
+            } else if (pos.includes('phó giám đốc')) {
+                userLevel = 'BOARD_DIRECTOR'
+            } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
+                userLevel = 'DEPT_HEAD'
+                deptScope = profile.department
+            } else if (pos.includes('phó trưởng phòng')) {
+                userLevel = 'DEPT_HEAD'
+                deptScope = profile.department
+            } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
+                userLevel = 'TEAM_LEADER'
+                deptScope = profile.department
+                teamScope = profile.team
+            } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
+                userLevel = 'TEAM_LEADER'
+                deptScope = profile.department
+                teamScope = profile.team
             }
 
-            // 3. Fetch Dynamic Matrix for this Role Level from rbac_matrix table
-            let userLevel = roleData?.role_level
-            let deptScope = roleData?.dept_scope
-            let teamScope = roleData?.team_scope
-
-            // Fallback: Infer role from profile if not in user_roles DB
-            if (!userLevel) {
-                const pos = profile.current_position || ''
-                if (['Giám đốc', 'Phó giám đốc'].includes(pos)) {
-                    userLevel = 'BOARD_DIRECTOR'
-                } else if (['Trưởng phòng', 'Phó trưởng phòng'].includes(pos)) {
-                    userLevel = 'DEPT_HEAD'
-                    deptScope = profile.department // Auto-assign scope
-                } else if (['Đội trưởng', 'Đội phó', 'Chủ đội', 'Tổ trưởng', 'Tổ phó', 'Chủ tổ'].includes(pos)) {
-                    userLevel = 'TEAM_LEADER'
-                    teamScope = profile.team // Auto-assign scope
-                } else {
-                    userLevel = 'STAFF'
-                }
-                console.log(`   ⚠️ Role not in DB. Inferred '${userLevel}' from position '${pos}'`)
+            // EXTRA: Super Admin Logic (based on position or code)
+            if (pos.includes('admin') || employeeCode === 'ADMIN') {
+                userLevel = 'SUPER_ADMIN'
+                deptScope = null
+                teamScope = null
             }
-            console.log('   🔐 Role level:', userLevel)
+
+
+
+            console.log(`   🔐 Final Role: ${userLevel} (Source: ${profile.role_level ? 'Database' : 'Inferred'})`)
 
             const { data: permissionMatrix, error: matrixError } = await supabase
                 .from('rbac_matrix')
@@ -159,9 +160,6 @@ export function AuthProvider({ children }) {
         console.log('   🔑 Source: employee_profiles table (database)')
 
         const code = employeeCode.trim().toUpperCase()
-
-        // Special handling removed - Check DB
-
 
         // 1. Fetch employee profile with password
         const { data: profile, error: profileError } = await supabase

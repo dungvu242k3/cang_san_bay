@@ -164,6 +164,62 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
         return 'D';
     };
 
+    // Helper function to extract max value from range string (e.g., "1 - 10" => 10)
+    const getMaxFromRange = (range) => {
+        if (!range) return null;
+        const parts = range.split('-').map(s => parseInt(s.trim()));
+        if (parts.length === 2 && !isNaN(parts[1])) {
+            return parts[1];
+        }
+        return null;
+    };
+
+    // Validated input handler for self assessment
+    const handleSelfInput = (itemId, value, item) => {
+        const numValue = Number(value);
+        const maxValue = item.range ? getMaxFromRange(item.range) : item.maxScore;
+
+        if (value === '' || value === null) {
+            setSelfAssessment({ ...selfAssessment, [itemId]: '' });
+            return;
+        }
+
+        if (numValue < 0) {
+            alert(`Điểm không được nhỏ hơn 0!`);
+            return;
+        }
+
+        if (maxValue && numValue > maxValue) {
+            alert(`Điểm tối đa cho tiêu chí "${item.title}" là ${maxValue}!`);
+            return;
+        }
+
+        setSelfAssessment({ ...selfAssessment, [itemId]: value });
+    };
+
+    // Validated input handler for supervisor assessment  
+    const handleSupervisorInput = (itemId, value, item) => {
+        const numValue = Number(value);
+        const maxValue = item.range ? getMaxFromRange(item.range) : item.maxScore;
+
+        if (value === '' || value === null) {
+            setSupervisorAssessment({ ...supervisorAssessment, [itemId]: '' });
+            return;
+        }
+
+        if (numValue < 0) {
+            alert(`Điểm không được nhỏ hơn 0!`);
+            return;
+        }
+
+        if (maxValue && numValue > maxValue) {
+            alert(`Điểm tối đa cho tiêu chí "${item.title}" là ${maxValue}!`);
+            return;
+        }
+
+        setSupervisorAssessment({ ...supervisorAssessment, [itemId]: value });
+    };
+
     const handleGradingSave = async () => {
         if (!employee || !employee.employeeId) {
             alert('Không tìm thấy thông tin nhân viên!');
@@ -172,6 +228,50 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
 
         if (!month) {
             alert('Vui lòng chọn tháng đánh giá!');
+            return;
+        }
+
+        // Validate all scores before saving
+        const criteria = getCriteria(employee.score_template_code || 'NVTT');
+        const errors = [];
+
+        console.log('=== VALIDATION START ===');
+        console.log('Criteria:', criteria);
+        console.log('Self Assessment:', selfAssessment);
+
+        for (const section of criteria) {
+            for (const item of section.items) {
+                if (item.isHeader) continue;
+
+                const maxValue = item.range ? getMaxFromRange(item.range) : item.maxScore;
+                console.log(`Checking item ${item.id}: range="${item.range}", maxValue=${maxValue}`);
+
+                // Check self assessment
+                const selfValue = Number(selfAssessment[item.id] || 0);
+                console.log(`  Self value for ${item.id}: ${selfValue}`);
+
+                if (selfValue < 0) {
+                    errors.push(`Tự ĐG - "${item.title}": Điểm không được âm`);
+                } else if (maxValue && selfValue > maxValue) {
+                    console.log(`  ERROR: ${selfValue} > ${maxValue}`);
+                    errors.push(`Tự ĐG - "${item.title}": Điểm ${selfValue} vượt quá max ${maxValue}`);
+                }
+
+                // Check supervisor assessment
+                const supervisorValue = Number(supervisorAssessment[item.id] || 0);
+                if (supervisorValue < 0) {
+                    errors.push(`QL ĐG - "${item.title}": Điểm không được âm`);
+                } else if (maxValue && supervisorValue > maxValue) {
+                    errors.push(`QL ĐG - "${item.title}": Điểm ${supervisorValue} vượt quá max ${maxValue}`);
+                }
+            }
+        }
+
+        console.log('=== VALIDATION END ===');
+        console.log('Errors found:', errors);
+
+        if (errors.length > 0) {
+            alert('Lỗi validation điểm:\n\n' + errors.slice(0, 5).join('\n') + (errors.length > 5 ? `\n... và ${errors.length - 5} lỗi khác` : ''));
             return;
         }
 
@@ -321,10 +421,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={selfAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSelfInput(item.id, e.target.value, item)}
                                                                     disabled={disableSelf}
                                                                     min="0"
-                                                                    max={section.section === 'A' ? '20' : section.section === 'B' ? '10' : '15'}
                                                                 />
                                                             </div>
                                                             <div className="input-group">
@@ -333,10 +432,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={supervisorAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSupervisorInput(item.id, e.target.value, item)}
                                                                     disabled={disableSupervisor}
                                                                     min="0"
-                                                                    max={section.section === 'A' ? '20' : section.section === 'B' ? '10' : '15'}
                                                                 />
                                                             </div>
                                                         </div>
@@ -378,10 +476,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={selfAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSelfInput(item.id, e.target.value, item)}
                                                                     disabled={disableSelf}
                                                                     min="0"
-                                                                    max="20"
                                                                 />
                                                             )}
                                                         </td>
@@ -391,10 +488,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={supervisorAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSupervisorInput(item.id, e.target.value, item)}
                                                                     disabled={disableSupervisor}
                                                                     min="0"
-                                                                    max="20"
                                                                 />
                                                             )}
                                                         </td>
@@ -420,10 +516,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={selfAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSelfInput(item.id, e.target.value, item)}
                                                                     disabled={disableSelf}
                                                                     min="0"
-                                                                    max="10"
                                                                 />
                                                             )}
                                                         </td>
@@ -433,10 +528,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                     type="number"
                                                                     className="grading-input"
                                                                     value={supervisorAssessment[item.id] || ''}
-                                                                    onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                    onChange={(e) => handleSupervisorInput(item.id, e.target.value, item)}
                                                                     disabled={disableSupervisor}
                                                                     min="0"
-                                                                    max="10"
                                                                 />
                                                             )}
                                                         </td>
@@ -461,10 +555,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                 type="number"
                                                                 className="grading-input"
                                                                 value={selfAssessment[item.id] || ''}
-                                                                onChange={(e) => setSelfAssessment({ ...selfAssessment, [item.id]: e.target.value })}
+                                                                onChange={(e) => handleSelfInput(item.id, e.target.value, item)}
                                                                 disabled={disableSelf}
                                                                 min="0"
-                                                                max="15"
                                                             />
                                                         </td>
                                                         <td className="text-center col-supervisor">
@@ -472,10 +565,9 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                                 type="number"
                                                                 className="grading-input"
                                                                 value={supervisorAssessment[item.id] || ''}
-                                                                onChange={(e) => setSupervisorAssessment({ ...supervisorAssessment, [item.id]: e.target.value })}
+                                                                onChange={(e) => handleSupervisorInput(item.id, e.target.value, item)}
                                                                 disabled={disableSupervisor}
                                                                 min="0"
-                                                                max="15"
                                                             />
                                                         </td>
                                                     </tr>

@@ -481,7 +481,7 @@ const CalendarToolbar = (toolbar) => {
 };
 
 export default function CalendarPage() {
-    const { user } = useAuth();
+    const { user, checkAction } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -764,6 +764,9 @@ export default function CalendarPage() {
     };
 
     const handleSelectSlot = ({ start, end }) => {
+        if (!checkAction('create', { module: 'calendar' })) {
+            return;
+        }
         setNewEvent({
             ...newEvent,
             start,
@@ -774,11 +777,20 @@ export default function CalendarPage() {
     };
 
     const handleSelectEvent = (event) => {
+        // Only allow opening detail if user has at least View permission (implied by seeing it, but good to be safe)
+        // For editing, we check inside the modal actions
         setSelectedEvent(event);
         setShowDetailModal(true);
     };
 
     const handleSaveEvent = async () => {
+        // Permission Check
+        const action = selectedEvent ? 'edit' : 'create';
+        if (!checkAction(action, { module: 'calendar', ...selectedEvent })) {
+            alert(`Bạn không có quyền ${action === 'create' ? 'tạo' : 'sửa'} sự kiện!`);
+            return;
+        }
+
         try {
             // Allow Admin to save even without profile
             const creatorCode = myProfile?.employee_code || user?.email || 'ADMIN';
@@ -836,6 +848,10 @@ export default function CalendarPage() {
 
     const handleEditEvent = () => {
         if (!selectedEvent) return;
+        if (!checkAction('edit', { module: 'calendar', ...selectedEvent.resource?.data })) {
+            alert('Bạn không có quyền sửa sự kiện này!');
+            return;
+        }
 
         const eventType = selectedEvent.resource?.type;
 
@@ -878,6 +894,12 @@ export default function CalendarPage() {
         if (!selectedEvent) return;
 
         const eventType = selectedEvent.resource?.type;
+        const resourceData = selectedEvent.resource?.data;
+
+        if (!checkAction('delete', { module: 'calendar', ...resourceData })) {
+            alert('Bạn không có quyền xóa sự kiện này!');
+            return;
+        }
 
         if (!confirm('Bạn có chắc chắn muốn xóa sự kiện này?')) return;
 
@@ -2226,28 +2248,32 @@ export default function CalendarPage() {
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     {selectedEvent?.resource?.type && selectedEvent.resource.type !== 'BIRTHDAY' && (
                                         <>
-                                            <button
-                                                className="btn-primary-premium"
-                                                onClick={handleEditEvent}
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #28a745, #20c997)',
-                                                    margin: 0
-                                                }}
-                                            >
-                                                <i className="fas fa-edit mr-2"></i> Sửa
-                                            </button>
-                                            <button
-                                                className="btn-secondary-premium"
-                                                onClick={handleDeleteEvent}
-                                                style={{
-                                                    background: '#dc3545',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    margin: 0
-                                                }}
-                                            >
-                                                <i className="fas fa-trash mr-2"></i> Xóa
-                                            </button>
+                                            {checkAction('edit', { module: 'calendar', ...selectedEvent.resource?.data }) && (
+                                                <button
+                                                    className="btn-primary-premium"
+                                                    onClick={handleEditEvent}
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #28a745, #20c997)',
+                                                        margin: 0
+                                                    }}
+                                                >
+                                                    <i className="fas fa-edit mr-2"></i> Sửa
+                                                </button>
+                                            )}
+                                            {checkAction('delete', { module: 'calendar', ...selectedEvent.resource?.data }) && (
+                                                <button
+                                                    className="btn-secondary-premium"
+                                                    onClick={handleDeleteEvent}
+                                                    style={{
+                                                        background: '#dc3545',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        margin: 0
+                                                    }}
+                                                >
+                                                    <i className="fas fa-trash mr-2"></i> Xóa
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>

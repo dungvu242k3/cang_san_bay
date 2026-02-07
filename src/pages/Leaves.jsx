@@ -7,7 +7,7 @@ import { supabase } from '../services/supabase';
 import './Leaves.css';
 
 export default function LeavesPage() {
-    const { user } = useAuth();
+    const { user, checkAction } = useAuth();
     const [leaves, setLeaves] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -197,6 +197,10 @@ export default function LeavesPage() {
     };
 
     const handleApprove = async (id) => {
+        if (!checkAction('edit', { module: 'leaves' })) {
+            alert('Bạn không có quyền duyệt đơn nghỉ phép!');
+            return;
+        }
         if (!window.confirm('Bạn có chắc muốn CHẤP THUẬN đơn này?')) return;
         try {
             const { error } = await supabase.from('employee_leaves').update({ status: 'Đã duyệt' }).eq('id', id);
@@ -208,6 +212,10 @@ export default function LeavesPage() {
     };
 
     const initiateReject = (id) => {
+        if (!checkAction('edit', { module: 'leaves' })) {
+            alert('Bạn không có quyền từ chối đơn nghỉ phép!');
+            return;
+        }
         setSelectedLeaveId(id);
         setRejectReason('');
         setShowRejectModal(true);
@@ -383,7 +391,7 @@ export default function LeavesPage() {
                                             <span className="value">{leave.reason}</span>
                                         </div>
                                     </div>
-                                    {leave.status === 'Chờ duyệt' && (
+                                    {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves' }) && (
                                         <div className="card-footer">
                                             <button className="btn-mobile-approve" onClick={() => handleApprove(leave.id)}>
                                                 <i className="fas fa-check"></i> Duyệt
@@ -442,7 +450,7 @@ export default function LeavesPage() {
                                                 </span>
                                             </td>
                                             <td>
-                                                {leave.status === 'Chờ duyệt' && (
+                                                {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves' }) && (
                                                     <div className="d-flex">
                                                         <button
                                                             className="btn-action-approve"

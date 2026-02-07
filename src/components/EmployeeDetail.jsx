@@ -172,7 +172,7 @@ const DEFAULT_FORM_DATA = {
 }
 
 const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee, employees = [], currentMonth }) => {
-    const { user: authUser } = useAuth()
+    const { user: authUser, checkAction } = useAuth()
     const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
     const [isEditing, setIsEditing] = useState(false)
@@ -290,6 +290,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     }
 
     const handleSaveFamilyMember = async (member) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!member.relationship || !member.first_name || !member.last_name) {
             alert('Vui lòng nhập đầy đủ: Quan hệ, Họ và Tên')
             return
@@ -323,6 +327,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     }
 
     const handleDeleteFamilyMember = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Bạn có chắc muốn xóa?')) return
         try {
             const { error } = await supabase.from('family_members').delete().eq('id', id)
@@ -336,6 +344,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     // CRUD Handlers
     // Bank Accounts
     const handleSaveBank = async (bank) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -361,6 +373,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteBank = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Bạn có chắc muốn xóa?')) return
         try {
             const { error } = await supabase.from('employee_bank_accounts').delete().eq('id', id)
@@ -373,6 +389,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Labor Contracts
     const handleSaveContract = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -401,6 +421,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteContract = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Bạn có chắc muốn xóa?')) return
         try {
             const { error } = await supabase.from('labor_contracts').delete().eq('id', id)
@@ -413,6 +437,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Passports
     const handleSavePassport = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -440,6 +468,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeletePassport = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Bạn có chắc muốn xóa?')) return
         try {
             const { error } = await supabase.from('employee_passports').delete().eq('id', id)
@@ -452,6 +484,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Welfare Handler: 3.1 Basic Salary
     const handleSaveSalary = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             // Auto calc basic_salary if missing
             let basic_salary = item.basic_salary
@@ -491,6 +527,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteSalary = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa thông tin lương cơ bản này?')) return
         try {
             await supabase.from('employee_salaries').delete().eq('id', id)
@@ -500,6 +540,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Welfare Handler: 3.2 Job Position Salary
     const handleSaveJobSalary = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             let position_salary = item.position_salary
             if (!position_salary && item.minimum_wage && item.salary_level && item.salary_coefficient) {
@@ -535,6 +579,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteJobSalary = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa thông tin lương vị trí này?')) return
         try {
             await supabase.from('employee_job_salaries').delete().eq('id', id)
@@ -544,6 +592,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Welfare Handler: 3.3 Allowances
     const handleSaveAllowance = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -572,6 +624,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteAllowance = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa phụ cấp này?')) return
         try {
             await supabase.from('employee_allowances').delete().eq('id', id)
@@ -581,6 +637,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Welfare Handler: 3.4 Other Income
     const handleSaveOtherIncome = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -607,6 +667,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteOtherIncome = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa khoản thu nhập này?')) return
         try {
             await supabase.from('employee_other_incomes').delete().eq('id', id)
@@ -616,6 +680,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Work Process Handler: 4.1 Nghỉ phép (Leaves)
     const handleSaveLeave = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             // Calculate leave_days if not provided
             let leave_days = item.leave_days
@@ -653,6 +721,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteLeave = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa thông tin nghỉ phép này?')) return
         try {
             await supabase.from('employee_leaves').delete().eq('id', id)
@@ -662,6 +734,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Work Process Handler: 4.2 Bổ nhiệm - Điều chuyển (Appointments)
     const handleSaveAppointment = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -689,6 +765,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteAppointment = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa thông tin bổ nhiệm này?')) return
         try {
             await supabase.from('employee_appointments').delete().eq('id', id)
@@ -698,6 +778,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Work Process Handler: 4.3 Nhật ký công tác (Work Journals)
     const handleSaveWorkJournal = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -724,6 +808,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteWorkJournal = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa nhật ký công tác này?')) return
         try {
             await supabase.from('employee_work_journals').delete().eq('id', id)
@@ -733,6 +821,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Knowledge Handler: 5.1 Chuyên ngành đào tạo (Training Specializations)
     const handleSaveSpecialization = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -760,6 +852,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteSpecialization = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa chuyên ngành đào tạo này?')) return
         try {
             await supabase.from('employee_training_specializations').delete().eq('id', id)
@@ -769,6 +865,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Knowledge Handler: 5.2 Chứng chỉ (Certificates)
     const handleSaveCertificate = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -798,6 +898,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteCertificate = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa chứng chỉ này?')) return
         try {
             await supabase.from('employee_certificates').delete().eq('id', id)
@@ -807,6 +911,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Knowledge Handler: 5.3 Đào tạo nội bộ (Internal Trainings)
     const handleSaveInternalTraining = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -835,6 +943,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteInternalTraining = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa đào tạo nội bộ này?')) return
         try {
             await supabase.from('employee_internal_trainings').delete().eq('id', id)
@@ -844,6 +956,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Rewards & Discipline Handler: 6.1 Khen thưởng (Rewards)
     const handleSaveReward = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -873,6 +989,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteReward = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa khen thưởng này?')) return
         try {
             await supabase.from('employee_rewards').delete().eq('id', id)
@@ -882,6 +1002,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Rewards & Discipline Handler: 6.2 Kỷ luật (Disciplines)
     const handleSaveDiscipline = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -908,6 +1032,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteDiscipline = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa kỷ luật này?')) return
         try {
             await supabase.from('employee_disciplines').delete().eq('id', id)
@@ -917,6 +1045,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Health Handler: 7.1 Thẻ bảo hiểm y tế (Health Insurance)
     const handleSaveHealthInsurance = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -943,6 +1075,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Health Handler: 7.2 Tai nạn lao động (Work Accidents)
     const handleSaveWorkAccident = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -972,6 +1108,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteWorkAccident = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa tai nạn lao động này?')) return
         try {
             await supabase.from('employee_work_accidents').delete().eq('id', id)
@@ -981,6 +1121,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
     // Health Handler: 7.3 Khám sức khỏe (Health Checkups)
     const handleSaveHealthCheckup = async (item) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         try {
             const payload = {
                 employee_code: employee.employeeId,
@@ -1008,6 +1152,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }
     const handleDeleteHealthCheckup = async (id) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên này!')
+            return
+        }
         if (!confirm('Xóa khám sức khỏe này?')) return
         try {
             await supabase.from('employee_health_checkups').delete().eq('id', id)
@@ -1321,6 +1469,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             supervisor_grade: getGrade(supervisorTotals.total)
         }
 
+        // Validate permissions before calling save
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền thực hiện hành động này!')
+            return
+        }
+
         // Save to DB logic (Upsert-ish)
         let result
         if (existingId) {
@@ -1348,6 +1502,60 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         if (!month) {
             alert('Vui lòng chọn tháng đánh giá!')
+            return
+        }
+
+        // Helper function to extract max value from range string (e.g., "1 - 10" => 10)
+        const getMaxFromRange = (range) => {
+            if (!range) return null
+            const parts = range.split('-').map(s => parseInt(s.trim()))
+            if (parts.length === 2 && !isNaN(parts[1])) {
+                return parts[1]
+            }
+            return null
+        }
+
+        // Validate all scores before saving
+        const criteria = getCriteria(formData.score_template_code || 'NVTT')
+        const errors = []
+
+        console.log('=== VALIDATION START ===')
+        console.log('Criteria:', criteria)
+        console.log('Self Assessment:', selfAssessment)
+
+        for (const section of criteria) {
+            for (const item of section.items) {
+                if (item.isHeader) continue
+
+                const maxValue = item.range ? getMaxFromRange(item.range) : item.maxScore
+                console.log(`Checking item ${item.id}: range="${item.range}", maxValue=${maxValue}`)
+
+                // Check self assessment
+                const selfValue = Number(selfAssessment[item.id] || 0)
+                console.log(`  Self value for ${item.id}: ${selfValue}`)
+
+                if (selfValue < 0) {
+                    errors.push(`Tự ĐG - "${item.title}": Điểm không được âm`)
+                } else if (maxValue && selfValue > maxValue) {
+                    console.log(`  ERROR: ${selfValue} > ${maxValue}`)
+                    errors.push(`Tự ĐG - "${item.title}": Điểm ${selfValue} vượt quá max ${maxValue}`)
+                }
+
+                // Check supervisor assessment
+                const supervisorValue = Number(supervisorAssessment[item.id] || 0)
+                if (supervisorValue < 0) {
+                    errors.push(`QL ĐG - "${item.title}": Điểm không được âm`)
+                } else if (maxValue && supervisorValue > maxValue) {
+                    errors.push(`QL ĐG - "${item.title}": Điểm ${supervisorValue} vượt quá max ${maxValue}`)
+                }
+            }
+        }
+
+        console.log('=== VALIDATION END ===')
+        console.log('Errors found:', errors)
+
+        if (errors.length > 0) {
+            alert('Lỗi validation điểm:\n\n' + errors.slice(0, 5).join('\n') + (errors.length > 5 ? `\n... và ${errors.length - 5} lỗi khác` : ''))
             return
         }
 
@@ -1644,12 +1852,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="header-actions">
                 {customAction}
                 {!isEditing ? (
-                    <button className="btn-premium-outline btn-premium-sm"
-                        onClick={() => setIsEditing(true)}
-                        title="Chỉnh sửa hồ sơ"
-                    >
-                        <i className="fas fa-pencil-alt"></i> Sửa
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium-outline btn-premium-sm"
+                            onClick={() => setIsEditing(true)}
+                            title="Chỉnh sửa hồ sơ"
+                        >
+                            <i className="fas fa-pencil-alt"></i> Sửa
+                        </button>
+                    )
                 ) : (
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button className="btn-premium-outline btn-premium-sm"
@@ -1746,9 +1956,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-users"></i> Thân nhân</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingFamilyMember({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingFamilyMember({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -1800,12 +2012,16 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         )}
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn-table-action" onClick={() => setEditingFamilyMember(mem)}>
-                                            <i className="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteFamilyMember(mem.id)}>
-                                            <i className="fas fa-trash"></i>
-                                        </button>
+                                        {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                                <button className="btn-table-action" onClick={() => setEditingFamilyMember(mem)}>
+                                                    <i className="fas fa-pencil-alt"></i>
+                                                </button>
+                                                <button className="btn-table-action text-danger" onClick={() => handleDeleteFamilyMember(mem.id)}>
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))
@@ -2673,9 +2889,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-university"></i> Tài khoản cá nhân</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingBank({})}>
-                        <i className="fas fa-plus"></i> Thêm tài khoản
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingBank({})}>
+                            <i className="fas fa-plus"></i> Thêm tài khoản
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -2701,14 +2919,16 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.account_number}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn-table-action" onClick={() => setEditingBank(item)}>
-                                            <i className="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteBank(item.id)}>
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                            <button className="btn-table-action" onClick={() => setEditingBank(item)}>
+                                                <i className="fas fa-pencil-alt"></i>
+                                            </button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteBank(item.id)}>
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         )) : (
@@ -2760,9 +2980,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-file-contract"></i> Hợp đồng lao động</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingContract({})}>
-                        <i className="fas fa-plus"></i> Thêm hợp đồng
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingContract({})}>
+                            <i className="fas fa-plus"></i> Thêm hợp đồng
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -2792,14 +3014,16 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.duration}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn-table-action" onClick={() => setEditingContract(item)}>
-                                            <i className="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteContract(item.id)}>
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                            <button className="btn-table-action" onClick={() => setEditingContract(item)}>
+                                                <i className="fas fa-pencil-alt"></i>
+                                            </button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteContract(item.id)}>
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         )) : (
@@ -2865,9 +3089,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-passport"></i> Hộ chiếu</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingPassport({})}>
-                        <i className="fas fa-plus"></i> Thêm hộ chiếu
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingPassport({})}>
+                            <i className="fas fa-plus"></i> Thêm hộ chiếu
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -2895,14 +3121,16 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.expiration_date}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                        <button className="btn-table-action" onClick={() => setEditingPassport(item)}>
-                                            <i className="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeletePassport(item.id)}>
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                            <button className="btn-table-action" onClick={() => setEditingPassport(item)}>
+                                                <i className="fas fa-pencil-alt"></i>
+                                            </button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeletePassport(item.id)}>
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         )) : (
@@ -3630,9 +3858,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Diễn biến lương</h4>
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingSalary({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingSalary({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )}
                 </div>
 
                 <div className="table-wrapper">
@@ -3664,8 +3894,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         <input type="checkbox" checked={item.is_active || false} disabled />
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn-table-action" onClick={() => setEditingSalary(item)}><i className="fas fa-edit"></i></button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                        {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                            <>
+                                                <button className="btn-table-action" onClick={() => setEditingSalary(item)}><i className="fas fa-edit"></i></button>
+                                                <button className="btn-table-action text-danger" onClick={() => handleDeleteSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3751,9 +3985,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Diễn biến lương theo vị trí</h4>
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingJobSalary({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingJobSalary({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )}
                 </div>
 
                 <div className="table-wrapper">
@@ -3783,8 +4019,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         {item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noopener noreferrer"><i className="fas fa-file-pdf"></i></a> : '-'}
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn-table-action" onClick={() => setEditingJobSalary(item)}><i className="fas fa-pencil-alt"></i></button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteJobSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                        {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                            <>
+                                                <button className="btn-table-action" onClick={() => setEditingJobSalary(item)}><i className="fas fa-pencil-alt"></i></button>
+                                                <button className="btn-table-action text-danger" onClick={() => handleDeleteJobSalary(item.id)}><i className="fas fa-trash"></i></button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3862,9 +4102,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 {/* AREA 2: HISTORY TABLE */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-light)' }}>Bảng diễn biến phụ cấp</h4>
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingAllowance({})}>
-                        <i className="fas fa-plus"></i> Thêm phụ cấp
-                    </button>
+                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingAllowance({})}>
+                            <i className="fas fa-plus"></i> Thêm phụ cấp
+                        </button>
+                    )}
                 </div>
 
                 <div className="table-wrapper">
@@ -3892,8 +4134,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         <input type="checkbox" checked={item.is_active || false} disabled />
                                     </td>
                                     <td className="text-center">
-                                        <button className="btn-table-action" onClick={() => setEditingAllowance(item)}><i className="fas fa-pencil-alt"></i></button>
-                                        <button className="btn-table-action text-danger" onClick={() => handleDeleteAllowance(item.id)}><i className="fas fa-trash"></i></button>
+                                        {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                            <>
+                                                <button className="btn-table-action" onClick={() => setEditingAllowance(item)}><i className="fas fa-pencil-alt"></i></button>
+                                                <button className="btn-table-action text-danger" onClick={() => handleDeleteAllowance(item.id)}><i className="fas fa-trash"></i></button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -3936,9 +4182,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-chart-line"></i> Thu nhập khác</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingOtherIncome({})}>
-                        <i className="fas fa-plus"></i> Thêm thu nhập
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingOtherIncome({})}>
+                            <i className="fas fa-plus"></i> Thêm thu nhập
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -3963,8 +4211,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{Number(item.tax_amount).toLocaleString('vi-VN')}</td>
                                 <td>{item.applied_month}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingOtherIncome(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteOtherIncome(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingOtherIncome(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteOtherIncome(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="6" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4004,9 +4256,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-calendar-check"></i> Nghỉ phép</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingLeave({})}>
-                        <i className="fas fa-plus"></i> Đăng ký nghỉ phép
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingLeave({})}>
+                            <i className="fas fa-plus"></i> Đăng ký nghỉ phép
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4037,8 +4291,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.remaining_leave}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingLeave(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteLeave(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingLeave(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteLeave(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4097,9 +4355,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-user-tie"></i> Bổ nhiệm - Điều chuyển</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingAppointment({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingAppointment({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4128,8 +4388,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.workplace}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingAppointment(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteAppointment(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingAppointment(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteAppointment(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4170,9 +4434,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-plane-departure"></i> Nhật ký công tác</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkJournal({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkJournal({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4199,8 +4465,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.purpose}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingWorkJournal(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkJournal(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingWorkJournal(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkJournal(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4240,9 +4510,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-graduation-cap"></i> Chuyên ngành đào tạo</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingSpecialization({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingSpecialization({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4271,8 +4543,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.training_type}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingSpecialization(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteSpecialization(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingSpecialization(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteSpecialization(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4331,9 +4607,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-certificate"></i> Chứng chỉ</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingCertificate({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingCertificate({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4366,8 +4644,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.expiry_date}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingCertificate(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteCertificate(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingCertificate(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteCertificate(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4410,9 +4692,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-chalkboard-teacher"></i> Đào tạo nội bộ</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingInternalTraining({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingInternalTraining({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4443,8 +4727,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.result}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingInternalTraining(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteInternalTraining(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingInternalTraining(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteInternalTraining(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4495,9 +4783,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-trophy"></i> Khen thưởng</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingReward({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingReward({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4530,8 +4820,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingReward(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteReward(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingReward(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteReward(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="10" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4583,9 +4877,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-gavel"></i> Kỷ luật</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingDiscipline({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingDiscipline({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4612,8 +4908,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.to_date}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingDiscipline(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteDiscipline(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingDiscipline(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteDiscipline(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4662,7 +4962,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-id-card-alt"></i> Thẻ bảo hiểm y tế</h3>
                 {renderActions(
-                    !healthInsurance && !editingHealthInsurance && (
+                    !healthInsurance && !editingHealthInsurance && checkAction('edit', { module: 'profiles', ...employee }) && (
                         <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthInsurance({})}>
                             <i className="fas fa-plus"></i> Thêm thông tin
                         </button>
@@ -4686,9 +4986,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                         <div className="form-group full-width"><label>Ghi chú</label><textarea rows="2" value={healthInsurance.note || ''} disabled /></div>
                     </div>
                     <div style={{ textAlign: 'right', marginTop: '15px' }}>
-                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthInsurance(healthInsurance)}>
-                            <i className="fas fa-edit"></i> Cập nhật
-                        </button>
+                        {checkAction('edit', { module: 'profiles', ...employee }) && (
+                            <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthInsurance(healthInsurance)}>
+                                <i className="fas fa-edit"></i> Cập nhật
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -4723,9 +5025,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-user-injured"></i> Tai nạn lao động</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkAccident({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingWorkAccident({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4756,8 +5060,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.property_damage?.toLocaleString()}</td>
                                 <td>{item.compensation_amount?.toLocaleString()}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingWorkAccident(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkAccident(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingWorkAccident(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteWorkAccident(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="9" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4807,9 +5115,11 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="section-header-modern">
                 <h3><i className="fas fa-heartbeat"></i> Khám sức khỏe</h3>
                 {renderActions(
-                    <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthCheckup({})}>
-                        <i className="fas fa-plus"></i> Thêm mới
-                    </button>
+                    checkAction('edit', { module: 'profiles', ...employee }) && (
+                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingHealthCheckup({})}>
+                            <i className="fas fa-plus"></i> Thêm mới
+                        </button>
+                    )
                 )}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
@@ -4838,8 +5148,12 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                 <td>{item.attachment_url ? <a href={item.attachment_url} target="_blank" rel="noreferrer">Xem file</a> : ''}</td>
                                 <td>{item.note}</td>
                                 <td className="text-center">
-                                    <button className="btn-table-action" onClick={() => setEditingHealthCheckup(item)}><i className="fas fa-pencil-alt"></i></button>
-                                    <button className="btn-table-action text-danger" onClick={() => handleDeleteHealthCheckup(item.id)}><i className="fas fa-trash"></i></button>
+                                    {checkAction('edit', { module: 'profiles', ...employee }) && (
+                                        <>
+                                            <button className="btn-table-action" onClick={() => setEditingHealthCheckup(item)}><i className="fas fa-pencil-alt"></i></button>
+                                            <button className="btn-table-action text-danger" onClick={() => handleDeleteHealthCheckup(item.id)}><i className="fas fa-trash"></i></button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         )) : <tr><td colSpan="8" className="text-center">Chưa có dữ liệu</td></tr>}
@@ -4907,15 +5221,66 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 padding: '12px',
                 background: '#f8f9fa',
                 borderRadius: '10px',
-                border: '1px solid #e9ecef'
+                border: '1px solid #e9ecef',
+                alignItems: 'center',
+                flexWrap: 'wrap'
             }}>
                 <button
                     className="btn-employee-selector"
                     onClick={handleClick}
                     title={onOpenEmployeeSelector ? "Chọn nhân sự để chấm điểm" : "Quản lý nhân sự"}
                 >
-                    <i className="fas fa-users"></i> <span>Nhân sự</span>
+                    <i className="fas fa-users"></i> <span>{onOpenEmployeeSelector ? 'Chọn nhân sự' : 'Danh sách'}</span>
                 </button>
+
+                <div style={{ flex: 1 }}></div>
+
+                {/* Reset Password */}
+                {checkAction('edit', { module: 'profiles', ...employee }) && onResetPassword && (
+                    <button
+                        className="btn-premium-outline btn-premium-sm"
+                        onClick={() => onResetPassword(employee)}
+                        title="Reset mật khẩu về mặc định (123456)"
+                    >
+                        <i className="fas fa-key"></i> Reset MK
+                    </button>
+                )}
+
+                {/* Disable / Activate */}
+                {checkAction('edit', { module: 'profiles', ...employee }) && (
+                    employee.status === 'Nghỉ việc' ? (
+                        onActivate && (
+                            <button
+                                className="btn-premium-outline btn-premium-sm text-success"
+                                onClick={() => onActivate(employee)}
+                                title="Kích hoạt lại nhân viên"
+                            >
+                                <i className="fas fa-user-check"></i> Kích hoạt
+                            </button>
+                        )
+                    ) : (
+                        onDisable && (
+                            <button
+                                className="btn-premium-outline btn-premium-sm text-warning"
+                                onClick={() => onDisable(employee)}
+                                title="Tạm ngưng hoạt động nhân viên"
+                            >
+                                <i className="fas fa-user-slash"></i> Ngưng hoạt động
+                            </button>
+                        )
+                    )
+                )}
+
+                {/* Delete */}
+                {checkAction('delete', { module: 'profiles', ...employee }) && onDelete && (
+                    <button
+                        className="btn-premium-outline btn-premium-sm text-danger"
+                        onClick={() => onDelete(employee)}
+                        title="Xóa vĩnh viễn nhân viên"
+                    >
+                        <i className="fas fa-trash-alt"></i> Xóa
+                    </button>
+                )}
             </div>
         )
     }

@@ -56,9 +56,9 @@ function Login() {
     return (
         <div className="login-page">
             <div className="login-container">
-                <div className="login-header">
-                    <div className="logo-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
-                        <img src="/logo-acv-standard.png" alt="ACV Logo" style={{ height: '80px', width: 'auto', marginBottom: '15px' }} />
+                <div className="login-header" style={{ background: '#1e3e72', borderRadius: '16px 16px 0 0', padding: '24px', margin: '-48px -48px 24px -48px' }}>
+                    <div className="logo-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <img src="/1.png" alt="ACV Logo" loading="eager" style={{ height: '80px', width: 'auto', marginBottom: '15px' }} />
                         <h2 style={{ margin: 0, color: '#fff', fontWeight: '800', fontSize: '1.4rem', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>CẢNG HÀNG KHÔNG</h2>
                         <span style={{ fontSize: '0.9rem', color: '#fdb813', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Quốc Tế</span>
                     </div>

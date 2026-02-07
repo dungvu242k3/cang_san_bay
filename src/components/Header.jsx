@@ -46,7 +46,7 @@ function Header({ onMenuToggle, isMenuOpen = false }) {
         <i className="fas fa-chevron-left"></i>
       </button>
       <div className="logo" onClick={() => navigate('/dashboard')}>
-        <img src="/1.png" alt="ACV Logo" className="logo-img" />
+        <img src="/1.png" alt="ACV Logo" className="logo-img" loading="eager" />
         <div className="logo-text">
         </div>
       </div>

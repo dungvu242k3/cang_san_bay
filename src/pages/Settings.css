@@ -325,7 +325,6 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
-    align-items: end;
 }
 
 .leave-setting-form .form-group {

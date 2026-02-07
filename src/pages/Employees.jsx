@@ -155,6 +155,11 @@ function Employees() {
     }
 
     const handleDisableEmployee = async (employee) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên!')
+            return
+        }
+
         if (!window.confirm(`Bạn có chắc chắn muốn ngừng hoạt động nhân viên ${employee.employeeId}?`)) {
             return
         }
@@ -174,6 +179,10 @@ function Employees() {
     }
 
     const handleActivateEmployee = async (employee) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền sửa thông tin nhân viên!')
+            return
+        }
         try {
             await supabase
                 .from('employee_profiles')
@@ -224,6 +233,10 @@ function Employees() {
     }
 
     const handleResetPassword = (employee) => {
+        if (!checkAction('edit', { module: 'profiles', ...employee })) {
+            alert('Bạn không có quyền reset mật khẩu nhân viên!')
+            return
+        }
         setEmployeeToReset(employee)
         setShowResetPasswordModal(true)
     }
@@ -264,6 +277,21 @@ function Employees() {
     }
 
     const handleSaveEmployee = async (formData, id) => {
+        // Permission Check
+        if (id) {
+            // Edit
+            if (!checkAction('edit', { module: 'profiles', id, ...formData })) {
+                alert('Bạn không có quyền sửa thông tin nhân viên này!')
+                return
+            }
+        } else {
+            // Create
+            if (!checkAction('create', { module: 'profiles' })) {
+                alert('Bạn không có quyền tạo nhân viên mới!')
+                return
+            }
+        }
+
         // Validation for new employees
         if (!id) {
             if (!formData.employeeId || !formData.employeeId.trim()) {
@@ -784,16 +812,20 @@ function Employees() {
                     <div className="panel-header">
                         <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
                         <div className="panel-actions">
-                            <button
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => navigate('/import-nhan-vien')}
-                                style={{ marginRight: '8px' }}
-                            >
-                                <i className="fas fa-file-import"></i> Import
-                            </button>
-                            <button className="btn btn-primary btn-sm" onClick={() => setShowCreateWizard(true)}>
-                                <i className="fas fa-plus"></i> Thêm mới
-                            </button>
+                            {checkAction('create', { module: 'profiles' }) && (
+                                <>
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => navigate('/import-nhan-vien')}
+                                        style={{ marginRight: '8px' }}
+                                    >
+                                        <i className="fas fa-file-import"></i> Import
+                                    </button>
+                                    <button className="btn btn-primary btn-sm" onClick={() => setShowCreateWizard(true)}>
+                                        <i className="fas fa-plus"></i> Thêm mới
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="detail-content">
