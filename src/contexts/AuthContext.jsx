@@ -88,7 +88,7 @@ export function AuthProvider({ children }) {
             } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
                 userLevel = 'DEPT_HEAD'
                 deptScope = profile.department
-            } else if (pos.includes('phó trưởng phòng')) {
+            } else if (pos.includes('phó trưởng phòng') || pos.includes('phó phòng')) {
                 userLevel = 'DEPT_HEAD'
                 deptScope = profile.department
             } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
