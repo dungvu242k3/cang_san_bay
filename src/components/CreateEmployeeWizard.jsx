@@ -265,16 +265,7 @@ function CreateEmployeeWizard({ onClose, onComplete }) {
                             allowCustom={true}
                         />
                     </div>
-                    <div className="wizard-form-group">
-                        <label>Nhóm</label>
-                        <SearchableDropdown
-                            options={groups}
-                            value={formData.group_name}
-                            onChange={(val) => handleChange('group_name', val)}
-                            placeholder="Tìm nhóm..."
-                            allowCustom={true}
-                        />
-                    </div>
+
                     <div className="wizard-form-group">
                         <label>Vị trí công việc</label>
                         <input type="text" value={formData.job_position}
@@ -292,6 +283,20 @@ function CreateEmployeeWizard({ onClose, onComplete }) {
                         <label>Ngày vào làm</label>
                         <input type="date" value={formData.join_date}
                             onChange={e => handleChange('join_date', e.target.value)} />
+                    </div>
+                    <div className="wizard-form-group">
+                        <label>Chức vụ hiện tại</label>
+                        <select value={formData.current_position} onChange={e => handleChange('current_position', e.target.value)}>
+                            <option value="Giám đốc">Giám đốc</option>
+                            <option value="Phó giám đốc">Phó giám đốc</option>
+                            <option value="Trưởng phòng">Trưởng phòng</option>
+                            <option value="Phó phòng">Phó phòng</option>
+                            <option value="Đội trưởng">Đội trưởng</option>
+                            <option value="Đội phó">Đội phó</option>
+                            <option value="Tổ trưởng">Tổ trưởng</option>
+                            <option value="Tổ phó">Tổ phó</option>
+                            <option value="Khác">Khác</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -342,16 +347,17 @@ function CreateEmployeeWizard({ onClose, onComplete }) {
                                 <select value={newFamily.relation}
                                     onChange={e => setNewFamily({ ...newFamily, relation: e.target.value })}>
                                     <option value="">-- Chọn --</option>
-                                    <option value="Bố">Bố</option>
-                                    <option value="Mẹ">Mẹ</option>
+                                    <option value="Cha ruột">Bố</option>
+                                    <option value="Mẹ ruột">Mẹ</option>
                                     <option value="Vợ">Vợ</option>
                                     <option value="Chồng">Chồng</option>
-                                    <option value="Con">Con</option>
-                                    <option value="Anh">Anh</option>
-                                    <option value="Chị">Chị</option>
-                                    <option value="Em">Em</option>
-                                    <option value="Ông">Ông</option>
-                                    <option value="Bà">Bà</option>
+                                    <option value="Con ruột">Con</option>
+                                    <option value="Anh ruột">Anh</option>
+                                    <option value="Chị ruột">Chị</option>
+                                    <option value="Em ruột">Em</option>
+                                    <option value="Anh vợ">Anh vợ</option>
+                                    <option value="Chị vợ">Chị vợ</option>
+                                    <option value="Em vợ">Em vợ</option>
                                     <option value="Khác">Khác</option>
                                 </select>
                             </div>

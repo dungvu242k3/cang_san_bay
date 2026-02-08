@@ -76,7 +76,7 @@ function UserManagement() {
                     role = 'BOARD_DIRECTOR'
                 } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
                     role = 'DEPT_HEAD'
-                } else if (pos.includes('phó trưởng phòng')) {
+                } else if (pos.includes('phó trưởng phòng') || pos.includes('phó phòng')) {
                     role = 'DEPT_HEAD'
                 } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
                     role = 'TEAM_LEADER'

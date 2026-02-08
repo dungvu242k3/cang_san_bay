@@ -171,7 +171,7 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee, employees = [], currentMonth }) => {
+const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onDelete, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee, employees = [], currentMonth }) => {
     const { user: authUser, checkAction } = useAuth()
     const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
