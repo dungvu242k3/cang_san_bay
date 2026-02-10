@@ -890,9 +890,11 @@ function Tasks() {
                             <i className="fas fa-columns"></i>
                         </button>
                     </div>
-                    <button className="btn btn-create-task" onClick={handleOpenCreate}>
-                        <i className="fas fa-plus"></i> Tạo việc mới
-                    </button>
+                    {checkAction('create', { module: 'tasks' }) && (
+                        <button className="btn btn-create-task" onClick={handleOpenCreate}>
+                            <i className="fas fa-plus"></i> Tạo việc mới
+                        </button>
+                    )}
                 </div>
             </div>
 

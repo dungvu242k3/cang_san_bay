@@ -744,73 +744,77 @@ function Employees() {
             {/* RIGHT: MAIN CONTENT */}
             <div className="employees-content">
                 {/* LEFT PANEL: LIST VIEW */}
-                <div className="list-panel">
-                    <div className="list-toolbar">
-                        <div className="search-group">
-                            <input
-                                type="text"
-                                placeholder="Tìm NV..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                                <option value="">Tất cả phòng ban</option>
-                                {departments.map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
+                {user?.role_level !== 'STAFF' && (
+                    <div className="list-panel">
+                        <div className="list-toolbar">
+                            <div className="search-group">
+                                <input
+                                    type="text"
+                                    placeholder="Tìm NV..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level) && (
+                                    <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                                        <option value="">Tất cả phòng ban</option>
+                                        {departments.map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                            <div className="list-stats">
+                                {filteredEmployees.length} / {employees.length} nhân viên
+                            </div>
                         </div>
-                        <div className="list-stats">
-                            {filteredEmployees.length} / {employees.length} nhân viên
-                        </div>
-                    </div>
 
-                    <div className="table-container">
-                        <table className="employees-table-compact">
-                            <thead>
-                                <tr>
-                                    <th>Mã</th>
-                                    <th>Họ Tên</th>
-                                    <th>Phòng Ban</th>
-                                    <th>Vị Trí</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {groupedEmployees().map(group => (
-                                    <React.Fragment key={group.department}>
-                                        {/* Department Header */}
-                                        <tr className="department-header-row">
-                                            <td colSpan="4" className="department-header">
-                                                <strong>{group.department}</strong>
-                                                <span className="employee-count">({group.count} nhân viên)</span>
-                                            </td>
-                                        </tr>
-                                        {/* Employees in this department */}
-                                        {group.employees.map(emp => (
-                                            <tr
-                                                key={emp.id}
-                                                onClick={() => setSelectedEmployee(emp)}
-                                                className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
-                                            >
-                                                <td className="employee-code">{emp.employeeId}</td>
-                                                <td className="employee-name">{emp.ho_va_ten}</td>
-                                                <td className="employee-department">{emp.bo_phan || '-'}</td>
-                                                <td className="employee-position">{emp.vi_tri || '-'}</td>
-                                            </tr >
-                                        ))
-                                        }
-                                    </React.Fragment >
-                                ))
-                                }
-                                {
-                                    filteredEmployees.length === 0 && (
-                                        <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
-                                    )
-                                }
-                            </tbody >
-                        </table >
+                        <div className="table-container">
+                            <table className="employees-table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>Mã</th>
+                                        <th>Họ Tên</th>
+                                        <th>Phòng Ban</th>
+                                        <th>Vị Trí</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {groupedEmployees().map(group => (
+                                        <React.Fragment key={group.department}>
+                                            {/* Department Header */}
+                                            <tr className="department-header-row">
+                                                <td colSpan="4" className="department-header">
+                                                    <strong>{group.department}</strong>
+                                                    <span className="employee-count">({group.count} nhân viên)</span>
+                                                </td>
+                                            </tr>
+                                            {/* Employees in this department */}
+                                            {group.employees.map(emp => (
+                                                <tr
+                                                    key={emp.id}
+                                                    onClick={() => setSelectedEmployee(emp)}
+                                                    className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
+                                                >
+                                                    <td className="employee-code">{emp.employeeId}</td>
+                                                    <td className="employee-name">{emp.ho_va_ten}</td>
+                                                    <td className="employee-department">{emp.bo_phan || '-'}</td>
+                                                    <td className="employee-position">{emp.vi_tri || '-'}</td>
+                                                </tr >
+                                            ))
+                                            }
+                                        </React.Fragment >
+                                    ))
+                                    }
+                                    {
+                                        filteredEmployees.length === 0 && (
+                                            <tr><td colSpan="4" className="empty-state">Không tìm thấy nhân viên</td></tr>
+                                        )
+                                    }
+                                </tbody >
+                            </table >
+                        </div >
                     </div >
-                </div >
+                )}
 
                 {/* RIGHT PANEL: DETAIL VIEW */}
                 < div className="detail-panel" ref={detailRef} >

@@ -258,7 +258,7 @@ function Profile() {
                                 <img src={avatarPreview} alt="Avatar" />
                             ) : (
                                 <div className="avatar-placeholder">
-                                    {profile.first_name?.[0] || 'U'}
+                                    {(profile.first_name?.[0] || profile.ho_va_ten?.split(' ').pop()?.[0] || 'U').toUpperCase()}
                                 </div>
                             )}
                             <label className="avatar-upload-btn" htmlFor="avatar-input">

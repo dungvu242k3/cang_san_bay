@@ -8,7 +8,8 @@ function Header({ onMenuToggle, isMenuOpen = false }) {
 
   // Determine display name: real name -> email -> 'N/A'
   const displayName = user?.profile?.ho_va_ten || user?.email || 'N/A'
-  const initial = displayName.charAt(0).toUpperCase()
+  const firstName = user?.profile?.first_name || displayName.split(' ').pop() || 'U'
+  const initial = firstName.charAt(0).toUpperCase()
 
   const getRoleLabel = (roleLevel) => {
     const roleMap = {
@@ -46,7 +47,7 @@ function Header({ onMenuToggle, isMenuOpen = false }) {
         <i className="fas fa-chevron-left"></i>
       </button>
       <div className="logo" onClick={() => navigate('/dashboard')}>
-        <img src="/1.png" alt="ACV Logo" className="logo-img" loading="eager" />
+        <img src="/1.png" className="logo-img" loading="eager" />
         <div className="logo-text">
         </div>
       </div>

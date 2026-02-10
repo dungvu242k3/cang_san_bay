@@ -72,6 +72,15 @@ export function AuthProvider({ children }) {
                 throw new Error('Không tìm thấy thông tin nhân viên')
             }
 
+            // Check if account is deactivated
+            if (profile.status === 'Nghỉ việc') {
+                console.error('❌ [Login Flow] Account deactivated:', employeeCode)
+                localStorage.removeItem('currentEmployeeCode')
+                setUser(null)
+                setLoading(false)
+                return
+            }
+
             console.log('   ✅ Profile found:', profile?.last_name, profile?.first_name)
 
             // 2. Logic synchronized with UserManagement.jsx (Roles Tab)
@@ -179,6 +188,12 @@ export function AuthProvider({ children }) {
         if (!passwordMatch) {
             console.error('❌ [Login] Password mismatch')
             throw new Error('Mã nhân viên hoặc mật khẩu không đúng')
+        }
+
+        // 3. Check if account is deactivated
+        if (profile.status === 'Nghỉ việc') {
+            console.error('❌ [Login] Account deactivated:', code)
+            throw new Error('Tài khoản đã ngưng hoạt động, liên hệ ADMIN để tìm hiểu thêm')
         }
 
         console.log('✅ [Login] Password verified!')

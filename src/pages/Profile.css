@@ -107,10 +107,10 @@
 
 .avatar-upload-btn {
     position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 40px;
-    height: 40px;
+    bottom: 4px;
+    right: 4px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 50%;
     display: flex;
@@ -151,9 +151,14 @@
 }
 
 .profile-avatar-section h3 {
-    margin: 12px 0 4px 0;
+    margin: 16px 0 4px 0;
     font-size: 1.2rem;
     color: #212529;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    width: 100%;
+    padding: 0 4px;
+    box-sizing: border-box;
 }
 
 .badges-container {

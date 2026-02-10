@@ -1,6 +1,6 @@
 .header {
     background: linear-gradient(135deg, #1e3e72 0%, #2a5298 50%, #0f2042 100%);
-    padding: 16px 0 16px 0;
+    padding: 16px 0;
     height: 100px;
     min-height: 100px;
     display: flex;
@@ -13,7 +13,11 @@
     gap: 16px;
     width: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+
+    /* 🔥 FIX QUAN TRỌNG */
+    overflow-x: hidden;
+    overflow-y: visible;
+
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -27,17 +31,12 @@
     .header {
         height: 90px;
         min-height: 90px;
-        padding: 14px 0 14px 0;
+        padding: 14px 0;
         gap: 12px;
     }
 
     .header .logo {
         margin-left: 8px;
-    }
-
-    .user-info {
-        margin-right: 0;
-        padding-right: 0;
     }
 }
 
@@ -45,26 +44,10 @@
     .header {
         height: 75px;
         min-height: 75px;
-        padding: 12px 0 12px 0;
+        padding: 12px 0;
         gap: 8px;
         position: sticky;
         top: 0;
-        overflow: hidden;
-    }
-
-    .header .logo {
-        margin-left: 6px;
-    }
-
-    .user-info {
-        margin-right: 0;
-        padding-right: 0;
-        gap: 6px;
-    }
-
-    .user-profile {
-        padding: 3px 8px;
-        margin-right: 0;
     }
 }
 
@@ -81,35 +64,27 @@
             rgba(255, 215, 0, 0.8) 100%);
 }
 
-/* Logo Section */
+/* ================= LOGO ================= */
+
 .header .logo {
     display: flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
     transition: transform 0.3s ease;
-    flex-shrink: 0;
     margin-left: 8px;
-    margin-right: 0;
+
+    /* 🔥 FIX: KHÔNG BAO GIỜ SHRINK */
+    flex-shrink: 0;
+    min-width: auto;
 }
 
 @media (max-width: 768px) {
     .header .logo {
         gap: 4px;
-        flex-shrink: 1;
-        min-width: 0;
-    }
-}
-
-@media (max-width: 480px) {
-    .header .logo {
-        gap: 3px;
-    }
-}
-
-@media (max-width: 360px) {
-    .header .logo {
-        gap: 2px;
+        flex-shrink: 0;
+        /* 🔥 FIX */
+        min-width: auto;
     }
 }
 
@@ -123,7 +98,10 @@
     object-fit: contain;
     transition: transform 0.3s ease;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+
+    /* 🔥 FIX */
     flex-shrink: 0;
+    min-width: 28px;
 }
 
 @media (max-width: 968px) {
@@ -159,9 +137,15 @@
     flex-direction: column;
     gap: 2px;
     justify-content: center;
-    flex-shrink: 1;
     min-width: 0;
     overflow: hidden;
+}
+
+@media (max-width: 360px) {
+    .logo-text {
+        display: none;
+        /* chỉ ẩn text, KHÔNG ảnh */
+    }
 }
 
 .logo-text h1 {
@@ -402,7 +386,7 @@
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     padding: 6px 14px;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);

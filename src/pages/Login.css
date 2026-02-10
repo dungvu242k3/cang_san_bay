@@ -89,7 +89,7 @@
     margin-bottom: 40px;
 }
 
-.logo {
+.login-page .logo {
     width: 100px;
     height: 100px;
     margin: 0 auto 24px;
@@ -108,7 +108,7 @@
     overflow: hidden;
 }
 
-.logo::before {
+.login-page .logo::before {
     content: '';
     position: absolute;
     top: -50%;
@@ -132,7 +132,7 @@
     }
 }
 
-.logo i {
+.login-page .logo i {
     position: relative;
     z-index: 1;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
@@ -551,7 +551,7 @@
         font-size: 1.5rem;
     }
 
-    .logo {
+    .login-page .logo {
         width: 80px;
         height: 80px;
         font-size: 2.5rem;
@@ -585,7 +585,7 @@
         font-size: 1.3rem;
     }
 
-    .logo {
+    .login-page .logo {
         width: 70px;
         height: 70px;
         font-size: 2rem;

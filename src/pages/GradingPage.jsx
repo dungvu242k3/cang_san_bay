@@ -191,26 +191,32 @@ function GradingPage() {
                     </button>
                 </div>
 
-                <div className="sidebar-toolbar">
-                    <div className="sidebar-search">
-                        <input
-                            type="text"
-                            placeholder="Tìm tên hoặc mã nhân viên..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                            <option value="">Tất cả phòng ban</option>
-                            {departments.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
+                {user?.role_level !== 'STAFF' && (
+                    <>
+                        <div className="sidebar-toolbar">
+                            <div className="sidebar-search">
+                                <input
+                                    type="text"
+                                    placeholder="Tìm tên hoặc mã nhân viên..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level) && (
+                                    <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                                        <option value="">Tất cả phòng ban</option>
+                                        {departments.map(dept => (
+                                            <option key={dept} value={dept}>{dept}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        </div>
 
-                <div className="sidebar-stats">
-                    Hiển thị {filteredEmployees.length} nhân viên
-                </div>
+                        <div className="sidebar-stats">
+                            Hiển thị {filteredEmployees.length} nhân viên
+                        </div>
+                    </>
+                )}
 
                 <div className="grading-sidebar-list">
                     {loading ? (
