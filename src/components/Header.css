@@ -93,7 +93,7 @@
 }
 
 .logo-img {
-    height: 40px;
+    height: 60px;
     width: auto;
     object-fit: contain;
     transition: transform 0.3s ease;
@@ -106,25 +106,25 @@
 
 @media (max-width: 968px) {
     .logo-img {
-        height: 36px;
+        height: 50px;
     }
 }
 
 @media (max-width: 768px) {
     .logo-img {
-        height: 28px;
+        height: 42px;
     }
 }
 
 @media (max-width: 480px) {
     .logo-img {
-        height: 24px;
+        height: 36px;
     }
 }
 
 @media (max-width: 360px) {
     .logo-img {
-        height: 20px;
+        height: 30px;
     }
 }
 
