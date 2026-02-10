@@ -13,7 +13,7 @@ const renderAssignee = (code, type) => {
     );
 };
 
-const MobileTaskCard = ({ task, onEdit, onQuickAction, getPriorityClass, getStatusClass }) => {
+const MobileTaskCard = ({ task, onEdit, onQuickAction, getPriorityClass, getStatusClass, checkAction }) => {
     return (
         <div className="mobile-task-card" onClick={(e) => onEdit(task, e)}>
             <div className="card-header-flex">
@@ -977,6 +977,7 @@ function Tasks() {
                                     onQuickAction={handleQuickAction}
                                     getPriorityClass={getPriorityClass}
                                     getStatusClass={getStatusClass}
+                                    checkAction={checkAction}
                                 />
                             ))
                         )}
