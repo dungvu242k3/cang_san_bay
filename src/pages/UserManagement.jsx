@@ -462,25 +462,37 @@ function UserManagement() {
                                 <tr key={emp.id}>
                                     <td className="font-weight-bold">{emp.employee_code}</td>
                                     <td>{emp.last_name} {emp.first_name}</td>
-                                    <td style={{ minWidth: '250px' }}>
+                                    <td style={{ minWidth: '240px' }}>
                                         <div className="dept-team-edit">
-                                            <div style={{ marginBottom: '5px' }}>
-                                                <SearchableDropdown
-                                                    options={departments}
-                                                    value={emp.department}
-                                                    onChange={(val) => handleUpdateDepartment(emp, val)}
-                                                    placeholder="Chọn phòng ban..."
-                                                    allowCustom={true}
-                                                />
+                                            <div className="dept-team-row">
+                                                <span className="dept-team-label">
+                                                    <i className="fas fa-building"></i> Phòng
+                                                </span>
+                                                <div className="dept-team-dropdown">
+                                                    <SearchableDropdown
+                                                        options={departments}
+                                                        value={emp.department}
+                                                        onChange={(val) => handleUpdateDepartment(emp, val)}
+                                                        placeholder="Chọn phòng..."
+                                                        allowCustom={true}
+                                                        portalClassName="dept-team-portal-dropdown"
+                                                    />
+                                                </div>
                                             </div>
-                                            <div>
-                                                <SearchableDropdown
-                                                    options={teams}
-                                                    value={emp.team}
-                                                    onChange={(val) => handleUpdateTeam(emp, val)}
-                                                    placeholder="Chọn đội..."
-                                                    allowCustom={true}
-                                                />
+                                            <div className="dept-team-row">
+                                                <span className="dept-team-label">
+                                                    <i className="fas fa-users"></i> Đội
+                                                </span>
+                                                <div className="dept-team-dropdown">
+                                                    <SearchableDropdown
+                                                        options={teams}
+                                                        value={emp.team}
+                                                        onChange={(val) => handleUpdateTeam(emp, val)}
+                                                        placeholder="Chọn đội..."
+                                                        allowCustom={true}
+                                                        portalClassName="dept-team-portal-dropdown"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </td>

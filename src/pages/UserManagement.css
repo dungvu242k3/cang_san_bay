@@ -125,20 +125,83 @@
     color: #212529;
 }
 
-.dept-team {
+/* Phòng/Đội compact inline dropdown */
+.dept-team-edit {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
-.dept {
+.dept-team-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dept-team-label {
+    flex-shrink: 0;
+    width: 62px;
+    font-size: 0.78rem;
     font-weight: 600;
     color: #495057;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
 }
 
-.team {
-    font-size: 0.85rem;
-    color: #6c757d;
+.dept-team-label i {
+    font-size: 0.7rem;
+    color: #667eea;
+}
+
+.dept-team-dropdown {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Compact overrides for SearchableDropdown inside table */
+.dept-team-dropdown .dropdown-input-wrapper {
+    border-radius: 6px;
+    border-color: #dee2e6;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.dept-team-dropdown .dropdown-input-wrapper:focus-within {
+    background: #fff;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.12);
+}
+
+.dept-team-dropdown .dropdown-input {
+    padding: 6px 8px;
+    font-size: 0.82rem;
+}
+
+.dept-team-dropdown .dropdown-toggle {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+}
+
+.dept-team-portal-dropdown {
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e9ecef;
+}
+
+.dept-team-portal-dropdown .dropdown-item {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+}
+
+.dept-team-portal-dropdown .dropdown-item.selected {
+    background: linear-gradient(135deg, #667eea, #5a6fd6);
+}
+
+.dept-team-portal-dropdown .dropdown-empty {
+    padding: 8px 12px;
+    font-size: 0.8rem;
 }
 
 .role-badge {
