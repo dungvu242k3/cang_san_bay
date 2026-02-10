@@ -56,7 +56,7 @@ function GradingPage() {
     const loadEmployees = async () => {
         try {
             setLoading(true)
-            let query = supabase.from('employee_profiles').select('*');
+            let query = supabase.from('employee_profiles').select('*').neq('status', 'Nghỉ việc');
 
             // Apply role filter (Secure by Default)
             if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level)) {
@@ -93,7 +93,7 @@ function GradingPage() {
                 sđt: profile.phone || '',
                 bo_phan: profile.department || '',
                 vi_tri: profile.job_position || profile.current_position || '',
-                trang_thai: 'Đang làm việc',
+                trang_thai: profile.status || 'Đang làm việc',
                 ngay_vao_lam: profile.join_date || '',
                 ngay_sinh: profile.date_of_birth || '',
                 gioi_tinh: profile.gender || '',

@@ -1852,13 +1852,19 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="header-actions">
                 {customAction}
                 {!isEditing ? (
-                    checkAction('edit', { module: 'profiles', ...employee }) && (
-                        <button className="btn-premium-outline btn-premium-sm"
-                            onClick={() => setIsEditing(true)}
-                            title="Chỉnh sửa hồ sơ"
-                        >
-                            <i className="fas fa-pencil-alt"></i> Sửa
-                        </button>
+                    employee?.status === 'Nghỉ việc' ? (
+                        <span style={{ color: '#ff4d4f', fontSize: '13px', fontWeight: 500 }}>
+                            <i className="fas fa-ban" style={{ marginRight: 4 }}></i> Tài khoản đã ngưng hoạt động
+                        </span>
+                    ) : (
+                        checkAction('edit', { module: 'profiles', ...employee }) && (
+                            <button className="btn-premium-outline btn-premium-sm"
+                                onClick={() => setIsEditing(true)}
+                                title="Chỉnh sửa hồ sơ"
+                            >
+                                <i className="fas fa-pencil-alt"></i> Sửa
+                            </button>
+                        )
                     )
                 ) : (
                     <div style={{ display: 'flex', gap: '8px' }}>

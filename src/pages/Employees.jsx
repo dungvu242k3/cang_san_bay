@@ -54,7 +54,7 @@ function Employees() {
         }
     }, [loading, employees, location.state, navigate, location.pathname])
 
-    const loadEmployees = async () => {
+    const loadEmployees = async (forceReselect = false) => {
         try {
             setLoading(true)
             let query = supabase
@@ -96,7 +96,7 @@ function Employees() {
                 sđt: profile.phone || '',
                 bo_phan: profile.department || '',
                 vi_tri: profile.job_position || profile.current_position || '',
-                trang_thai: 'Đang làm việc', // Default logic could be improved
+                trang_thai: profile.status || 'Đang làm việc',
                 ngay_vao_lam: profile.join_date || '',
                 ngay_sinh: profile.date_of_birth || '',
                 gioi_tinh: profile.gender || '',
@@ -108,9 +108,10 @@ function Employees() {
             }))
             setEmployees(mappedData)
 
-            // Auto-select first employee if none selected
-            if (!selectedEmployee && mappedData.length > 0) {
-                setSelectedEmployee(mappedData[0])
+            // Auto-select first active employee if none selected or forced
+            if (forceReselect || (!selectedEmployee && mappedData.length > 0)) {
+                const firstActive = mappedData.find(e => e.status !== 'Nghỉ việc') || mappedData[0]
+                setSelectedEmployee(firstActive || null)
             }
 
             setLoading(false)
@@ -129,9 +130,10 @@ function Employees() {
                 nameField.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (item.employeeId && item.employeeId.toLowerCase().includes(searchTerm.toLowerCase()))
 
-            const matchBranch = !filterBranch || item.chi_nhanh === filterBranch // Note: chi_nhanh not always in profile
+            const matchBranch = !filterBranch || item.chi_nhanh === filterBranch
             const matchDept = !filterDept || item.bo_phan === filterDept
-            return matchSearch && matchBranch && matchDept
+            const matchStatus = !searchTerm || item.status !== 'Nghỉ việc'
+            return matchSearch && matchBranch && matchDept && matchStatus
         })
         setFilteredEmployees(filtered)
     }
@@ -171,7 +173,7 @@ function Employees() {
                 .eq('id', employee.id)
 
             alert('Đã ngừng hoạt động nhân viên thành công!')
-            loadEmployees()
+            await loadEmployees(true)
         } catch (err) {
             console.error('Error disabling employee:', err)
             alert('Lỗi: ' + err.message)
@@ -189,8 +191,11 @@ function Employees() {
                 .update({ status: 'Đang làm việc' })
                 .eq('id', employee.id)
 
+            // Update local state directly - no reload needed
+            const updatedEmployee = { ...employee, status: 'Đang làm việc', trang_thai: 'Đang làm việc' }
+            setEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, status: 'Đang làm việc', trang_thai: 'Đang làm việc' } : e))
+            setSelectedEmployee(updatedEmployee)
             alert('Đã kích hoạt nhân viên thành công!')
-            loadEmployees()
         } catch (err) {
             console.error('Error activating employee:', err)
             alert('Lỗi: ' + err.message)
@@ -664,7 +669,7 @@ function Employees() {
                     sđt: profile.phone || '',
                     bo_phan: profile.department || '',
                     vi_tri: profile.job_position || profile.current_position || '',
-                    trang_thai: 'Đang làm việc',
+                    trang_thai: profile.status || 'Đang làm việc',
                     ngay_vao_lam: profile.join_date || '',
                     ngay_sinh: profile.date_of_birth || '',
                     gioi_tinh: profile.gender || '',

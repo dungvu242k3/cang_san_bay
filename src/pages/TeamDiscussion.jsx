@@ -9,10 +9,16 @@ function TeamDiscussion() {
     const [loading, setLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const [newMessage, setNewMessage] = useState('')
-    const [teamMembers, setTeamMembers] = useState([])
     const messagesEndRef = useRef(null)
-    const [myTeam, setMyTeam] = useState('')
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+    // Filter states
+    const [allTeams, setAllTeams] = useState([])
+    const [allEmployees, setAllEmployees] = useState([])
+    const [filterTeam, setFilterTeam] = useState('')
+    const [filterEmployee, setFilterEmployee] = useState('')
+
+    const isAdmin = ['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level)
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -21,16 +27,9 @@ function TeamDiscussion() {
     }, [])
 
     useEffect(() => {
-        if (user?.profile?.team) {
-            setMyTeam(user.profile.team)
+        if (user) {
+            loadFilters()
             loadMessages()
-            loadTeamMembers()
-
-            const unsubscribe = subscribeToMessages()
-
-            return () => {
-                if (unsubscribe) unsubscribe()
-            }
         }
     }, [user])
 
@@ -42,12 +41,34 @@ function TeamDiscussion() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
 
-    const loadMessages = async () => {
-        if (!user?.profile?.team) return
+    const loadFilters = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('employee_profiles')
+                .select('employee_code, first_name, last_name, team')
 
+            if (error) throw error
+
+            // Get unique teams
+            const teams = [...new Set(data.map(e => e.team).filter(Boolean))].sort()
+            setAllTeams(teams)
+
+            // Get employees for filter
+            const employees = data.map(e => ({
+                code: e.employee_code,
+                name: `${e.last_name || ''} ${e.first_name || ''}`.trim() || e.employee_code
+            })).sort((a, b) => a.name.localeCompare(b.name))
+            setAllEmployees(employees)
+        } catch (err) {
+            console.error('Error loading filters:', err)
+        }
+    }
+
+    const loadMessages = async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
+
+            let query = supabase
                 .from('team_discussions')
                 .select(`
                     *,
@@ -55,16 +76,23 @@ function TeamDiscussion() {
                         employee_code,
                         first_name,
                         last_name,
-                        avatar_url
+                        avatar_url,
+                        team
                     )
                 `)
-                .eq('team', user.profile.team)
                 .order('created_at', { ascending: true })
+                .limit(200) // Limit to recent 200 messages
+
+            // Non-admin: only load messages from their team
+            if (!isAdmin && user?.profile?.team) {
+                query = query.eq('team', user.profile.team)
+            }
+
+            const { data, error } = await query
 
             if (error) {
-                if (error.message.includes('Could not find the table')) {
-                    alert('Bảng team_discussions chưa được tạo. Vui lòng chạy migration SQL trong Supabase Dashboard:\n\nFile: supabase/fix_team_discussions.sql')
-                    throw new Error('Bảng team_discussions chưa tồn tại. Vui lòng chạy migration SQL.')
+                if (error.message.includes('Could not find')) {
+                    console.warn('Bảng team_discussions chưa tồn tại')
                 }
                 throw error
             }
@@ -72,94 +100,50 @@ function TeamDiscussion() {
             setMessages(data || [])
         } catch (err) {
             console.error('Error loading messages:', err)
-            if (err.message.includes('Could not find the table')) {
-                alert('⚠️ Bảng team_discussions chưa được tạo!\n\nVui lòng:\n1. Mở Supabase Dashboard > SQL Editor\n2. Chạy file: supabase/fix_team_discussions.sql\n\nHoặc chạy SQL migration: supabase/migrations/20260202_create_team_discussions.sql')
-            } else {
-                alert('Lỗi tải tin nhắn: ' + err.message)
-            }
+            setMessages([])
         } finally {
             setLoading(false)
         }
     }
 
-    const loadTeamMembers = async () => {
-        if (!user?.profile?.team) return
+    // Filter messages client-side
+    const getFilteredMessages = () => {
+        let filtered = messages
 
-        try {
-            const { data, error } = await supabase
-                .from('employee_profiles')
-                .select('employee_code, first_name, last_name, avatar_url')
-                .eq('team', user.profile.team)
-                .order('first_name')
-
-            if (error) throw error
-
-            setTeamMembers(data || [])
-        } catch (err) {
-            console.error('Error loading team members:', err)
+        if (filterTeam) {
+            filtered = filtered.filter(m => m.team === filterTeam)
         }
-    }
 
-    const subscribeToMessages = () => {
-        if (!user?.profile?.team) return null
-
-        const channel = supabase
-            .channel(`team_discussions:${user.profile.team}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'team_discussions',
-                    filter: `team=eq.${user.profile.team}`
-                },
-                (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        loadMessages()
-                    } else if (payload.eventType === 'UPDATE') {
-                        loadMessages()
-                    } else if (payload.eventType === 'DELETE') {
-                        loadMessages()
-                    }
-                }
-            )
-            .subscribe()
-
-        return () => {
-            supabase.removeChannel(channel)
+        if (filterEmployee) {
+            filtered = filtered.filter(m => m.sender_code === filterEmployee)
         }
+
+        return filtered
     }
 
     const handleSendMessage = async (e) => {
         e.preventDefault()
-        if (!newMessage.trim() || !user?.profile?.team || !user?.employee_code) return
+        const targetTeam = isAdmin ? (filterTeam || user?.profile?.team || 'Chung') : user?.profile?.team
+        if (!newMessage.trim() || !user?.employee_code) return
 
         try {
             setSending(true)
             const { error } = await supabase
                 .from('team_discussions')
                 .insert([{
-                    team: user.profile.team,
+                    team: targetTeam || 'Chung',
                     sender_code: user.employee_code,
                     message: newMessage.trim()
                 }])
 
-            if (error) {
-                if (error.message.includes('Could not find the table')) {
-                    alert('⚠️ Bảng team_discussions chưa được tạo!\n\nVui lòng:\n1. Mở Supabase Dashboard > SQL Editor\n2. Chạy file: supabase/fix_team_discussions.sql')
-                    throw new Error('Bảng team_discussions chưa tồn tại.')
-                }
-                throw error
-            }
+            if (error) throw error
 
             setNewMessage('')
+            // Reload messages
+            await loadMessages()
         } catch (err) {
             console.error('Error sending message:', err)
-            if (err.message.includes('Could not find the table')) {
-                alert('⚠️ Bảng team_discussions chưa được tạo!\n\nVui lòng:\n1. Mở Supabase Dashboard > SQL Editor\n2. Chạy file: supabase/fix_team_discussions.sql\n\nHoặc chạy SQL migration: supabase/migrations/20260202_create_team_discussions.sql')
-            } else {
-                alert('Lỗi gửi tin nhắn: ' + err.message)
-            }
+            alert('Lỗi gửi tin nhắn: ' + err.message)
         } finally {
             setSending(false)
         }
@@ -175,6 +159,7 @@ function TeamDiscussion() {
                 .eq('id', messageId)
 
             if (error) throw error
+            await loadMessages()
         } catch (err) {
             console.error('Error deleting message:', err)
             alert('Lỗi xóa tin nhắn: ' + err.message)
@@ -203,28 +188,61 @@ function TeamDiscussion() {
         })
     }
 
-    if (!user?.profile?.team) {
-        return (
-            <div className="team-discussion-page">
-                <div className="no-team-message">
-                    <i className="fas fa-users-slash"></i>
-                    <h3>Bạn chưa được phân vào team nào</h3>
-                    <p>Vui lòng liên hệ quản trị viên để được phân vào team</p>
-                </div>
-            </div>
-        )
-    }
+    const filteredMessages = getFilteredMessages()
 
     return (
         <div className="team-discussion-page">
             <div className="discussion-header">
                 <div className="header-info">
                     <h1><i className="fas fa-comments"></i> Thảo luận Team</h1>
-                    <p className="team-name">
-                        <i className="fas fa-users"></i> {myTeam}
-                        <span className="member-count">({teamMembers.length} thành viên)</span>
-                    </p>
+                    {isAdmin && (
+                        <p className="admin-badge">
+                            <i className="fas fa-shield-alt"></i> Admin Mode - Xem tất cả
+                        </p>
+                    )}
                 </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="filter-bar">
+                <div className="filter-group">
+                    <label><i className="fas fa-users"></i> Lọc theo đội:</label>
+                    <select
+                        value={filterTeam}
+                        onChange={(e) => setFilterTeam(e.target.value)}
+                        className="filter-select"
+                    >
+                        <option value="">-- Tất cả đội --</option>
+                        {allTeams.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="filter-group">
+                    <label><i className="fas fa-user"></i> Lọc theo NV:</label>
+                    <select
+                        value={filterEmployee}
+                        onChange={(e) => setFilterEmployee(e.target.value)}
+                        className="filter-select"
+                    >
+                        <option value="">-- Tất cả NV --</option>
+                        {allEmployees.map(e => (
+                            <option key={e.code} value={e.code}>{e.name} ({e.code})</option>
+                        ))}
+                    </select>
+                </div>
+
+                <button
+                    className="btn-clear-filter"
+                    onClick={() => { setFilterTeam(''); setFilterEmployee(''); }}
+                >
+                    <i className="fas fa-times"></i> Xóa lọc
+                </button>
+
+                <span className="message-count">
+                    {filteredMessages.length} tin nhắn
+                </span>
             </div>
 
             <div className="discussion-container">
@@ -234,14 +252,14 @@ function TeamDiscussion() {
                             <div className="spinner"></div>
                             <p>Đang tải tin nhắn...</p>
                         </div>
-                    ) : messages.length === 0 ? (
+                    ) : filteredMessages.length === 0 ? (
                         <div className="empty-state">
                             <i className="fas fa-comment-slash"></i>
                             <p>Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!</p>
                         </div>
                     ) : (
                         <div className="messages-list">
-                            {messages.map((msg) => {
+                            {filteredMessages.map((msg) => {
                                 const sender = msg.employee_profiles
                                 const isMyMessage = msg.sender_code === user?.employee_code
                                 const senderName = sender
@@ -265,6 +283,7 @@ function TeamDiscussion() {
                                         <div className="message-content">
                                             <div className="message-header">
                                                 <span className="sender-name">{senderName}</span>
+                                                <span className="team-badge">{msg.team}</span>
                                                 <span className="message-time">{formatTime(msg.created_at)}</span>
                                             </div>
                                             <div className="message-text">{msg.message}</div>

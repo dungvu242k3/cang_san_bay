@@ -191,6 +191,12 @@ function UserManagement() {
             // Hash password
             const hashedPassword = await hashPassword(newPassword)
 
+            // Check if new password is the same as current password
+            if (selectedEmployee.password && hashedPassword === selectedEmployee.password) {
+                alert('Mật khẩu mới không được trùng với mật khẩu hiện tại')
+                return
+            }
+
             // Update password in database
             const { error } = await supabase
                 .from('employee_profiles')

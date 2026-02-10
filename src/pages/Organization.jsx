@@ -19,6 +19,7 @@ function Organization() {
             const { data, error } = await supabase
                 .from('employee_profiles')
                 .select('id, employee_code, first_name, last_name, department, team, current_position, avatar_url, user_roles(role_level)')
+                .neq('status', 'Nghỉ việc')
 
             if (error) throw error
 

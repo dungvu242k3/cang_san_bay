@@ -172,6 +172,12 @@ function Profile() {
             return
         }
 
+        if (newPassword === currentPassword) {
+            if (!window.confirm('Mật khẩu mới của bạn trùng với mật khẩu cũ. Bạn có muốn thay đổi không?')) {
+                return
+            }
+        }
+
         try {
             setSaving(true)
 
