@@ -51,12 +51,20 @@
 
 .search-box input {
     width: 100%;
-    padding: 12px 15px 12px 45px;
+    height: 48px;
+    /* Fixed height for consistency */
+    padding: 0 15px 0 45px;
     border: 2px solid #e9ecef;
     border-radius: 10px;
     font-size: 0.9rem;
     transition: all 0.3s ease;
     background: #fff;
+    box-sizing: border-box;
+}
+
+.search-box {
+    margin-top: 18px;
+    /* tăng số để xuống thấp hơn */
 }
 
 .search-box input:focus {
@@ -66,14 +74,19 @@
 }
 
 .filter-select {
-    padding: 12px 15px;
+    height: 48px;
+    /* Fixed height for consistency */
+    padding: 0 15px;
     border: 2px solid #e9ecef;
     border-radius: 10px;
     font-size: 0.9rem;
     background: #fff;
     cursor: pointer;
-    min-width: 180px;
+    width: 200px;
     transition: all 0.3s ease;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
 }
 
 .filter-select:focus {

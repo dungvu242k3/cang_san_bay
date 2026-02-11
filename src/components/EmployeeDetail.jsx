@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
 import { formatDateDisplay, formatMonthYearDisplay } from '../utils/helpers'
+import { canGrade } from '../utils/rbac'
 
 import './EmployeeDetail.css'
 
@@ -1282,13 +1283,34 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                 setSupervisorAssessment(data.supervisor_assessment || {})
                 setSelfComment(data.self_comment || '')
                 setSupervisorComment(data.supervisor_comment || '')
-                setIsGradingLocked(true) // Lock if data exists
+                // Determine lock state
+                let shouldLock = true
+                const isSelf = authUser?.employee_code === employee.employeeId
+                const isAdmin = authUser?.role_level === 'SUPER_ADMIN'
+
+                // Auto-determine lock state
+                // If I am employee and I have data -> Locked (view only)
+                // If I am supervisor:
+                //    - If supervisor data exists -> Locked (view only) -> Show "Edit" button
+                //    - If supervisor data is empty -> Unlocked (ready to grade)
+
+                const hasSupervisorData = data.supervisor_assessment && Object.keys(data.supervisor_assessment).length > 0
+
+                if (isAdmin) {
+                    setIsGradingLocked(false)
+                } else if (isSelf) {
+                    setIsGradingLocked(true)
+                } else {
+                    // Supervisor: Lock ONLY if they have already graded
+                    setIsGradingLocked(hasSupervisorData)
+                }
             } else {
                 setGradingReviewId(null)
                 setSelfAssessment({})
                 setSupervisorAssessment({})
                 setSelfComment('')
                 setSupervisorComment('')
+                setIsGradingLocked(false)
             }
         } catch (err) {
             console.error("Error loading grading:", err)
@@ -1657,6 +1679,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             chi_nhanh: emp.chi_nhanh || 'HCM',
             bo_phan: emp.bo_phan || emp.department || '',
             vi_tri: emp.vi_tri || emp.job_position || emp.current_position || '',
+            role_level: emp.role_level || '', // Important for permission checks
             trang_thai: emp.trang_thai || emp.status || 'Thử việc',
             ca_lam_viec: emp.ca_lam_viec || 'Ca full',
             ngay_vao_lam: emp.ngay_vao_lam || emp.join_date || '',
@@ -3470,9 +3493,18 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         // Enforce Flow: Employee must grade first
         const hasSelfGraded = !!svData && Object.keys(svData).length > 0 && selfTotals.total > 0
 
+        // Role Hierarchy Check (using RBAC utility)
+        const targetEmployee = isMyScore ? authUser : {
+            ...formData,
+            role_level: formData?.role_level || 'STAFF', // fallback
+            team: formData?.team, // Ensure these exist in formData
+            department: formData?.bo_phan // Map Vietnamese key if needed
+        }
+        const isHigherRank = canGrade(authUser, targetEmployee)
+
         const disableSelf = isLockedData || (!isSelf && !isAdmin)
-        // Disable supervisor if (Locked) OR (Is Employee) OR (Employee hasn't graded yet AND Not Admin)
-        const disableSupervisor = isLockedData || (isSelf && !isAdmin) || (!hasSelfGraded && !isAdmin)
+        // Disable supervisor if (Locked) OR (Is Employee) OR (Employee hasn't graded yet) OR (Not Admin AND Not Higher Rank)
+        const disableSupervisor = isLockedData || (isSelf && !isAdmin) || (!hasSelfGraded && !isAdmin) || (!isAdmin && !isHigherRank)
 
         const handleSelfChange = (id, val) => {
             if (isMyScore) setMyScoreData(prev => ({ ...prev, selfAssessment: { ...prev.selfAssessment, [id]: val } }))
@@ -3582,7 +3614,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td>B. KHUNG ĐIỂM ĐẠT</td>
                                     <td className="text-center">80</td>
                                     <td className="text-center text-success font-weight-bold col-self">{selfTotals.scoreB}</td>
-                                    <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
+                                    <td className="text-center text-success font-weight-bold col-supervisor">
+                                        {supervisorTotals.scoreB}
+                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                (Chờ NV chấm)
+                                            </div>
+                                        )}
+                                    </td>
                                 </tr>
                                 {criteria.find(c => c.section === 'B').items.map(item => (
                                     <tr
@@ -3610,7 +3649,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                     <td>C. KHUNG ĐIỂM CỘNG</td>
                                     <td className="text-center">15</td>
                                     <td className="text-center text-primary font-weight-bold col-self">{selfTotals.scoreC}</td>
-                                    <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
+                                    <td className="text-center text-primary font-weight-bold col-supervisor">
+                                        {supervisorTotals.scoreC}
+                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                (Chờ NV chấm)
+                                            </div>
+                                        )}
+                                    </td>
                                 </tr>
                                 {criteria.find(c => c.section === 'C').items.map(item => (
                                     <tr

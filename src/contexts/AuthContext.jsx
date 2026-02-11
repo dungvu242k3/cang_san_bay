@@ -102,12 +102,14 @@ export function AuthProvider({ children }) {
                 deptScope = profile.department
             } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
                 userLevel = 'TEAM_LEADER'
-                deptScope = profile.department
-                teamScope = profile.team
+                deptScope = profile.department || profile.bo_phan
+                teamScope = profile.team || profile.to_doi || profile.group_name // Robust mapping
+                console.log(`[AuthContext] Role: TEAM_LEADER, Team Scope: ${teamScope}`)
             } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
                 userLevel = 'TEAM_LEADER'
-                deptScope = profile.department
-                teamScope = profile.team
+                deptScope = profile.department || profile.bo_phan
+                teamScope = profile.team || profile.to_doi || profile.group_name // Robust mapping
+                console.log(`[AuthContext] Role: TEAM_LEADER (Deputy), Team Scope: ${teamScope}`)
             }
 
             // EXTRA: Super Admin Logic (based on position or code)

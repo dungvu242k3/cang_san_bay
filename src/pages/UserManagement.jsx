@@ -20,6 +20,8 @@ function UserManagement() {
     const [showUserModal, setShowUserModal] = useState(false)
     const [modalMode, setModalMode] = useState('view') // 'view' or 'edit'
     const [editingRole, setEditingRole] = useState('')
+    const [filterDept, setFilterDept] = useState('')
+    const [filterTeam, setFilterTeam] = useState('')
 
     useEffect(() => {
         loadEmployees()
@@ -374,7 +376,10 @@ function UserManagement() {
             emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
             `${emp.last_name} ${emp.first_name}`.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesRole = !filterRole || emp.role === filterRole
-        return matchesSearch && matchesRole
+        const matchesDept = !filterDept || emp.department === filterDept
+        const matchesTeam = !filterTeam || emp.team === filterTeam
+
+        return matchesSearch && matchesRole && matchesDept && matchesTeam
     })
 
     // Get unique departments and teams for dropdowns
@@ -432,6 +437,38 @@ function UserManagement() {
                     <option value="DEPT_HEAD">Trưởng phòng</option>
                     <option value="TEAM_LEADER">Đội trưởng</option>
                     <option value="STAFF">Nhân viên</option>
+                </select>
+
+                <select
+                    className="filter-select"
+                    value={filterDept}
+                    onChange={(e) => {
+                        setFilterDept(e.target.value)
+                        setFilterTeam('') // Reset team filter when department changes
+                    }}
+                >
+                    <option value="">Tất cả phòng ban</option>
+                    {departments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                </select>
+
+                <select
+                    className="filter-select"
+                    value={filterTeam}
+                    onChange={(e) => setFilterTeam(e.target.value)}
+                >
+                    <option value="">Tất cả đội/tổ</option>
+                    {teams
+                        .filter(team => {
+                            if (!filterDept) return true;
+                            // Only show teams that belong to the selected department
+                            return employees.some(emp => emp.department === filterDept && emp.team === team);
+                        })
+                        .map(team => (
+                            <option key={team} value={team}>{team}</option>
+                        ))
+                    }
                 </select>
             </div>
 

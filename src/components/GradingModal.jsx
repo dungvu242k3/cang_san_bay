@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { canGrade } from '../utils/rbac';
 import './GradingModal.css';
 
 // Import criteria - sử dụng cùng structure với EmployeeDetail
@@ -100,7 +101,27 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                 setSupervisorAssessment(data.supervisor_assessment || {});
                 setSelfComment(data.self_comment || '');
                 setSupervisorComment(data.supervisor_comment || '');
-                setIsGradingLocked(true);
+
+                // Auto-determine lock state
+                // If I am employee and I have data -> Locked (view only)
+                // If I am supervisor:
+                //    - If supervisor data exists -> Locked (view only) -> Show "Edit" button
+                //    - If supervisor data is empty -> Unlocked (ready to grade)
+
+                const isEmployee = authUser?.employee_code === employee.employeeId;
+                const isAdmin = authUser?.role_level === 'SUPER_ADMIN';
+                const hasSupervisorData = data.supervisor_assessment && Object.keys(data.supervisor_assessment).length > 0;
+
+                if (isAdmin) {
+                    setIsGradingLocked(false);
+                } else if (isEmployee) {
+                    setIsGradingLocked(true);
+                } else {
+                    // Supervisor: Lock ONLY if they have already graded (data exists)
+                    // If no data (first time) -> Unlocked
+                    setIsGradingLocked(hasSupervisorData);
+                }
+
             } else {
                 setGradingReviewId(null);
                 setSelfAssessment({});
@@ -347,8 +368,22 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
 
     const isSelf = authUser?.employee_code === employee.employeeId;
     const isAdmin = authUser?.role_level === 'SUPER_ADMIN';
+
+    // Enforce Flow: Employee must grade first
+    // Check if self assessment has data and total score > 0
+    const hasSelfGraded = selfAssessment && Object.keys(selfAssessment).length > 0 && selfTotals.total > 0;
+
+    // Role Hierarchy Check (using RBAC utility)
+    // Pass full objects for scope checking (Team/Dept)
+    const isHigherRank = canGrade(authUser, employee)
+
     const disableSelf = isGradingLocked || (!isSelf && !isAdmin);
-    const disableSupervisor = isGradingLocked || (isSelf && !isAdmin);
+    // Disable supervisor if:
+    // 1. Locked (Post-save)
+    // 2. Is Employee (Self cannot supervisor-grade)
+    // 3. Employee hasn't graded yet (Enforce flow)
+    // 4. Not Allowed to Grade (RBAC check)
+    const disableSupervisor = isGradingLocked || (isSelf && !isAdmin) || (!hasSelfGraded && !isAdmin) || !isHigherRank;
 
     return (
         <div className="grading-modal-overlay" onClick={onClose}>
@@ -462,9 +497,16 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                     <td>A. KHUNG ĐIỂM TRỪ [20 - Điểm trừ]</td>
                                                     <td className="text-center">20</td>
                                                     <td className="text-center text-danger font-weight-bold col-self">{selfTotals.scoreA}</td>
-                                                    <td className="text-center text-danger font-weight-bold col-supervisor">{supervisorTotals.scoreA}</td>
+                                                    <td className="text-center text-danger font-weight-bold col-supervisor">
+                                                        {supervisorTotals.scoreA}
+                                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                                (Chờ NV chấm)
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                 </tr>
-                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'A')?.items.map(item => (
+                                                {getCriteria(employee.score_template_code || 'NVTT').find(c => c.section === 'A')?.items.map(item => (
                                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
                                                         <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
                                                             {item.id} {item.title}
@@ -502,9 +544,16 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                     <td>B. KHUNG ĐIỂM ĐẠT</td>
                                                     <td className="text-center">80</td>
                                                     <td className="text-center text-success font-weight-bold col-self">{selfTotals.scoreB}</td>
-                                                    <td className="text-center text-success font-weight-bold col-supervisor">{supervisorTotals.scoreB}</td>
+                                                    <td className="text-center text-success font-weight-bold col-supervisor">
+                                                        {supervisorTotals.scoreB}
+                                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                                (Chờ NV chấm)
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                 </tr>
-                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'B')?.items.map(item => (
+                                                {getCriteria(employee.score_template_code || 'NVTT').find(c => c.section === 'B')?.items.map(item => (
                                                     <tr key={item.id} className={item.isHeader ? 'grading-group-header' : 'grading-item-row'}>
                                                         <td className={item.isHeader ? 'pl-2' : 'pl-4'}>
                                                             {item.id.length > 5 ? `${item.id.split('.').slice(1).join('.')} ${item.title}` : `${item.id} ${item.title}`}
@@ -542,9 +591,16 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                                     <td>C. KHUNG ĐIỂM CỘNG</td>
                                                     <td className="text-center">15</td>
                                                     <td className="text-center text-primary font-weight-bold col-self">{selfTotals.scoreC}</td>
-                                                    <td className="text-center text-primary font-weight-bold col-supervisor">{supervisorTotals.scoreC}</td>
+                                                    <td className="text-center text-primary font-weight-bold col-supervisor">
+                                                        {supervisorTotals.scoreC}
+                                                        {!isSelf && !hasSelfGraded && !isAdmin && (
+                                                            <div style={{ fontSize: '0.65rem', color: '#dc3545', fontWeight: 'normal', marginTop: '2px' }}>
+                                                                (Chờ NV chấm)
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                 </tr>
-                                                {getCriteria(employee.gradeTemplateCode).find(c => c.section === 'C')?.items.map(item => (
+                                                {getCriteria(employee.score_template_code || 'NVTT').find(c => c.section === 'C')?.items.map(item => (
                                                     <tr key={item.id} className="grading-item-row">
                                                         <td className="pl-2">
                                                             {item.id} {item.title}
