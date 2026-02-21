@@ -748,101 +748,209 @@ function Employees() {
             const firstName = nameParts.pop() || ''
             const lastName = nameParts.join(' ') || ''
 
-            const dbPayload = {
-                employee_code: formData.employeeId ? formData.employeeId.trim().toUpperCase() : null,
-                first_name: firstName,
-                last_name: lastName,
-                status: formData.status || formData.trang_thai || 'Đang làm việc',
-                score_template_code: formData.score_template_code || 'NVTT',
-                gender: formData.gioi_tinh || null,
-                date_of_birth: formData.ngay_sinh || null,
-                nationality: formData.nationality || 'Việt Nam',
-                place_of_birth: formData.place_of_birth || null,
-                ethnicity: formData.ethnicity || 'Kinh',
-                religion: formData.religion || 'Không',
-                education_level: formData.education_level || '12/12',
-                training_form: formData.training_form || 'Phổ Thông',
-                academic_level_code: formData.academic_level_code || 'DH',
-                marital_status_code: formData.marital_status_code || 1,
-                card_number: formData.card_number || null,
-                // Contact info
-                permanent_address: formData.permanent_address || formData.dia_chi_thuong_tru || null,
-                temporary_address: formData.temporary_address || null,
-                hometown: formData.hometown || formData.que_quan || null,
-                phone: formData.phone || formData.sđt || null,
-                email_acv: formData.email_acv || null,
-                email_personal: formData.email_personal || formData.email || null,
-                relative_phone: formData.relative_phone || null,
-                relative_relation: formData.relative_relation || 'Khác',
-                // Work info
-                decision_number: formData.decision_number || null,
-                join_date: formData.join_date || formData.ngay_vao_lam || null,
-                official_date: formData.official_date || formData.ngay_lam_chinh_thuc || null,
-                job_position: formData.job_position || formData.vi_tri || null,
-                department: formData.department || formData.bo_phan || null,
-                team: formData.team || null,
-                group_name: formData.group_name || null,
-                employee_type: formData.employee_type || 'MB NVCT',
-                labor_type: formData.labor_type || null,
-                job_title: formData.job_title || null,
-                date_received_job_title: formData.date_received_job_title || null,
-                current_position: formData.current_position || 'Khác',
-                appointment_date: formData.appointment_date || null,
-                concurrent_position: formData.concurrent_position || null,
-                concurrent_job_title: formData.concurrent_job_title || null,
-                concurrent_start_date: formData.concurrent_start_date || null,
-                concurrent_end_date: formData.concurrent_end_date || null,
-                leave_calculation_type: formData.leave_calculation_type || 'Có cộng dồn',
-                // Legal Info
-                identity_card_number: formData.cccd || formData.identity_card_number || null,
-                identity_card_issue_date: formData.ngay_cap || formData.identity_card_issue_date || null,
-                identity_card_issue_place: formData.noi_cap || formData.identity_card_issue_place || null,
-                tax_code: formData.tax_code || null,
-                health_insurance_number: formData.health_insurance_number || null,
-                health_insurance_issue_date: formData.health_insurance_issue_date || null,
-                health_insurance_place: formData.health_insurance_place || null,
-                social_insurance_number: formData.social_insurance_number || null,
-                social_insurance_issue_date: formData.social_insurance_issue_date || null,
-                unemployment_insurance_number: formData.unemployment_insurance_number || null,
-                unemployment_insurance_issue_date: formData.unemployment_insurance_issue_date || null,
+            // Helper to normalize values for comparison
+            const norm = v => (v === null || v === undefined) ? '' : String(v).trim()
 
-                // Party / Union Details
-                is_party_member: formData.is_party_member || false,
-                party_card_number: formData.party_card_number || null,
-                party_join_date: formData.party_join_date || null,
-                party_official_date: formData.party_official_date || null,
-                party_position: formData.party_position || null,
-                party_activity_location: formData.party_cell || formData.party_activity_location || null,
-                political_education_level: formData.political_education_level || null,
-                party_notes: formData.party_notes || null,
-
-                is_youth_union_member: formData.is_youth_union_member || false,
-                youth_union_card_number: formData.youth_union_card_number || null,
-                youth_union_join_date: formData.youth_union_join_date || null,
-                youth_union_join_location: formData.youth_union_join_location || null,
-                youth_union_position: formData.youth_union_position || null,
-                youth_union_activity_location: formData.youth_union_cell || formData.youth_union_activity_location || null,
-                youth_union_notes: formData.youth_union_notes || null,
-
-                is_trade_union_member: formData.is_trade_union_member || false,
-                trade_union_card_number: formData.trade_union_card_number || null,
-                trade_union_join_date: formData.trade_union_join_date || null,
-                trade_union_position: formData.trade_union_position || null,
-                trade_union_activity_location: formData.trade_union_base || formData.trade_union_activity_location || null,
-                trade_union_notes: formData.trade_union_notes || null,
+            // Form key → DB column mapping for building payload
+            const FORM_TO_DB = {
+                // Name is handled separately (ho_va_ten → first_name + last_name)
+                status: () => formData.status || formData.trang_thai || 'Đang làm việc',
+                score_template_code: () => formData.score_template_code,
+                gender: () => formData.gioi_tinh || formData.gender,
+                date_of_birth: () => formData.ngay_sinh || formData.date_of_birth,
+                nationality: () => formData.nationality,
+                place_of_birth: () => formData.place_of_birth,
+                ethnicity: () => formData.ethnicity,
+                religion: () => formData.religion,
+                education_level: () => formData.education_level,
+                training_form: () => formData.training_form,
+                academic_level_code: () => formData.academic_level_code,
+                marital_status_code: () => formData.marital_status_code,
+                card_number: () => formData.card_number,
+                permanent_address: () => formData.permanent_address || formData.dia_chi_thuong_tru,
+                temporary_address: () => formData.temporary_address,
+                hometown: () => formData.hometown || formData.que_quan,
+                phone: () => formData.phone || formData.sđt,
+                email_acv: () => formData.email_acv,
+                email_personal: () => formData.email_personal || formData.email,
+                relative_phone: () => formData.relative_phone,
+                relative_relation: () => formData.relative_relation,
+                decision_number: () => formData.decision_number,
+                join_date: () => formData.join_date || formData.ngay_vao_lam,
+                official_date: () => formData.official_date || formData.ngay_lam_chinh_thuc,
+                job_position: () => formData.job_position || formData.vi_tri,
+                department: () => formData.department || formData.bo_phan,
+                team: () => formData.team,
+                group_name: () => formData.group_name,
+                employee_type: () => formData.employee_type,
+                labor_type: () => formData.labor_type,
+                job_title: () => formData.job_title,
+                date_received_job_title: () => formData.date_received_job_title,
+                current_position: () => formData.current_position,
+                appointment_date: () => formData.appointment_date,
+                concurrent_position: () => formData.concurrent_position,
+                concurrent_job_title: () => formData.concurrent_job_title,
+                concurrent_start_date: () => formData.concurrent_start_date,
+                concurrent_end_date: () => formData.concurrent_end_date,
+                leave_calculation_type: () => formData.leave_calculation_type,
+                identity_card_number: () => formData.cccd || formData.identity_card_number,
+                identity_card_issue_date: () => formData.ngay_cap || formData.identity_card_issue_date,
+                identity_card_issue_place: () => formData.noi_cap || formData.identity_card_issue_place,
+                tax_code: () => formData.tax_code,
+                health_insurance_number: () => formData.health_insurance_number,
+                health_insurance_issue_date: () => formData.health_insurance_issue_date,
+                health_insurance_place: () => formData.health_insurance_place,
+                social_insurance_number: () => formData.social_insurance_number,
+                social_insurance_issue_date: () => formData.social_insurance_issue_date,
+                unemployment_insurance_number: () => formData.unemployment_insurance_number,
+                unemployment_insurance_issue_date: () => formData.unemployment_insurance_issue_date,
+                is_party_member: () => formData.is_party_member,
+                party_card_number: () => formData.party_card_number,
+                party_join_date: () => formData.party_join_date,
+                party_official_date: () => formData.party_official_date,
+                party_position: () => formData.party_position,
+                party_activity_location: () => formData.party_cell || formData.party_activity_location,
+                political_education_level: () => formData.political_education_level,
+                party_notes: () => formData.party_notes,
+                is_youth_union_member: () => formData.is_youth_union_member,
+                youth_union_card_number: () => formData.youth_union_card_number,
+                youth_union_join_date: () => formData.youth_union_join_date,
+                youth_union_join_location: () => formData.youth_union_join_location,
+                youth_union_position: () => formData.youth_union_position,
+                youth_union_activity_location: () => formData.youth_union_cell || formData.youth_union_activity_location,
+                youth_union_notes: () => formData.youth_union_notes,
+                is_trade_union_member: () => formData.is_trade_union_member,
+                trade_union_card_number: () => formData.trade_union_card_number,
+                trade_union_join_date: () => formData.trade_union_join_date,
+                trade_union_position: () => formData.trade_union_position,
+                trade_union_activity_location: () => formData.trade_union_base || formData.trade_union_activity_location,
+                trade_union_notes: () => formData.trade_union_notes,
             }
-
-            console.log('dbPayload to save:', dbPayload)
 
             let result
             if (id) {
-                // Update existing employee
+                // === UPDATE: Only send changed fields to prevent overwriting ===
+                const { data: currentProfile } = await supabase
+                    .from('employee_profiles')
+                    .select('*')
+                    .eq('id', id)
+                    .single()
+
+                if (!currentProfile) {
+                    alert('Không tìm thấy hồ sơ nhân viên!')
+                    return
+                }
+
+                const dbPayload = {}
+
+                // Check name change (ho_va_ten → first_name + last_name)
+                const oldName = ((currentProfile.last_name || '') + ' ' + (currentProfile.first_name || '')).trim()
+                if (norm(formData.ho_va_ten) !== norm(oldName)) {
+                    dbPayload.first_name = firstName
+                    dbPayload.last_name = lastName
+                }
+
+                // Compare each field and only include if changed
+                Object.entries(FORM_TO_DB).forEach(([dbCol, getFormVal]) => {
+                    const newVal = getFormVal()
+                    const oldVal = currentProfile[dbCol]
+                    if (norm(newVal) !== norm(oldVal)) {
+                        // Use the actual value (could be empty string, which is fine)
+                        dbPayload[dbCol] = (newVal === '' || newVal === undefined) ? null : newVal
+                    }
+                })
+
+                if (Object.keys(dbPayload).length === 0) {
+                    alert('Không có thay đổi nào được phát hiện!')
+                    return
+                }
+
+                console.log('dbPayload to save (only changed fields):', dbPayload)
+
                 result = await supabase
                     .from('employee_profiles')
                     .update(dbPayload)
                     .eq('id', id)
                     .select()
             } else {
+                // === INSERT: Full payload for new employee ===
+                const dbPayload = {
+                    employee_code: formData.employeeId ? formData.employeeId.trim().toUpperCase() : null,
+                    first_name: firstName,
+                    last_name: lastName,
+                    status: formData.status || formData.trang_thai || 'Đang làm việc',
+                    score_template_code: formData.score_template_code || 'NVTT',
+                    gender: formData.gioi_tinh || null,
+                    date_of_birth: formData.ngay_sinh || null,
+                    nationality: formData.nationality || 'Việt Nam',
+                    place_of_birth: formData.place_of_birth || null,
+                    ethnicity: formData.ethnicity || 'Kinh',
+                    religion: formData.religion || 'Không',
+                    education_level: formData.education_level || '12/12',
+                    training_form: formData.training_form || 'Phổ Thông',
+                    academic_level_code: formData.academic_level_code || 'DH',
+                    marital_status_code: formData.marital_status_code || 1,
+                    card_number: formData.card_number || null,
+                    permanent_address: formData.permanent_address || formData.dia_chi_thuong_tru || null,
+                    temporary_address: formData.temporary_address || null,
+                    hometown: formData.hometown || formData.que_quan || null,
+                    phone: formData.phone || formData.sđt || null,
+                    email_acv: formData.email_acv || null,
+                    email_personal: formData.email_personal || formData.email || null,
+                    relative_phone: formData.relative_phone || null,
+                    relative_relation: formData.relative_relation || 'Khác',
+                    decision_number: formData.decision_number || null,
+                    join_date: formData.join_date || formData.ngay_vao_lam || null,
+                    official_date: formData.official_date || formData.ngay_lam_chinh_thuc || null,
+                    job_position: formData.job_position || formData.vi_tri || null,
+                    department: formData.department || formData.bo_phan || null,
+                    team: formData.team || null,
+                    group_name: formData.group_name || null,
+                    employee_type: formData.employee_type || 'MB NVCT',
+                    labor_type: formData.labor_type || null,
+                    job_title: formData.job_title || null,
+                    date_received_job_title: formData.date_received_job_title || null,
+                    current_position: formData.current_position || 'Khác',
+                    appointment_date: formData.appointment_date || null,
+                    concurrent_position: formData.concurrent_position || null,
+                    concurrent_job_title: formData.concurrent_job_title || null,
+                    concurrent_start_date: formData.concurrent_start_date || null,
+                    concurrent_end_date: formData.concurrent_end_date || null,
+                    leave_calculation_type: formData.leave_calculation_type || 'Có cộng dồn',
+                    identity_card_number: formData.cccd || formData.identity_card_number || null,
+                    identity_card_issue_date: formData.ngay_cap || formData.identity_card_issue_date || null,
+                    identity_card_issue_place: formData.noi_cap || formData.identity_card_issue_place || null,
+                    tax_code: formData.tax_code || null,
+                    health_insurance_number: formData.health_insurance_number || null,
+                    health_insurance_issue_date: formData.health_insurance_issue_date || null,
+                    health_insurance_place: formData.health_insurance_place || null,
+                    social_insurance_number: formData.social_insurance_number || null,
+                    social_insurance_issue_date: formData.social_insurance_issue_date || null,
+                    unemployment_insurance_number: formData.unemployment_insurance_number || null,
+                    unemployment_insurance_issue_date: formData.unemployment_insurance_issue_date || null,
+                    is_party_member: formData.is_party_member || false,
+                    party_card_number: formData.party_card_number || null,
+                    party_join_date: formData.party_join_date || null,
+                    party_official_date: formData.party_official_date || null,
+                    party_position: formData.party_position || null,
+                    party_activity_location: formData.party_cell || formData.party_activity_location || null,
+                    political_education_level: formData.political_education_level || null,
+                    party_notes: formData.party_notes || null,
+                    is_youth_union_member: formData.is_youth_union_member || false,
+                    youth_union_card_number: formData.youth_union_card_number || null,
+                    youth_union_join_date: formData.youth_union_join_date || null,
+                    youth_union_join_location: formData.youth_union_join_location || null,
+                    youth_union_position: formData.youth_union_position || null,
+                    youth_union_activity_location: formData.youth_union_cell || formData.youth_union_activity_location || null,
+                    youth_union_notes: formData.youth_union_notes || null,
+                    is_trade_union_member: formData.is_trade_union_member || false,
+                    trade_union_card_number: formData.trade_union_card_number || null,
+                    trade_union_join_date: formData.trade_union_join_date || null,
+                    trade_union_position: formData.trade_union_position || null,
+                    trade_union_activity_location: formData.trade_union_base || formData.trade_union_activity_location || null,
+                    trade_union_notes: formData.trade_union_notes || null,
+                }
+
                 // Check if employee_code already exists
                 const { data: existing } = await supabase
                     .from('employee_profiles')
@@ -867,6 +975,8 @@ function Employees() {
 
                 const hashedPassword = await hashPassword('123456')
                 dbPayload.password = hashedPassword
+
+                console.log('dbPayload to save (new employee):', dbPayload)
 
                 // Insert new employee
                 result = await supabase

@@ -11,7 +11,8 @@ export const PERMISSIONS = {
     LEAVES: 'leaves',
     PROFILES: 'profiles',
     ORGANIZATION: 'organization',
-    SETTINGS: 'settings'
+    SETTINGS: 'settings',
+    LIBRARY: 'library'
 }
 
 /**

@@ -21,7 +21,8 @@ const MODULES = [
     { key: PERMISSIONS.LEAVES, label: 'Nghỉ phép' },
     { key: PERMISSIONS.PROFILES, label: 'Hồ sơ' },
     { key: PERMISSIONS.ORGANIZATION, label: 'Tổ chức' },
-    { key: PERMISSIONS.SETTINGS, label: 'Cài đặt' }
+    { key: PERMISSIONS.SETTINGS, label: 'Cài đặt' },
+    { key: PERMISSIONS.LIBRARY, label: 'Thư viện' }
 ]
 
 function Settings() {
