@@ -14,6 +14,161 @@ function Employees() {
     const [employees, setEmployees] = useState([])
     const [filteredEmployees, setFilteredEmployees] = useState([])
     const [loading, setLoading] = useState(true)
+
+    // Field Label Mapping
+    const LABEL_MAP = {
+        ho_va_ten: 'Họ và tên',
+        phone: 'Số điện thoại',
+        sđt: 'Số điện thoại',
+        email_acv: 'Email công ty',
+        email_personal: 'Email cá nhân',
+        email: 'Email',
+        permanent_address: 'Địa chỉ thường trú',
+        dia_chi_thuong_tru: 'Địa chỉ thường trú',
+        temporary_address: 'Địa chỉ tạm trú',
+        hometown: 'Quê quán',
+        que_quan: 'Quê quán',
+        relative_phone: 'SĐT người thân',
+        relative_relation: 'Mối quan hệ người thân',
+        academic_level_code: 'Trình độ học vấn',
+        marital_status_code: 'Tình trạng hôn nhân',
+        identity_card_number: 'Số CCCD',
+        cccd: 'Số CCCD',
+        identity_card_issue_date: 'Ngày cấp CCCD',
+        ngay_cap: 'Ngày cấp CCCD',
+        identity_card_issue_place: 'Nơi cấp CCCD',
+        noi_cap: 'Nơi cấp CCCD',
+        tax_code: 'Mã số thuế',
+        social_insurance_number: 'Số BHXH',
+        health_insurance_number: 'Số BHYT',
+        is_trade_union_member: 'Công đoàn viên',
+        is_youth_union_member: 'Đoàn viên TN',
+        leave_calculation_type: 'Cách tính phép',
+        bo_phan: 'Phòng ban',
+        department: 'Phòng ban',
+        gender: 'Giới tính',
+        gioi_tinh: 'Giới tính',
+        ngay_sinh: 'Ngày sinh',
+        date_of_birth: 'Ngày sinh',
+        place_of_birth: 'Nơi sinh',
+        ethnicity: 'Dân tộc',
+        religion: 'Tôn giáo',
+        start_date: 'Ngày vào làm',
+        join_date: 'Ngày vào làm',
+        official_date: 'Ngày chính thức',
+        training_form: 'Hình thức đào tạo',
+        education_level: 'Trình độ văn hóa',
+        nationality: 'Quốc tịch',
+        job_title: 'Chức danh công việc',
+        job_position: 'Vị trí công việc',
+        vi_tri: 'Vị trí công việc',
+        chi_nhanh: 'Chi nhánh',
+        ca_lam_viec: 'Ca làm việc',
+        current_position: 'Chức vụ hiện tại',
+        concurrent_position: 'Chức vụ kiêm nhiệm',
+        team: 'Đội',
+        group_name: 'Tổ',
+        employee_type: 'Loại nhân viên',
+        labor_type: 'Loại lao động',
+        status: 'Trạng thái',
+        card_number: 'Số thẻ nhân viên',
+        bank_account_number: 'Số tài khoản ngân hàng',
+        bank_name: 'Tên ngân hàng'
+    }
+
+    const VALUE_MAP = {
+        academic_level_code: {
+            'DH': 'Đại học',
+            'CD': 'Cao đẳng',
+            'TC': 'Trung cấp',
+            'SC': 'Sơ cấp',
+            'THS': 'Thạc sĩ',
+            'TS': 'Tiến sĩ',
+            'PT': 'Phổ thông'
+        },
+        marital_status_code: {
+            '1': 'Độc thân',
+            '2': 'Đã kết hôn',
+            '3': 'Ly hôn',
+            '4': 'Góa'
+        },
+        training_form: {
+            'CQ': 'Chính quy',
+            'TC': 'Tại chức',
+            'TX': 'Từ xa',
+            'VHVL': 'Vừa học vừa làm'
+        }
+    }
+
+    // Map Form Keys -> DB Keys (for accurate Old Value lookup)
+    const DB_KEY_MAP = {
+        // Basic Info
+        'sđt': 'phone',
+        'phone': 'phone',
+        'email': 'email_personal', // Form usually maps 'email' to 'email_personal'
+        'email_personal': 'email_personal',
+        'email_acv': 'email_acv',
+        'dia_chi_thuong_tru': 'permanent_address',
+        'permanent_address': 'permanent_address',
+        'temporary_address': 'temporary_address',
+        'que_quan': 'hometown',
+        'hometown': 'hometown',
+        'cccd': 'identity_card_number',
+        'identity_card_number': 'identity_card_number',
+        'ngay_cap': 'identity_card_issue_date',
+        'identity_card_issue_date': 'identity_card_issue_date',
+        'noi_cap': 'identity_card_issue_place',
+        'identity_card_issue_place': 'identity_card_issue_place',
+        'ngay_sinh': 'date_of_birth',
+        'date_of_birth': 'date_of_birth',
+        'gioi_tinh': 'gender',
+        'gender': 'gender',
+        'vi_tri': 'job_title',
+        'job_position': 'job_title',
+        'bo_phan': 'department',
+        'department': 'department',
+        'ngay_vao_lam': 'join_date',
+        'join_date': 'join_date',
+        'ngay_lam_chinh_thuc': 'official_date',
+        'official_date': 'official_date',
+        'trang_thai': 'status',
+        'status': 'status',
+
+        // Education & Work
+        'education_level': 'education_level',
+        'training_form': 'training_form',
+        'academic_level_code': 'academic_level_code',
+        'marital_status_code': 'marital_status_code',
+        'card_number': 'card_number',
+        'tax_code': 'tax_code',
+        'social_insurance_number': 'social_insurance_number',
+        'health_insurance_number': 'health_insurance_number',
+        'unemployment_insurance_number': 'unemployment_insurance_number',
+
+        // Work details
+        'employee_type': 'employee_type',
+        'labor_type': 'labor_type',
+        'job_title': 'job_title',
+        'current_position': 'current_position',
+        'concurrent_position': 'concurrent_position',
+        'team': 'team',
+        'group_name': 'group_name',
+        'chi_nhanh': 'chi_nhanh',
+        'ca_lam_viec': 'ca_lam_viec',
+        'leave_calculation_type': 'leave_calculation_type',
+
+        // Party / Union
+        'is_party_member': 'is_party_member',
+        'party_cell': 'party_activity_location',
+        'party_activity_location': 'party_activity_location',
+        'is_youth_union_member': 'is_youth_union_member',
+        'youth_union_cell': 'youth_union_activity_location',
+        'youth_union_activity_location': 'youth_union_activity_location',
+        'is_trade_union_member': 'is_trade_union_member',
+        'trade_union_base': 'trade_union_activity_location',
+        'trade_union_activity_location': 'trade_union_activity_location'
+    }
+
     const [searchTerm, setSearchTerm] = useState('')
     const [filterBranch, setFilterBranch] = useState('')
     const [filterDept, setFilterDept] = useState('')
@@ -22,13 +177,20 @@ function Employees() {
     const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
     const [employeeToReset, setEmployeeToReset] = useState(null)
     const [showCreateWizard, setShowCreateWizard] = useState(false)
+    const [pendingChanges, setPendingChanges] = useState([])
+    const [showPendingTab, setShowPendingTab] = useState(false)
+    const [reviewingChange, setReviewingChange] = useState(null)
+    const [currentProfileForDiff, setCurrentProfileForDiff] = useState(null)
     const fileInputRef = useRef(null)
 
     // Scroll ref to top on selection
     const detailRef = useRef(null)
 
     useEffect(() => {
-        if (user) loadEmployees()
+        if (user) {
+            loadEmployees()
+            loadPendingChanges()
+        }
     }, [user])
 
     useEffect(() => {
@@ -53,6 +215,32 @@ function Employees() {
             }
         }
     }, [loading, employees, location.state, navigate, location.pathname])
+
+    // Fetch accurate profile data for comparison when reviewing changes
+    useEffect(() => {
+        if (reviewingChange?.employee_code) {
+            const fetchProfileForDiff = async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('employee_profiles')
+                        .select('*')
+                        .eq('employee_code', reviewingChange.employee_code)
+                        .single()
+
+                    if (error) throw error
+                    setCurrentProfileForDiff(data)
+                } catch (err) {
+                    console.error("Error fetching profile for diff:", err)
+                    // Fallback to local search if fetch fails
+                    const localEmp = employees.find(e => e.employee_code === reviewingChange.employee_code)
+                    setCurrentProfileForDiff(localEmp || {})
+                }
+            }
+            fetchProfileForDiff()
+        } else {
+            setCurrentProfileForDiff(null)
+        }
+    }, [reviewingChange, employees])
 
     const loadEmployees = async (forceReselect = false) => {
         try {
@@ -119,6 +307,130 @@ function Employees() {
             console.error("Error loading employees:", err)
             setEmployees([])
             setLoading(false)
+        }
+    }
+
+    const loadPendingChanges = async () => {
+        try {
+            let query = supabase
+                .from('pending_profile_changes')
+                .select('*')
+                .eq('status', 'pending')
+                .order('submitted_at', { ascending: false })
+
+            // STAFF only sees their own pending changes
+            if (user?.role_level === 'STAFF') {
+                query = query.eq('employee_code', user.employee_code)
+            }
+
+            const { data, error } = await query
+            if (error) {
+                console.warn('Error loading pending changes:', error)
+                return
+            }
+            setPendingChanges(data || [])
+        } catch (err) {
+            console.warn('Error loading pending changes:', err)
+        }
+    }
+
+    const handleApproveChange = async (change) => {
+        // Permission check: only HR/Admin can approve
+        if (!['SUPER_ADMIN', 'BOARD_DIRECTOR', 'DEPT_HEAD'].includes(user?.role_level)) {
+            alert('Bạn không có quyền duyệt thay đổi hồ sơ!')
+            return
+        }
+
+        if (!window.confirm(`Duyệt thay đổi hồ sơ của ${change.employee_name || change.employee_code}?`)) return
+
+        try {
+            const changeData = change.change_data
+
+            // Build dbPayload from ONLY the fields that were actually changed
+            // Use DB_KEY_MAP to resolve form keys → DB column names
+            const dbPayload = {}
+
+            Object.entries(changeData).forEach(([formKey, value]) => {
+                // Skip metadata keys
+                if (formKey === 'employeeId' || formKey === 'id' || value === undefined) return
+
+                // Special handling: ho_va_ten → first_name + last_name
+                if (formKey === 'ho_va_ten') {
+                    const nameParts = (value || '').trim().split(' ')
+                    dbPayload.first_name = nameParts.pop() || ''
+                    dbPayload.last_name = nameParts.join(' ') || ''
+                    return
+                }
+
+                // Resolve form key to DB column name
+                const dbKey = DB_KEY_MAP[formKey] || formKey
+
+                // Skip empty values — prevent accidentally wiping existing data
+                if (value === '' || value === null) return
+
+                dbPayload[dbKey] = value
+            })
+
+            if (Object.keys(dbPayload).length === 0) {
+                alert('Không có thay đổi nào để áp dụng!')
+                return
+            }
+
+            // Apply changes to employee_profiles
+            const { error: updateError } = await supabase
+                .from('employee_profiles')
+                .update(dbPayload)
+                .eq('employee_code', change.employee_code)
+
+            if (updateError) throw updateError
+
+            // Mark as approved
+            await supabase
+                .from('pending_profile_changes')
+                .update({
+                    status: 'approved',
+                    reviewed_by: user.employee_code,
+                    reviewed_at: new Date().toISOString()
+                })
+                .eq('id', change.id)
+
+            alert(`✅ Đã duyệt thay đổi hồ sơ của ${change.employee_name || change.employee_code}`)
+            await loadPendingChanges()
+            await loadEmployees(true)
+            setReviewingChange(null)
+        } catch (err) {
+            console.error('Error approving change:', err)
+            alert('Lỗi khi duyệt: ' + err.message)
+        }
+    }
+
+    const handleRejectChange = async (change) => {
+        // Permission check: only HR/Admin can reject
+        if (!['SUPER_ADMIN', 'BOARD_DIRECTOR', 'DEPT_HEAD'].includes(user?.role_level)) {
+            alert('Bạn không có quyền từ chối thay đổi hồ sơ!')
+            return
+        }
+
+        const reason = window.prompt('Lý do từ chối (có thể bỏ trống):')
+        if (reason === null) return // User cancelled
+
+        try {
+            await supabase
+                .from('pending_profile_changes')
+                .update({
+                    status: 'rejected',
+                    reviewed_by: user.employee_code,
+                    reviewed_at: new Date().toISOString(),
+                    review_note: reason || 'Không có lý do'
+                })
+                .eq('id', change.id)
+
+            alert(`Đã từ chối thay đổi hồ sơ của ${change.employee_name || change.employee_code}`)
+            await loadPendingChanges()
+            setReviewingChange(null)
+        } catch (err) {
+            console.error('Error rejecting change:', err)
+            alert('Lỗi khi từ chối: ' + err.message)
         }
     }
 
@@ -282,15 +594,128 @@ function Employees() {
     }
 
     const handleSaveEmployee = async (formData, id) => {
-        // Permission Check
+        // === APPROVAL WORKFLOW: STAFF edits go to pending (before permission check) ===
+        if (user?.role_level === 'STAFF' && id) {
+            try {
+                // Fetch latest profile to calculate diff
+                const { data: currentProfile } = await supabase
+                    .from('employee_profiles')
+                    .select('*')
+                    .eq('employee_code', user.employee_code)
+                    .single()
+
+                const actualChanges = {}
+                const changedLabels = []
+
+                // Keys that are internal to the form UI and should NEVER be treated as profile changes
+                const IGNORED_FORM_KEYS = new Set([
+                    'employeeId', 'id', 'avatarDataUrl', 'role_level',
+                    'familyMembers', 'bankAccounts', 'contracts', 'passports',
+                    'salaries', 'jobSalaries', 'allowances', 'otherIncomes',
+                    'leaves', 'appointments', 'workJournals', 'specializations',
+                    'certifications', 'trainings', 'rewards', 'disciplines',
+                    'healthInsurances', 'workAccidents', 'healthCheckups',
+                    'tinh_trang_hon_nhan', 'score_template_code'
+                ])
+
+                // Mirrors the defaults applied in EmployeeDetail.loadEmployeeData
+                // If DB value is null/empty and form value equals the default, treat as NOT changed
+                const FORM_DEFAULTS = {
+                    nationality: 'Việt Nam',
+                    ethnicity: 'Kinh',
+                    religion: 'Không',
+                    education_level: '12/12',
+                    training_form: 'Phổ Thông',
+                    academic_level_code: 'DH',
+                    marital_status_code: 1,
+                    chi_nhanh: 'HCM',
+                    ca_lam_viec: 'Ca full',
+                    relative_relation: 'Khác',
+                    current_position: 'Khác',
+                    employee_type: 'MB NVCT',
+                    leave_calculation_type: 'Có cộng dồn',
+                    trang_thai: 'Thử việc',
+                    is_party_member: false,
+                    is_youth_union_member: false,
+                    is_trade_union_member: false,
+                }
+
+                const norm = v => (v === null || v === undefined) ? '' : String(v).trim()
+
+                Object.entries(formData).forEach(([key, newVal]) => {
+                    if (IGNORED_FORM_KEYS.has(key) || newVal === undefined) return
+
+                    const dbKey = DB_KEY_MAP[key] || key
+
+                    let oldVal = currentProfile ? currentProfile[dbKey] : undefined
+                    if (oldVal === undefined && currentProfile) oldVal = currentProfile[key]
+                    if (key === 'email' && currentProfile?.email_personal !== undefined) oldVal = currentProfile.email_personal
+
+                    // Special: ho_va_ten is split into first_name + last_name in DB
+                    if (key === 'ho_va_ten' && currentProfile) {
+                        oldVal = ((currentProfile.last_name || '') + ' ' + (currentProfile.first_name || '')).trim()
+                    }
+
+                    // Special: vi_tri (form key) maps to job_position (DB column) — use that directly
+                    if (key === 'vi_tri' && currentProfile) {
+                        oldVal = currentProfile.job_position
+                    }
+
+                    // If DB value is null/empty and form shows a default, treat as unchanged
+                    const isOldEmpty = oldVal === null || oldVal === undefined || String(oldVal).trim() === ''
+                    if (isOldEmpty && FORM_DEFAULTS[dbKey] !== undefined) {
+                        const defaultVal = FORM_DEFAULTS[dbKey]
+                        if (norm(newVal) === norm(defaultVal)) return // Not a real change
+                    }
+                    if (isOldEmpty && FORM_DEFAULTS[key] !== undefined) {
+                        const defaultVal = FORM_DEFAULTS[key]
+                        if (norm(newVal) === norm(defaultVal)) return // Not a real change
+                    }
+
+                    if (norm(oldVal) !== norm(newVal)) {
+                        actualChanges[key] = newVal
+                        const label = LABEL_MAP[dbKey] || LABEL_MAP[key] || key
+                        if (!changedLabels.includes(label)) changedLabels.push(label)
+                    }
+                })
+
+
+                if (Object.keys(actualChanges).length === 0) {
+                    alert('Không có thay đổi nào được phát hiện!')
+                    return
+                }
+
+                const summary = `Cập nhật: ${changedLabels.join(', ')}`
+
+                const { error } = await supabase
+                    .from('pending_profile_changes')
+                    .insert([{
+                        employee_code: user.employee_code,
+                        employee_name: formData.ho_va_ten || `${user.profile?.ho_va_ten}`,
+                        change_data: actualChanges,
+                        change_summary: summary,
+                        status: 'pending'
+                    }])
+
+                if (error) throw error
+
+                alert('✅ Đã gửi yêu cầu cập nhật hồ sơ.\nVui lòng chờ HR duyệt.')
+                await loadPendingChanges()
+                return
+            } catch (err) {
+                console.error('Error creating pending change:', err)
+                alert('Lỗi khi gửi yêu cầu: ' + err.message)
+                return
+            }
+        }
+
+        // Permission Check (for non-STAFF roles)
         if (id) {
-            // Edit
             if (!checkAction('edit', { module: 'profiles', id, ...formData })) {
                 alert('Bạn không có quyền sửa thông tin nhân viên này!')
                 return
             }
         } else {
-            // Create
             if (!checkAction('create', { module: 'profiles' })) {
                 alert('Bạn không có quyền tạo nhân viên mới!')
                 return
@@ -739,6 +1164,9 @@ function Employees() {
             <ProfileMenu
                 activeSection={activeSection}
                 onSectionChange={handleSectionChange}
+                onExport={() => window.dispatchEvent(new CustomEvent('exportEmployee'))}
+                onImport={() => window.dispatchEvent(new CustomEvent('importEmployee'))}
+                onDownloadTemplate={() => window.dispatchEvent(new CustomEvent('downloadTemplate'))}
             />
 
             {/* RIGHT: MAIN CONTENT */}
@@ -821,6 +1249,31 @@ function Employees() {
                     <div className="panel-header">
                         <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
                         <div className="panel-actions">
+                            {/* Pending tab button for HR/Admin */}
+                            {['SUPER_ADMIN', 'BOARD_DIRECTOR', 'DEPT_HEAD'].includes(user?.role_level) && pendingChanges.length > 0 && (
+                                <button
+                                    className={`btn btn-sm ${showPendingTab ? 'btn-warning' : 'btn-outline-warning'}`}
+                                    onClick={() => { setShowPendingTab(!showPendingTab); setReviewingChange(null) }}
+                                    style={{ marginRight: '8px', position: 'relative' }}
+                                >
+                                    <i className="fas fa-clock"></i> Chờ duyệt
+                                    <span style={{
+                                        position: 'absolute', top: -6, right: -6,
+                                        background: '#ff4d4f', color: '#fff', borderRadius: '50%',
+                                        minWidth: 18, height: 18, fontSize: 11, fontWeight: 700,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>{pendingChanges.length}</span>
+                                </button>
+                            )}
+                            {/* STAFF pending indicator */}
+                            {user?.role_level === 'STAFF' && pendingChanges.length > 0 && (
+                                <span style={{
+                                    background: '#fff3cd', color: '#856404', padding: '4px 10px',
+                                    borderRadius: 6, fontSize: 12, marginRight: 8, fontWeight: 500
+                                }}>
+                                    <i className="fas fa-hourglass-half"></i> {pendingChanges.length} yêu cầu chờ duyệt
+                                </span>
+                            )}
                             {checkAction('create', { module: 'profiles' }) && (
                                 <>
                                     <button
@@ -837,8 +1290,222 @@ function Employees() {
                             )}
                         </div>
                     </div>
+
+                    {/* === PENDING CHANGES TAB === */}
+                    {showPendingTab && (
+                        <div style={{
+                            background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8,
+                            padding: 16, margin: '0 0 16px 0'
+                        }}>
+                            <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: '#ad6800' }}>
+                                <i className="fas fa-clipboard-check"></i> Yêu cầu cập nhật hồ sơ ({pendingChanges.length})
+                            </h3>
+
+                            {reviewingChange ? (
+                                /* Detail diff view */
+                                <div style={{ background: '#fff', borderRadius: 8, padding: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                        <div>
+                                            <strong>{reviewingChange.employee_name}</strong>
+                                            <span style={{ color: '#888', marginLeft: 8 }}>({reviewingChange.employee_code})</span>
+                                        </div>
+                                        <button className="btn btn-sm btn-secondary" onClick={() => setReviewingChange(null)}>
+                                            <i className="fas fa-arrow-left"></i> Quay lại
+                                        </button>
+                                    </div>
+                                    <p style={{ color: '#666', fontSize: 13, margin: '0 0 12px 0' }}>
+                                        <i className="fas fa-info-circle"></i> {reviewingChange.change_summary}
+                                        <span style={{ marginLeft: 12, color: '#999' }}>
+                                            {new Date(reviewingChange.submitted_at).toLocaleString('vi-VN')}
+                                        </span>
+                                    </p>
+
+                                    <div style={{ maxHeight: 600, overflow: 'auto', marginBottom: 20, padding: '0 4px' }}>
+                                        {(() => {
+                                            const currentEmp = currentProfileForDiff || {}
+                                            // Fallback loading state if profile not fetched yet
+                                            if (reviewingChange.employee_code && !currentProfileForDiff && employees.length > 0) {
+                                                return <div className="text-center p-3"><i className="fas fa-spinner fa-spin"></i> Đang tải dữ liệu gốc...</div>
+                                            }
+
+                                            let hasChanges = false
+
+                                            // Calculate changes first
+                                            // Deduplicate changes based on DB_KEY_MAP
+                                            const normalizedChanges = {}
+                                            Object.entries(reviewingChange.change_data || {}).forEach(([key, newVal]) => {
+                                                if (key === 'employeeId' || key === 'id' || newVal === undefined) return
+
+                                                // Resolve to canonical DB key for deduplication
+                                                const dbKey = DB_KEY_MAP[key] || key
+                                                normalizedChanges[dbKey] = {
+                                                    originalKey: key,
+                                                    dbKey: dbKey,
+                                                    newVal: newVal
+                                                }
+                                            })
+
+                                            const changes = Object.values(normalizedChanges).map(({ originalKey, dbKey, newVal }) => {
+                                                // Lookup old value using canonical DB key
+                                                let oldVal = currentEmp[dbKey]
+
+                                                // Fallback to original key if not found in DB_KEY_MAP
+                                                if (oldVal === undefined) {
+                                                    oldVal = currentEmp[originalKey]
+                                                }
+
+                                                // Special: ho_va_ten is stored as first_name + last_name in DB
+                                                if (dbKey === 'ho_va_ten' || originalKey === 'ho_va_ten') {
+                                                    oldVal = ((currentEmp.last_name || '') + ' ' + (currentEmp.first_name || '')).trim()
+                                                }
+
+                                                // Special: job_position/vi_tri — actual DB column is job_title
+                                                if (dbKey === 'job_title') {
+                                                    oldVal = currentEmp.job_title
+                                                }
+
+                                                // Special case
+                                                if (dbKey === 'email_personal' && currentEmp.email_personal !== undefined) {
+                                                    oldVal = currentEmp.email_personal
+                                                }
+
+                                                const hasValueMap = VALUE_MAP[dbKey] || VALUE_MAP[originalKey]
+                                                const normalize = (v) => {
+                                                    if (v === null || v === undefined) return ''
+                                                    if (v === true) return 'Có'
+                                                    if (v === false) return 'Không'
+
+                                                    // Apply Value Map if exists
+                                                    if (hasValueMap && hasValueMap[v]) {
+                                                        return hasValueMap[v]
+                                                    }
+
+                                                    return String(v).trim()
+                                                }
+
+                                                const nOld = normalize(oldVal)
+                                                const nNew = normalize(newVal)
+
+                                                if (nOld === nNew) return null
+
+                                                // Skip rows where newVal is empty but oldVal has data
+                                                // Empty newVal = form field not loaded properly (not intentional clearing)
+                                                if (nNew === '' && nOld !== '') return null
+
+                                                // Improve label lookup (case-insensitive fallback)
+                                                // Prioritize label for dbKey to ensure consistency
+                                                const displayLabel = LABEL_MAP[dbKey] || LABEL_MAP[originalKey] || LABEL_MAP[originalKey.toLowerCase()] || originalKey
+
+                                                hasChanges = true
+                                                return {
+                                                    key: dbKey, // Use dbKey as unique key
+                                                    label: displayLabel,
+                                                    oldVal: nOld,
+                                                    newVal: nNew
+                                                }
+                                            }).filter(Boolean)
+
+                                            if (!hasChanges) {
+                                                return (
+                                                    <div style={{ padding: 30, textAlign: 'center', color: '#999', background: '#f5f5f5', borderRadius: 8 }}>
+                                                        <i className="fas fa-check-circle" style={{ fontSize: 24, marginBottom: 8, display: 'block' }}></i>
+                                                        Không tìm thấy thay đổi nào so với dữ liệu hiện tại
+                                                    </div>
+                                                )
+                                            }
+
+                                            // Render Table View (From -> To)
+                                            return (
+                                                <div className="table-responsive">
+                                                    <table className="table table-bordered table-striped table-hover mb-0">
+                                                        <thead className="thead-light">
+                                                            <tr>
+                                                                <th style={{ width: '30%' }}>Trường thông tin</th>
+                                                                <th style={{ width: '35%' }}>Dữ liệu cũ</th>
+                                                                <th style={{ width: '35%' }}>Dữ liệu mới</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {changes.map(field => (
+                                                                <tr key={field.key}>
+                                                                    <td style={{ fontWeight: 600, color: '#555' }}>
+                                                                        {field.label}
+                                                                        {/* <div style={{fontSize: 10, color: '#aaa'}}>{field.key}</div> */}
+                                                                    </td>
+                                                                    <td style={{ color: '#777' }}>
+                                                                        {field.oldVal || <em style={{ color: '#999' }}>(Trống)</em>}
+                                                                    </td>
+                                                                    <td style={{ color: '#28a745', fontWeight: 500 }}>
+                                                                        {field.newVal}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )
+                                        })()}
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                        <button
+                                            className="btn btn-sm"
+                                            style={{ background: '#ff4d4f', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px' }}
+                                            onClick={() => handleRejectChange(reviewingChange)}
+                                        >
+                                            <i className="fas fa-times"></i> Từ chối
+                                        </button>
+                                        <button
+                                            className="btn btn-sm"
+                                            style={{ background: '#52c41a', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px' }}
+                                            onClick={() => handleApproveChange(reviewingChange)}
+                                        >
+                                            <i className="fas fa-check"></i> Duyệt
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* List view */
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {pendingChanges.map(change => (
+                                        <div
+                                            key={change.id}
+                                            style={{
+                                                background: '#fff', borderRadius: 8, padding: '10px 14px',
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                cursor: 'pointer', border: '1px solid #f0f0f0',
+                                                transition: 'box-shadow 0.2s'
+                                            }}
+                                            onClick={() => setReviewingChange(change)}
+                                            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'}
+                                            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                                        >
+                                            <div>
+                                                <strong style={{ fontSize: 14 }}>{change.employee_name}</strong>
+                                                <span style={{ color: '#999', marginLeft: 8, fontSize: 12 }}>{change.employee_code}</span>
+                                                <div style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
+                                                    {change.change_summary}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right', fontSize: 11, color: '#999' }}>
+                                                {new Date(change.submitted_at).toLocaleString('vi-VN')}
+                                                <div style={{ marginTop: 4 }}>
+                                                    <i className="fas fa-chevron-right" style={{ color: '#1890ff' }}></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {pendingChanges.length === 0 && (
+                                        <p style={{ color: '#999', textAlign: 'center' }}>Không có yêu cầu nào</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )
+                    }
                     <div className="detail-content">
                         <EmployeeDetail
+                            key={selectedEmployee?.employeeId || 'new'}
                             employee={selectedEmployee}
                             onSave={handleSaveEmployee}
                             onCancel={() => {

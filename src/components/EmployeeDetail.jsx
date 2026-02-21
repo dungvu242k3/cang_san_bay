@@ -268,6 +268,21 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
     }, [employee])
 
+    // Listen for export/import/template events from ProfileMenu
+    useEffect(() => {
+        const exportHandler = () => handleExportEmployee()
+        const importHandler = () => handleImportEmployee()
+        const templateHandler = () => handleDownloadTemplate()
+        window.addEventListener('exportEmployee', exportHandler)
+        window.addEventListener('importEmployee', importHandler)
+        window.addEventListener('downloadTemplate', templateHandler)
+        return () => {
+            window.removeEventListener('exportEmployee', exportHandler)
+            window.removeEventListener('importEmployee', importHandler)
+            window.removeEventListener('downloadTemplate', templateHandler)
+        }
+    })
+
     // Helper: Get suggested template based on employee type
     const getSuggestedTemplate = (type) => {
         const map = {
@@ -1684,9 +1699,9 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             ca_lam_viec: emp.ca_lam_viec || 'Ca full',
             ngay_vao_lam: emp.ngay_vao_lam || emp.join_date || '',
             ngay_lam_chinh_thuc: emp.ngay_lam_chinh_thuc || emp.official_date || '',
-            cccd: emp.cccd || '',
-            ngay_cap: emp.ngay_cap || '',
-            noi_cap: emp.noi_cap || '',
+            cccd: emp.cccd || emp.identity_card_number || '',
+            ngay_cap: emp.ngay_cap || emp.identity_card_issue_date || '',
+            noi_cap: emp.noi_cap || emp.identity_card_issue_place || '',
             dia_chi_thuong_tru: emp.dia_chi_thuong_tru || emp.permanent_address || '',
             que_quan: emp.que_quan || emp.hometown || '',
             ngay_sinh: emp.ngay_sinh || emp.date_of_birth || '',
@@ -1856,6 +1871,795 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         }
         fetchFamily()
     }
+    // === EXPORT EMPLOYEE DATA TO EXCEL (.xlsx) ===
+    const handleExportEmployee = async () => {
+        try {
+            if (!employee || !formData.employeeId) {
+                alert('Không có nhân viên nào được chọn để export!')
+                return
+            }
+
+            const xlsxModule = await import('xlsx')
+            const XLSX = xlsxModule.default || xlsxModule
+            const v = (val) => (val == null ? '' : String(val))
+
+            const rows = []
+
+            // ===== 1. SƠ YẾU LÝ LỊCH =====
+            // 1.1 Lý lịch cá nhân
+            rows.push(['1. THÔNG TIN CÁ NHÂN', '', '', '', ''])
+            rows.push(['Mã NV', v(formData.employeeId), '', 'Ngày sinh', v(formData.ngay_sinh)])
+            rows.push(['Họ và tên', v(formData.ho_va_ten), '', 'Giới tính', v(formData.gioi_tinh)])
+            rows.push(['CCCD', v(formData.identity_card_number || formData.cccd), '', 'Ngày cấp', v(formData.identity_card_issue_date || formData.ngay_cap)])
+            rows.push(['Nơi cấp', v(formData.identity_card_issue_place || formData.noi_cap), '', 'Dân tộc', v(formData.ethnicity)])
+            rows.push(['Tôn giáo', v(formData.religion), '', 'Quốc tịch', v(formData.nationality)])
+            rows.push(['Trình độ', v(formData.education_level)])
+            rows.push([])
+
+            // 1.2 Thông tin liên hệ
+            rows.push(['2. THÔNG TIN LIÊN HỆ'])
+            rows.push(['Điện thoại', v(formData.phone || formData.sđt), '', 'Email công ty', v(formData.email_acv)])
+            rows.push(['Email cá nhân', v(formData.email_personal)])
+            rows.push(['Địa chỉ thường trú', v(formData.permanent_address || formData.dia_chi_thuong_tru)])
+            rows.push(['Địa chỉ tạm trú', v(formData.temporary_address)])
+            rows.push(['Quê quán', v(formData.hometown || formData.que_quan)])
+            rows.push(['SĐT người thân', v(formData.relative_phone), '', 'Quan hệ', v(formData.relative_relation)])
+            rows.push([])
+
+            // 1.3 Thông tin công việc
+            rows.push(['3. THÔNG TIN CÔNG VIỆC'])
+            rows.push(['Phòng ban', v(formData.department || formData.bo_phan), '', 'Đội/Tổ', v(formData.team)])
+            rows.push(['Vị trí', v(formData.job_position || formData.vi_tri), '', 'Chức danh', v(formData.current_position)])
+            rows.push(['Ngày vào làm', v(formData.join_date || formData.ngay_vao_lam), '', 'Ngày chính thức', v(formData.official_date || formData.ngay_lam_chinh_thuc)])
+            rows.push(['Loại NV', v(formData.employee_type)])
+            rows.push(['Mã số thuế', v(formData.tax_code), '', 'Số BHXH', v(formData.social_insurance_number)])
+            rows.push(['Số BHYT', v(formData.health_insurance_number)])
+            rows.push(['Tổ', v(formData.to_doi), '', 'Tổ đội', v(formData.to_doi)])
+            rows.push([])
+
+            // 1.4 Thân nhân
+            rows.push(['4. THÂN NHÂN'])
+            if (familyMembers.length > 0) {
+                rows.push(['Quan hệ', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Giảm trừ'])
+                familyMembers.forEach(m => {
+                    rows.push([
+                        v(m.relationship),
+                        v(`${m.last_name || ''} ${m.first_name || ''}`.trim()),
+                        v(m.date_of_birth),
+                        v(m.gender),
+                        m.is_dependent ? 'Có' : 'Không'
+                    ])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 1.5 Hồ sơ Đảng
+            rows.push(['5. HỒ SƠ ĐẢNG'])
+            rows.push(['Là Đảng viên', formData.is_party_member ? 'Có' : 'Không'])
+            if (formData.is_party_member) {
+                rows.push(['Số thẻ Đảng viên', v(formData.party_card_number), '', 'Chức vụ Đảng', v(formData.party_position)])
+                rows.push(['Ngày kết nạp', v(formData.party_join_date), '', 'Ngày chính thức', v(formData.party_official_date)])
+                rows.push(['Nơi sinh hoạt', v(formData.party_activity_location)])
+                rows.push(['Trình độ chính trị', v(formData.political_education_level)])
+                rows.push(['Ghi chú', v(formData.party_notes)])
+            }
+            rows.push([])
+
+            // 1.6 Đoàn thanh niên
+            rows.push(['6. ĐOÀN THANH NIÊN'])
+            rows.push(['Là Đoàn viên', formData.is_youth_union_member ? 'Có' : 'Không'])
+            if (formData.is_youth_union_member) {
+                rows.push(['Số thẻ Đoàn viên', v(formData.youth_union_card_number), '', 'Chức vụ Đoàn', v(formData.youth_union_position)])
+                rows.push(['Ngày vào Đoàn', v(formData.youth_union_join_date), '', 'Nơi vào Đoàn', v(formData.youth_union_join_location)])
+                rows.push(['Nơi sinh hoạt', v(formData.youth_union_activity_location)])
+                rows.push(['Ghi chú', v(formData.youth_union_notes)])
+            }
+            rows.push([])
+
+            // 1.7 Công đoàn
+            rows.push(['7. CÔNG ĐOÀN'])
+            rows.push(['Là CĐ viên', formData.is_trade_union_member ? 'Có' : 'Không'])
+            if (formData.is_trade_union_member) {
+                rows.push(['Số thẻ CĐ', v(formData.trade_union_card_number), '', 'Chức vụ CĐ', v(formData.trade_union_position)])
+                rows.push(['Ngày gia nhập', v(formData.trade_union_join_date), '', 'Nơi sinh hoạt', v(formData.trade_union_activity_location)])
+                rows.push(['Ghi chú', v(formData.trade_union_notes)])
+            }
+            rows.push([])
+
+            // ===== 2. THÔNG TIN PHÁP LÝ =====
+            // 2.1 Tài khoản ngân hàng
+            rows.push(['8. TÀI KHOẢN NGÂN HÀNG'])
+            if (bankAccounts.length > 0) {
+                rows.push(['Ngân hàng', 'Số tài khoản', 'Chủ tài khoản'])
+                bankAccounts.forEach(b => {
+                    rows.push([v(b.bank_name), v(b.account_number), v(b.account_name)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 2.2 Hợp đồng lao động
+            rows.push(['9. HỢP ĐỒNG LAO ĐỘNG'])
+            if (laborContracts.length > 0) {
+                rows.push(['Số HĐ', 'Loại HĐ', 'Ngày hiệu lực', 'Ngày hết hạn'])
+                laborContracts.forEach(c => {
+                    rows.push([v(c.contract_number), v(c.contract_type), v(c.effective_date), v(c.expiration_date)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 2.3 Hộ chiếu
+            rows.push(['10. HỘ CHIẾU'])
+            if (passports.length > 0) {
+                rows.push(['Số hộ chiếu', 'Loại', 'Ngày cấp', 'Nơi cấp', 'Hết hạn'])
+                passports.forEach(p => {
+                    rows.push([v(p.passport_number), v(p.passport_type), v(p.issue_date), v(p.issue_place), v(p.expiration_date)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // ===== 3. PHÚC LỢI =====
+            // 3.1 Lương cơ bản
+            rows.push(['11. LƯƠNG CƠ BẢN'])
+            if (salaries.length > 0) {
+                rows.push(['Số QĐ', 'Ngày HĐ', 'Ngạch lương', 'Bậc lương', 'Hệ số', 'Lương CB', 'Lương BHXH', 'Hiệu lực'])
+                salaries.forEach(s => {
+                    rows.push([v(s.decision_number), v(s.effective_date), v(s.salary_scale), v(s.salary_level), v(s.salary_coefficient), v(s.basic_salary), v(s.social_insurance_salary), s.is_active ? 'Đang HĐ' : ''])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 3.2 Lương theo vị trí công việc
+            rows.push(['12. LƯƠNG THEO VỊ TRÍ CÔNG VIỆC'])
+            if (jobSalaries.length > 0) {
+                rows.push(['Số QĐ', 'Ngày HĐ', 'Vị trí', 'Mức lương', 'Hiệu lực'])
+                jobSalaries.forEach(s => {
+                    rows.push([v(s.decision_number), v(s.effective_date), v(s.job_position), v(s.salary_amount), s.is_active ? 'Đang HĐ' : ''])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 3.3 Phụ cấp
+            rows.push(['13. PHỤ CẤP'])
+            if (allowances.length > 0) {
+                rows.push(['Số QĐ', 'Ngày HĐ', 'Loại phụ cấp', 'Mức', 'Số tiền', 'Hiệu lực'])
+                allowances.forEach(a => {
+                    rows.push([v(a.decision_number), v(a.effective_date), v(a.allowance_type), v(a.allowance_level), v(a.amount), a.is_active ? 'Đang HĐ' : ''])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 3.4 Thu nhập khác
+            rows.push(['14. THU NHẬP KHÁC'])
+            if (otherIncomes.length > 0) {
+                rows.push(['Ngày phát sinh', 'Loại thu nhập', 'Số tiền', 'Thuế TN', 'Tính vào tháng'])
+                otherIncomes.forEach(i => {
+                    rows.push([v(i.date_incurred), v(i.income_type), v(i.amount), v(i.tax_amount), v(i.applied_month)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // ===== 4. QUÁ TRÌNH LÀM VIỆC =====
+            // 4.1 Nghỉ phép
+            rows.push(['15. NGHỈ PHÉP'])
+            if (leaves.length > 0) {
+                rows.push(['Loại', 'Lý do', 'Từ ngày', 'Đến ngày', 'Số ngày', 'Tổng trừ', 'Phép còn lại', 'Ghi chú'])
+                leaves.forEach(l => {
+                    rows.push([v(l.leave_type), v(l.reason), v(l.from_date), v(l.to_date), v(l.leave_days), v(l.total_deducted), v(l.remaining_leave), v(l.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 4.2 Bổ nhiệm - Điều chuyển
+            rows.push(['16. BỔ NHIỆM - ĐIỀU CHUYỂN'])
+            if (appointments.length > 0) {
+                rows.push(['Số QĐ', 'Ngày áp dụng', 'Chức danh', 'Chức vụ', 'Bộ phận', 'Nơi làm việc', 'Ghi chú'])
+                appointments.forEach(a => {
+                    rows.push([v(a.decision_number), v(a.applied_date), v(a.job_title), v(a.position), v(a.department), v(a.workplace), v(a.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 4.3 Nhật ký công tác
+            rows.push(['17. NHẬT KÝ CÔNG TÁC'])
+            if (workJournals.length > 0) {
+                rows.push(['Ngày', 'Nội dung', 'Địa điểm', 'Ghi chú'])
+                workJournals.forEach(w => {
+                    rows.push([v(w.journal_date), v(w.content), v(w.location), v(w.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // ===== 5. KIẾN THỨC =====
+            // 5.1 Chuyên ngành đào tạo
+            rows.push(['18. CHUYÊN NGÀNH ĐÀO TẠO'])
+            if (trainingSpecializations.length > 0) {
+                rows.push(['Chuyên ngành', 'Trường/Cơ sở', 'Bằng cấp', 'Năm tốt nghiệp', 'Xếp loại'])
+                trainingSpecializations.forEach(t => {
+                    rows.push([v(t.specialization), v(t.institution), v(t.degree), v(t.graduation_year), v(t.classification)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 5.2 Chứng chỉ
+            rows.push(['19. CHỨNG CHỈ'])
+            if (certificates.length > 0) {
+                rows.push(['Tên chứng chỉ', 'Số chứng chỉ', 'Nơi đào tạo', 'Ngày cấp'])
+                certificates.forEach(c => {
+                    rows.push([v(c.certificate_name), v(c.certificate_number), v(c.training_place), v(c.issue_date)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 5.3 Đào tạo nội bộ
+            rows.push(['20. ĐÀO TẠO NỘI BỘ'])
+            if (internalTrainings.length > 0) {
+                rows.push(['Khóa đào tạo', 'Nội dung', 'Từ ngày', 'Đến ngày', 'Kết quả', 'Ghi chú'])
+                internalTrainings.forEach(t => {
+                    rows.push([v(t.training_name), v(t.content), v(t.from_date), v(t.to_date), v(t.result), v(t.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // ===== 6. KHEN THƯỞNG KỶ LUẬT =====
+            // 6.1 Khen thưởng
+            rows.push(['21. KHEN THƯỞNG'])
+            if (rewards.length > 0) {
+                rows.push(['Số QĐ', 'Hình thức', 'Nội dung', 'Ngày ký', 'Số tiền', 'Ngày KT', 'Năm', 'Ghi chú'])
+                rewards.forEach(r => {
+                    rows.push([v(r.decision_number), v(r.reward_type), v(r.reward_content), v(r.signed_date), v(r.amount), v(r.reward_date), v(r.applied_year), v(r.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 6.2 Kỷ luật
+            rows.push(['22. KỶ LUẬT'])
+            if (disciplines.length > 0) {
+                rows.push(['Số QĐ', 'Ngày ký', 'Hình thức', 'Từ ngày', 'Đến ngày', 'Ghi chú'])
+                disciplines.forEach(d => {
+                    rows.push([v(d.decision_number), v(d.signed_date), v(d.discipline_type), v(d.from_date), v(d.to_date), v(d.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // ===== 7. SỨC KHỎE - HOẠT ĐỘNG =====
+            // 7.1 Thẻ BHYT
+            rows.push(['23. THẺ BHYT'])
+            if (healthInsurance) {
+                rows.push(['Số thẻ', v(healthInsurance.card_number), '', 'Nơi ĐKKCB', v(healthInsurance.registered_hospital)])
+                rows.push(['Từ ngày', v(healthInsurance.from_date), '', 'Đến ngày', v(healthInsurance.to_date)])
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 7.2 Tai nạn lao động
+            rows.push(['24. TAI NẠN LAO ĐỘNG'])
+            if (workAccidents.length > 0) {
+                rows.push(['Ngày', 'Nơi xảy ra', 'Lý do nghỉ', 'Loại', 'Số ngày nghỉ', 'Chi phí NLĐ', 'Thiệt hại TS', 'Tiền đền bù'])
+                workAccidents.forEach(a => {
+                    rows.push([v(a.accident_date), v(a.accident_location), v(a.leave_reason), v(a.accident_type), v(a.leave_days), v(a.employee_cost), v(a.property_damage), v(a.compensation_amount)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+            rows.push([])
+
+            // 7.3 Khám sức khỏe
+            rows.push(['25. KHÁM SỨC KHỎE'])
+            if (healthCheckups.length > 0) {
+                rows.push(['Ngày khám', 'Ngày hết hạn', 'Nơi khám', 'Chi phí', 'Kết quả', 'Ghi chú'])
+                healthCheckups.forEach(h => {
+                    rows.push([v(h.checkup_date), v(h.expiry_date), v(h.checkup_location), v(h.cost), v(h.result), v(h.note)])
+                })
+            } else {
+                rows.push(['(Chưa có dữ liệu)'])
+            }
+
+            // Create workbook & sheet
+            const ws = XLSX.utils.aoa_to_sheet(rows)
+            ws['!cols'] = [{ wch: 22 }, { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, { wch: 15 }]
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, 'Hồ sơ nhân viên')
+
+            // Download
+            const fileName = `HoSo_${formData.employeeId}_${formData.ho_va_ten?.replace(/\s+/g, '_') || 'NV'}.xlsx`
+            XLSX.writeFile(wb, fileName)
+        } catch (err) {
+            console.error('Export error:', err)
+            alert('Lỗi khi export: ' + (err.message || 'Không xác định'))
+        }
+    }
+
+    // === IMPORT EMPLOYEE DATA FROM EXCEL (.xlsx) ===
+    const handleImportEmployee = async () => {
+        try {
+            if (!employee || !formData.employeeId) {
+                alert('Vui lòng chọn nhân viên trước khi import!')
+                return
+            }
+
+            const input = document.createElement('input')
+            input.type = 'file'
+            input.accept = '.xlsx,.xls'
+
+            input.onchange = async (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+
+                const xlsxModule = await import('xlsx')
+                const XLSX = xlsxModule.default || xlsxModule
+
+                const data = await file.arrayBuffer()
+                const wb = XLSX.read(data, { type: 'array' })
+                const ws = wb.Sheets[wb.SheetNames[0]]
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1 })
+
+                // --- fieldMap for key-value pair sections ---
+                const fieldMap = {
+                    'Mã NV': 'employeeId',
+                    'Họ và tên': 'ho_va_ten',
+                    'Ngày sinh': 'ngay_sinh',
+                    'Giới tính': 'gioi_tinh',
+                    'CCCD': 'identity_card_number',
+                    'Ngày cấp': 'identity_card_issue_date',
+                    'Nơi cấp': 'identity_card_issue_place',
+                    'Dân tộc': 'ethnicity',
+                    'Tôn giáo': 'religion',
+                    'Quốc tịch': 'nationality',
+                    'Trình độ': 'education_level',
+                    'Điện thoại': 'phone',
+                    'Email công ty': 'email_acv',
+                    'Email cá nhân': 'email_personal',
+                    'Địa chỉ thường trú': 'permanent_address',
+                    'Địa chỉ tạm trú': 'temporary_address',
+                    'Quê quán': 'hometown',
+                    'SĐT người thân': 'relative_phone',
+                    'Quan hệ': 'relative_relation',
+                    'Phòng ban': 'department',
+                    'Đội/Tổ': 'team',
+                    'Vị trí': 'job_position',
+                    'Chức danh': 'current_position',
+                    'Ngày vào làm': 'join_date',
+                    'Ngày chính thức': 'official_date',
+                    'Loại NV': 'employee_type',
+                    'Mã số thuế': 'tax_code',
+                    'Số BHXH': 'social_insurance_number',
+                    'Số BHYT': 'health_insurance_number',
+                    'Là Đảng viên': 'is_party_member',
+                    'Số thẻ Đảng viên': 'party_card_number',
+                    'Chức vụ Đảng': 'party_position',
+                    'Ngày kết nạp': 'party_join_date',
+                    'Nơi sinh hoạt': '_dynamic_location',
+                    'Trình độ chính trị': 'political_education_level',
+                    'Là Đoàn viên': 'is_youth_union_member',
+                    'Số thẻ Đoàn viên': 'youth_union_card_number',
+                    'Chức vụ Đoàn': 'youth_union_position',
+                    'Ngày vào Đoàn': 'youth_union_join_date',
+                    'Nơi vào Đoàn': 'youth_union_join_location',
+                    'Là CĐ viên': 'is_trade_union_member',
+                    'Số thẻ CĐ': 'trade_union_card_number',
+                    'Chức vụ CĐ': 'trade_union_position',
+                    'Ngày gia nhập': 'trade_union_join_date',
+                }
+
+                // --- Section header detection ---
+                const sectionHeaders = {
+                    '1. THÔNG TIN CÁ NHÂN': 'personal',
+                    '2. THÔNG TIN LIÊN HỆ': 'contact',
+                    '3. THÔNG TIN CÔNG VIỆC': 'work',
+                    '4. THÂN NHÂN': 'family',
+                    '5. HỒ SƠ ĐẢNG': 'party',
+                    '6. ĐOÀN THANH NIÊN': 'youth',
+                    '7. CÔNG ĐOÀN': 'union',
+                    '8. TÀI KHOẢN NGÂN HÀNG': 'bank',
+                    '9. HỢP ĐỒNG LAO ĐỘNG': 'contract',
+                    '10. HỘ CHIẾU': 'passport',
+                    '11. LƯƠNG CƠ BẢN': 'salary',
+                    '12. LƯƠNG THEO VỊ TRÍ CÔNG VIỆC': 'jobSalary',
+                    '13. PHỤ CẤP': 'allowance',
+                    '14. THU NHẬP KHÁC': 'otherIncome',
+                    '15. NGHỈ PHÉP': 'leave',
+                    '16. BỔ NHIỆM - ĐIỀU CHUYỂN': 'appointment',
+                    '17. NHẬT KÝ CÔNG TÁC': 'workJournal',
+                    '18. CHUYÊN NGÀNH ĐÀO TẠO': 'training',
+                    '19. CHỨNG CHỈ': 'certificate',
+                    '20. ĐÀO TẠO NỘI BỘ': 'internalTraining',
+                    '21. KHEN THƯỞNG': 'reward',
+                    '22. KỶ LUẬT': 'discipline',
+                    '23. THẺ BHYT': 'healthIns',
+                    '24. TAI NẠN LAO ĐỘNG': 'accident',
+                    '25. KHÁM SỨC KHỎE': 'checkup',
+                }
+
+                // Table column mappings for each section
+                const tableMaps = {
+                    family: { headers: ['Quan hệ', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Giảm trừ'], keys: ['relationship', 'full_name', 'date_of_birth', 'gender', 'is_dependent'] },
+                    bank: { headers: ['Ngân hàng', 'Số tài khoản', 'Chủ tài khoản'], keys: ['bank_name', 'account_number', 'account_name'] },
+                    contract: { headers: ['Số HĐ', 'Loại HĐ', 'Ngày hiệu lực', 'Ngày hết hạn'], keys: ['contract_number', 'contract_type', 'effective_date', 'expiration_date'] },
+                    passport: { headers: ['Số hộ chiếu', 'Loại', 'Ngày cấp', 'Nơi cấp', 'Hết hạn'], keys: ['passport_number', 'passport_type', 'issue_date', 'issue_place', 'expiration_date'] },
+                    salary: { headers: ['Số QĐ', 'Ngày HĐ', 'Ngạch lương', 'Bậc lương', 'Hệ số', 'Lương CB', 'Lương BHXH', 'Hiệu lực'], keys: ['decision_number', 'effective_date', 'salary_scale', 'salary_level', 'salary_coefficient', 'basic_salary', 'social_insurance_salary', 'is_active'] },
+                    jobSalary: { headers: ['Số QĐ', 'Ngày HĐ', 'Vị trí', 'Mức lương', 'Hiệu lực'], keys: ['decision_number', 'effective_date', 'job_position', 'salary_amount', 'is_active'] },
+                    allowance: { headers: ['Số QĐ', 'Ngày HĐ', 'Loại phụ cấp', 'Mức', 'Số tiền', 'Hiệu lực'], keys: ['decision_number', 'effective_date', 'allowance_type', 'allowance_level', 'amount', 'is_active'] },
+                    otherIncome: { headers: ['Ngày phát sinh', 'Loại thu nhập', 'Số tiền', 'Thuế TN', 'Tính vào tháng'], keys: ['date_incurred', 'income_type', 'amount', 'tax_amount', 'applied_month'] },
+                    leave: { headers: ['Loại', 'Lý do', 'Từ ngày', 'Đến ngày', 'Số ngày', 'Tổng trừ', 'Phép còn lại', 'Ghi chú'], keys: ['leave_type', 'reason', 'from_date', 'to_date', 'leave_days', 'total_deducted', 'remaining_leave', 'note'] },
+                    appointment: { headers: ['Số QĐ', 'Ngày áp dụng', 'Chức danh', 'Chức vụ', 'Bộ phận', 'Nơi làm việc', 'Ghi chú'], keys: ['decision_number', 'applied_date', 'job_title', 'position', 'department', 'workplace', 'note'] },
+                    workJournal: { headers: ['Ngày', 'Nội dung', 'Địa điểm', 'Ghi chú'], keys: ['journal_date', 'content', 'location', 'note'] },
+                    training: { headers: ['Chuyên ngành', 'Trường/Cơ sở', 'Bằng cấp', 'Năm tốt nghiệp', 'Xếp loại'], keys: ['specialization', 'institution', 'degree', 'graduation_year', 'classification'] },
+                    certificate: { headers: ['Tên chứng chỉ', 'Số chứng chỉ', 'Nơi đào tạo', 'Ngày cấp'], keys: ['certificate_name', 'certificate_number', 'training_place', 'issue_date'] },
+                    internalTraining: { headers: ['Khóa đào tạo', 'Nội dung', 'Từ ngày', 'Đến ngày', 'Kết quả', 'Ghi chú'], keys: ['training_name', 'content', 'from_date', 'to_date', 'result', 'note'] },
+                    reward: { headers: ['Số QĐ', 'Hình thức', 'Nội dung', 'Ngày ký', 'Số tiền', 'Ngày KT', 'Năm', 'Ghi chú'], keys: ['decision_number', 'reward_type', 'reward_content', 'signed_date', 'amount', 'reward_date', 'applied_year', 'note'] },
+                    discipline: { headers: ['Số QĐ', 'Ngày ký', 'Hình thức', 'Từ ngày', 'Đến ngày', 'Ghi chú'], keys: ['decision_number', 'signed_date', 'discipline_type', 'from_date', 'to_date', 'note'] },
+                    accident: { headers: ['Ngày', 'Nơi xảy ra', 'Lý do nghỉ', 'Loại', 'Số ngày nghỉ', 'Chi phí NLĐ', 'Thiệt hại TS', 'Tiền đền bù'], keys: ['accident_date', 'accident_location', 'leave_reason', 'accident_type', 'leave_days', 'employee_cost', 'property_damage', 'compensation_amount'] },
+                    checkup: { headers: ['Ngày khám', 'Ngày hết hạn', 'Nơi khám', 'Chi phí', 'Kết quả', 'Ghi chú'], keys: ['checkup_date', 'expiry_date', 'checkup_location', 'cost', 'result', 'note'] },
+                }
+
+                // Key-value sections (parse A-B, D-E pairs)
+                const kvSections = new Set(['personal', 'contact', 'work', 'party', 'youth', 'union', 'healthIns'])
+
+                const formUpdates = {}
+                const tableData = {}
+                let currentSection = null
+                let headerRow = null
+                let importedSections = []
+
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i]
+                    if (!row || row.length === 0) { headerRow = null; continue }
+
+                    const cell0 = String(row[0] || '').trim()
+
+                    // Check for section header
+                    if (sectionHeaders[cell0]) {
+                        currentSection = sectionHeaders[cell0]
+                        headerRow = null
+                        continue
+                    }
+
+                    if (!currentSection) continue
+
+                    // Skip "(Chưa có dữ liệu)" rows
+                    if (cell0 === '(Chưa có dữ liệu)') continue
+
+                    // --- Key-value sections ---
+                    if (kvSections.has(currentSection)) {
+                        // Handle "Nơi sinh hoạt" dynamically based on current section
+                        const keyA = cell0
+                        const valB = row[1] != null ? String(row[1]).trim() : ''
+
+                        if (keyA && valB) {
+                            // Handle boolean fields
+                            if (['Là Đảng viên', 'Là Đoàn viên', 'Là CĐ viên'].includes(keyA)) {
+                                const boolVal = valB === 'Có'
+                                if (fieldMap[keyA]) formUpdates[fieldMap[keyA]] = boolVal
+                            } else if (keyA === 'Nơi sinh hoạt') {
+                                // Dynamic mapping based on section
+                                if (currentSection === 'party') formUpdates.party_activity_location = valB
+                                else if (currentSection === 'youth') formUpdates.youth_union_activity_location = valB
+                                else if (currentSection === 'union') formUpdates.trade_union_activity_location = valB
+                            } else if (keyA === 'Ghi chú') {
+                                if (currentSection === 'party') formUpdates.party_notes = valB
+                                else if (currentSection === 'youth') formUpdates.youth_union_notes = valB
+                                else if (currentSection === 'union') formUpdates.trade_union_notes = valB
+                            } else if (keyA === 'Ngày chính thức' && currentSection === 'party') {
+                                formUpdates.party_official_date = valB
+                            } else if (fieldMap[keyA]) {
+                                formUpdates[fieldMap[keyA]] = valB
+                            }
+
+                            // Also parse HealthIns key-value rows
+                            if (currentSection === 'healthIns') {
+                                if (keyA === 'Số thẻ') tableData.healthIns = { ...(tableData.healthIns || {}), card_number: valB }
+                                if (keyA === 'Từ ngày') tableData.healthIns = { ...(tableData.healthIns || {}), from_date: valB }
+                            }
+                        }
+
+                        // Col D-E pairs
+                        const keyD = String(row[3] || '').trim()
+                        const valE = row[4] != null ? String(row[4]).trim() : ''
+                        if (keyD && valE) {
+                            if (keyD === 'Nơi ĐKKCB' && currentSection === 'healthIns') {
+                                tableData.healthIns = { ...(tableData.healthIns || {}), registered_hospital: valE }
+                            } else if (keyD === 'Đến ngày' && currentSection === 'healthIns') {
+                                tableData.healthIns = { ...(tableData.healthIns || {}), to_date: valE }
+                            } else if (keyD === 'Chức vụ Đảng') {
+                                formUpdates.party_position = valE
+                            } else if (keyD === 'Ngày chính thức' && currentSection === 'party') {
+                                formUpdates.party_official_date = valE
+                            } else if (keyD === 'Ngày chính thức' && currentSection !== 'party') {
+                                formUpdates.official_date = valE
+                            } else if (keyD === 'Nơi sinh hoạt' && currentSection === 'union') {
+                                formUpdates.trade_union_activity_location = valE
+                            } else if (fieldMap[keyD]) {
+                                formUpdates[fieldMap[keyD]] = valE
+                            }
+                        }
+                        continue
+                    }
+
+                    // --- Table sections ---
+                    const tableMap = tableMaps[currentSection]
+                    if (!tableMap) continue
+
+                    // Detect header row
+                    if (cell0 === tableMap.headers[0]) {
+                        headerRow = tableMap
+                        if (!tableData[currentSection]) tableData[currentSection] = []
+                        continue
+                    }
+
+                    // Parse data rows
+                    if (headerRow) {
+                        const obj = {}
+                        headerRow.keys.forEach((key, idx) => {
+                            const val = row[idx] != null ? String(row[idx]).trim() : ''
+                            if (key === 'is_dependent') {
+                                obj[key] = val === 'Có'
+                            } else if (key === 'is_active') {
+                                obj[key] = val === 'Đang HĐ'
+                            } else if (key === 'full_name') {
+                                // Split full name for family members
+                                const parts = val.split(' ')
+                                obj.last_name = parts[0] || ''
+                                obj.first_name = parts.slice(1).join(' ') || ''
+                            } else {
+                                obj[key] = val
+                            }
+                        })
+                        // Only add if first column has data
+                        if (row[0] != null && String(row[0]).trim()) {
+                            if (!tableData[currentSection]) tableData[currentSection] = []
+                            tableData[currentSection].push(obj)
+                        }
+                    }
+                }
+
+                // Don't overwrite employeeId
+                delete formUpdates.employeeId
+
+                // Apply formData updates
+                if (Object.keys(formUpdates).length > 0) {
+                    setFormData(prev => ({ ...prev, ...formUpdates }))
+                    importedSections.push('Thông tin cá nhân')
+                }
+
+                // Apply table data to state
+                if (tableData.family && tableData.family.length > 0) { setFamilyMembers(tableData.family); importedSections.push('Thân nhân') }
+                if (tableData.bank && tableData.bank.length > 0) { setBankAccounts(tableData.bank); importedSections.push('Tài khoản NH') }
+                if (tableData.contract && tableData.contract.length > 0) { setLaborContracts(tableData.contract); importedSections.push('Hợp đồng LĐ') }
+                if (tableData.passport && tableData.passport.length > 0) { setPassports(tableData.passport); importedSections.push('Hộ chiếu') }
+                if (tableData.salary && tableData.salary.length > 0) { setSalaries(tableData.salary); importedSections.push('Lương cơ bản') }
+                if (tableData.jobSalary && tableData.jobSalary.length > 0) { setJobSalaries(tableData.jobSalary); importedSections.push('Lương vị trí') }
+                if (tableData.allowance && tableData.allowance.length > 0) { setAllowances(tableData.allowance); importedSections.push('Phụ cấp') }
+                if (tableData.otherIncome && tableData.otherIncome.length > 0) { setOtherIncomes(tableData.otherIncome); importedSections.push('Thu nhập khác') }
+                if (tableData.leave && tableData.leave.length > 0) { setLeaves(tableData.leave); importedSections.push('Nghỉ phép') }
+                if (tableData.appointment && tableData.appointment.length > 0) { setAppointments(tableData.appointment); importedSections.push('Bổ nhiệm') }
+                if (tableData.workJournal && tableData.workJournal.length > 0) { setWorkJournals(tableData.workJournal); importedSections.push('Nhật ký') }
+                if (tableData.training && tableData.training.length > 0) { setTrainingSpecializations(tableData.training); importedSections.push('Chuyên ngành ĐT') }
+                if (tableData.certificate && tableData.certificate.length > 0) { setCertificates(tableData.certificate); importedSections.push('Chứng chỉ') }
+                if (tableData.internalTraining && tableData.internalTraining.length > 0) { setInternalTrainings(tableData.internalTraining); importedSections.push('ĐT nội bộ') }
+                if (tableData.reward && tableData.reward.length > 0) { setRewards(tableData.reward); importedSections.push('Khen thưởng') }
+                if (tableData.discipline && tableData.discipline.length > 0) { setDisciplines(tableData.discipline); importedSections.push('Kỷ luật') }
+                if (tableData.healthIns && Object.keys(tableData.healthIns).length > 0) { setHealthInsurance(tableData.healthIns); importedSections.push('Thẻ BHYT') }
+                if (tableData.accident && tableData.accident.length > 0) { setWorkAccidents(tableData.accident); importedSections.push('Tai nạn LĐ') }
+                if (tableData.checkup && tableData.checkup.length > 0) { setHealthCheckups(tableData.checkup); importedSections.push('Khám SK') }
+
+                if (importedSections.length === 0) {
+                    alert('Không tìm thấy dữ liệu phù hợp trong file. Hãy đảm bảo file có cùng định dạng với file Export.')
+                    return
+                }
+
+                setIsEditing(true)
+                alert(`Đã import ${importedSections.length} mục:\n${importedSections.join(', ')}\n\nKiểm tra và bấm "Lưu" để cập nhật.`)
+            }
+
+            input.click()
+        } catch (err) {
+            console.error('Import error:', err)
+            alert('Lỗi khi import: ' + (err.message || 'Không xác định'))
+        }
+    }
+
+    // === DOWNLOAD TEMPLATE WITH SAMPLE DATA (.xlsx) ===
+    const handleDownloadTemplate = async () => {
+        try {
+            const xlsxModule = await import('xlsx')
+            const XLSX = xlsxModule.default || xlsxModule
+
+            const rows = [
+                // 1. Thông tin cá nhân
+                ['1. THÔNG TIN CÁ NHÂN', '', '', '', ''],
+                ['Mã NV', 'NV001', '', 'Ngày sinh', '1990-05-15'],
+                ['Họ và tên', 'Nguyễn Văn A', '', 'Giới tính', 'Nam'],
+                ['CCCD', '012345678901', '', 'Ngày cấp', '2021-01-10'],
+                ['Nơi cấp', 'Cục CS QLHC về TTXH', '', 'Dân tộc', 'Kinh'],
+                ['Tôn giáo', 'Không', '', 'Quốc tịch', 'Việt Nam'],
+                ['Trình độ', 'Đại học'],
+                [],
+                // 2. Liên hệ
+                ['2. THÔNG TIN LIÊN HỆ'],
+                ['Điện thoại', '0901234567', '', 'Email công ty', 'nguyenvana@acv.vn'],
+                ['Email cá nhân', 'nguyenvana@gmail.com'],
+                ['Địa chỉ thường trú', '123 Nguyễn Huệ, Q.1, TP.HCM'],
+                ['Địa chỉ tạm trú', '456 Lê Lợi, Q.3, TP.HCM'],
+                ['Quê quán', 'Hà Nội'],
+                ['SĐT người thân', '0987654321', '', 'Quan hệ', 'Vợ/Chồng'],
+                [],
+                // 3. Công việc
+                ['3. THÔNG TIN CÔNG VIỆC'],
+                ['Phòng ban', 'Phòng Kỹ thuật', '', 'Đội/Tổ', 'Đội A'],
+                ['Vị trí', 'Nhân viên kỹ thuật', '', 'Chức danh', 'Kỹ sư'],
+                ['Ngày vào làm', '2022-03-01', '', 'Ngày chính thức', '2022-06-01'],
+                ['Loại NV', 'Chính thức'],
+                ['Mã số thuế', '1234567890', '', 'Số BHXH', 'BH001234'],
+                ['Số BHYT', 'DN123456789'],
+                ['Tổ', 'Tổ 1', '', 'Tổ đội', 'Tổ 1'],
+                [],
+                // 4. Thân nhân
+                ['4. THÂN NHÂN'],
+                ['Quan hệ', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Giảm trừ'],
+                ['Vợ/Chồng', 'Trần Thị B', '1992-08-20', 'Nữ', 'Có'],
+                ['Con', 'Nguyễn Văn C', '2020-01-15', 'Nam', 'Có'],
+                [],
+                // 5. Đảng
+                ['5. HỒ SƠ ĐẢNG'],
+                ['Là Đảng viên', 'Có'],
+                ['Số thẻ Đảng viên', 'DV001234', '', 'Chức vụ Đảng', 'Đảng viên'],
+                ['Ngày kết nạp', '2018-06-01', '', 'Ngày chính thức', '2019-06-01'],
+                ['Nơi sinh hoạt', 'Chi bộ phòng Kỹ thuật'],
+                ['Trình độ chính trị', 'Sơ cấp'],
+                ['Ghi chú', ''],
+                [],
+                // 6. Đoàn
+                ['6. ĐOÀN THANH NIÊN'],
+                ['Là Đoàn viên', 'Có'],
+                ['Số thẻ Đoàn viên', 'DT001234', '', 'Chức vụ Đoàn', 'Đoàn viên'],
+                ['Ngày vào Đoàn', '2008-03-26', '', 'Nơi vào Đoàn', 'Trường THPT ABC'],
+                ['Nơi sinh hoạt', 'Chi đoàn phòng Kỹ thuật'],
+                ['Ghi chú', ''],
+                [],
+                // 7. Công đoàn
+                ['7. CÔNG ĐOÀN'],
+                ['Là CĐ viên', 'Có'],
+                ['Số thẻ CĐ', 'CD001234', '', 'Chức vụ CĐ', 'CĐ viên'],
+                ['Ngày gia nhập', '2022-06-01', '', 'Nơi sinh hoạt', 'CĐ cơ sở'],
+                ['Ghi chú', ''],
+                [],
+                // 8. Tài khoản NH
+                ['8. TÀI KHOẢN NGÂN HÀNG'],
+                ['Ngân hàng', 'Số tài khoản', 'Chủ tài khoản'],
+                ['Vietcombank', '0123456789', 'Nguyễn Văn A'],
+                [],
+                // 9. HĐLĐ
+                ['9. HỢP ĐỒNG LAO ĐỘNG'],
+                ['Số HĐ', 'Loại HĐ', 'Ngày hiệu lực', 'Ngày hết hạn'],
+                ['HD-2022-001', 'Không xác định thời hạn', '2022-06-01', ''],
+                [],
+                // 10. Hộ chiếu
+                ['10. HỘ CHIẾU'],
+                ['Số hộ chiếu', 'Loại', 'Ngày cấp', 'Nơi cấp', 'Hết hạn'],
+                ['B12345678', 'Phổ thông', '2023-01-15', 'Cục QLXNC', '2033-01-15'],
+                [],
+                // 11. Lương CB
+                ['11. LƯƠNG CƠ BẢN'],
+                ['Số QĐ', 'Ngày HĐ', 'Ngạch lương', 'Bậc lương', 'Hệ số', 'Lương CB', 'Lương BHXH', 'Hiệu lực'],
+                ['QĐ-001', '2024-01-01', 'A1', '3', '3.33', '10000000', '8000000', 'Đang HĐ'],
+                [],
+                // 12. Lương vị trí
+                ['12. LƯƠNG THEO VỊ TRÍ CÔNG VIỆC'],
+                ['Số QĐ', 'Ngày HĐ', 'Vị trí', 'Mức lương', 'Hiệu lực'],
+                ['QĐ-VT001', '2024-01-01', 'Kỹ sư', '5000000', 'Đang HĐ'],
+                [],
+                // 13. Phụ cấp
+                ['13. PHỤ CẤP'],
+                ['Số QĐ', 'Ngày HĐ', 'Loại phụ cấp', 'Mức', 'Số tiền', 'Hiệu lực'],
+                ['QĐ-PC001', '2024-01-01', 'Phụ cấp chức vụ', '1.0', '2000000', 'Đang HĐ'],
+                [],
+                // 14. Thu nhập khác
+                ['14. THU NHẬP KHÁC'],
+                ['Ngày phát sinh', 'Loại thu nhập', 'Số tiền', 'Thuế TN', 'Tính vào tháng'],
+                ['2024-12-25', 'Thưởng tết', '5000000', '500000', '2025-01'],
+                [],
+                // 15. Nghỉ phép
+                ['15. NGHỈ PHÉP'],
+                ['Loại', 'Lý do', 'Từ ngày', 'Đến ngày', 'Số ngày', 'Tổng trừ', 'Phép còn lại', 'Ghi chú'],
+                ['Phép năm', 'Du lịch', '2024-07-01', '2024-07-03', '3', '3', '9', ''],
+                [],
+                // 16. Bổ nhiệm
+                ['16. BỔ NHIỆM - ĐIỀU CHUYỂN'],
+                ['Số QĐ', 'Ngày áp dụng', 'Chức danh', 'Chức vụ', 'Bộ phận', 'Nơi làm việc', 'Ghi chú'],
+                ['QĐ-BN001', '2024-06-01', 'Kỹ sư trưởng', 'Trưởng nhóm', 'Phòng KT', 'Trụ sở chính', ''],
+                [],
+                // 17. Nhật ký
+                ['17. NHẬT KÝ CÔNG TÁC'],
+                ['Ngày', 'Nội dung', 'Địa điểm', 'Ghi chú'],
+                ['2024-10-15', 'Đi công tác', 'Đà Nẵng', 'Họp dự án'],
+                [],
+                // 18. Chuyên ngành
+                ['18. CHUYÊN NGÀNH ĐÀO TẠO'],
+                ['Chuyên ngành', 'Trường/Cơ sở', 'Bằng cấp', 'Năm tốt nghiệp', 'Xếp loại'],
+                ['CNTT', 'ĐH Bách Khoa', 'Cử nhân', '2012', 'Giỏi'],
+                [],
+                // 19. Chứng chỉ
+                ['19. CHỨNG CHỈ'],
+                ['Tên chứng chỉ', 'Số chứng chỉ', 'Nơi đào tạo', 'Ngày cấp'],
+                ['TOEIC 750', 'CC-001', 'IIG Vietnam', '2023-05-20'],
+                [],
+                // 20. ĐT nội bộ
+                ['20. ĐÀO TẠO NỘI BỘ'],
+                ['Khóa đào tạo', 'Nội dung', 'Từ ngày', 'Đến ngày', 'Kết quả', 'Ghi chú'],
+                ['An toàn LĐ 2024', 'An toàn vệ sinh lao động', '2024-03-01', '2024-03-05', 'Đạt', ''],
+                [],
+                // 21. Khen thưởng
+                ['21. KHEN THƯỞNG'],
+                ['Số QĐ', 'Hình thức', 'Nội dung', 'Ngày ký', 'Số tiền', 'Ngày KT', 'Năm', 'Ghi chú'],
+                ['QĐ-KT001', 'Bằng khen', 'Hoàn thành xuất sắc', '2024-12-20', '2000000', '2024-12-25', '2024', ''],
+                [],
+                // 22. Kỷ luật
+                ['22. KỶ LUẬT'],
+                ['Số QĐ', 'Ngày ký', 'Hình thức', 'Từ ngày', 'Đến ngày', 'Ghi chú'],
+                ['(Xóa dòng mẫu nếu không có)', '', '', '', '', ''],
+                [],
+                // 23. Thẻ BHYT
+                ['23. THẺ BHYT'],
+                ['Số thẻ', 'DN4500123456789', '', 'Nơi ĐKKCB', 'BV Quận 1'],
+                ['Từ ngày', '2024-01-01', '', 'Đến ngày', '2024-12-31'],
+                [],
+                // 24. Tai nạn LĐ
+                ['24. TAI NẠN LAO ĐỘNG'],
+                ['Ngày', 'Nơi xảy ra', 'Lý do nghỉ', 'Loại', 'Số ngày nghỉ', 'Chi phí NLĐ', 'Thiệt hại TS', 'Tiền đền bù'],
+                ['(Xóa dòng mẫu nếu không có)', '', '', '', '', '', '', ''],
+                [],
+                // 25. Khám SK
+                ['25. KHÁM SỨC KHỎE'],
+                ['Ngày khám', 'Ngày hết hạn', 'Nơi khám', 'Chi phí', 'Kết quả', 'Ghi chú'],
+                ['2024-06-15', '2025-06-15', 'BV Quận 1', '500000', 'Đủ sức khỏe', ''],
+                [],
+                ['GHI CHÚ: Xóa dữ liệu mẫu và điền thông tin thực tế trước khi Import'],
+            ]
+
+            const ws = XLSX.utils.aoa_to_sheet(rows)
+            ws['!cols'] = [{ wch: 22 }, { wch: 30 }, { wch: 18 }, { wch: 22 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, { wch: 15 }]
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, 'Mẫu hồ sơ')
+            XLSX.writeFile(wb, 'Mau_HoSo_NhanVien.xlsx')
+        } catch (err) {
+            console.error('Template error:', err)
+            alert('Lỗi khi tải mẫu: ' + (err.message || 'Không xác định'))
+        }
+    }
+
     const handleChange = (e) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
@@ -1917,7 +2721,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             <div className="menu-tools">
                 <span className="menu-title">MỤC LỤC</span>
                 <div className="tool-actions">
-                    <button className="btn-premium-outline btn-premium-sm" style={{ padding: '2px 10px', fontSize: '0.75rem' }}><i className="fas fa-file-export"></i> Export</button>
+                    <button className="btn-premium-outline btn-premium-sm" style={{ padding: '2px 10px', fontSize: '0.75rem' }} onClick={handleExportEmployee}><i className="fas fa-file-export"></i> Export</button>
                     <button className="btn-premium-outline btn-premium-sm" style={{ padding: '2px 10px', fontSize: '0.75rem' }}><i className="fas fa-file-import"></i> Import</button>
                 </div>
             </div>
@@ -2715,7 +3519,10 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                <h3>Thông tin khác</h3>
+                <div className="section-header-modern">
+                    <h3><i className="fas fa-ellipsis-h"></i> Thông tin khác</h3>
+                    {renderActions()}
+                </div>
                 <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
                 <div className="grid-2">

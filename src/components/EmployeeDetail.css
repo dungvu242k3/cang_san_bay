@@ -304,20 +304,20 @@
     box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
-.section-header-modern {
+.employee-detail .section-header-modern {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 16px;
 }
 
-.subtitle {
+.employee-detail .subtitle {
     color: #888;
     font-size: 0.85rem;
     margin-bottom: 15px;
 }
 
-.grid-2 {
+.employee-detail .grid-2 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
@@ -326,7 +326,7 @@
     /* Increased margin */
 }
 
-.form-group {
+.employee-detail .form-group {
     background: #fff;
     border: 1px solid #e0e0e0;
     /* Slightly clearer border */
@@ -340,12 +340,12 @@
     transition: box-shadow 0.2s, border-color 0.2s;
 }
 
-.form-group:focus-within {
+.employee-detail .form-group:focus-within {
     border-color: #1976d2;
     box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1);
 }
 
-.form-group.full-width {
+.employee-detail .form-group.full-width {
     grid-column: span 4;
     /* Span all 4 columns */
 }
@@ -360,7 +360,7 @@
 }
 
 
-.form-group label {
+.employee-detail .form-group label {
     font-size: 0.7rem;
     color: #888;
     font-weight: 500;
@@ -369,9 +369,9 @@
     letter-spacing: 0.5px;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.employee-detail .form-group input,
+.employee-detail .form-group select,
+.employee-detail .form-group textarea {
     padding: 0;
     border: none !important;
     background: transparent !important;
@@ -381,9 +381,9 @@
     width: 100%;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.employee-detail .form-group input:focus,
+.employee-detail .form-group select:focus,
+.employee-detail .form-group textarea:focus {
     outline: none;
 }
 

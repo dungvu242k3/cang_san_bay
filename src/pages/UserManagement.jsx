@@ -44,7 +44,8 @@ function UserManagement() {
                     department,
                     team,
                     password,
-                    current_position
+                    current_position,
+                    status
                 `)
                 .order('employee_code')
 
@@ -93,7 +94,8 @@ function UserManagement() {
 
                 return {
                     ...emp,
-                    hasAccount: !!emp.password, // Check if password exists
+                    hasAccount: !!emp.password,
+                    employmentStatus: emp.status || 'Đang làm việc', // Use database status
                     authInfo: emp.password ? {
                         hasPassword: true
                     } : null,
@@ -553,13 +555,17 @@ function UserManagement() {
                                         )}
                                     </td>
                                     <td>
-                                        {emp.hasAccount ? (
-                                            <span className={`status-badge ${emp.authInfo.confirmed ? 'status-active' : 'status-pending'}`}>
-                                                <i className="fas fa-check-circle"></i> {emp.authInfo.confirmed ? 'Đã kích hoạt' : 'Chờ kích hoạt'}
+                                        {emp.employmentStatus === 'Nghỉ việc' ? (
+                                            <span className="status-badge status-inactive">
+                                                <i className="fas fa-user-slash"></i> Đã nghỉ việc
+                                            </span>
+                                        ) : emp.hasAccount ? (
+                                            <span className="status-badge status-active">
+                                                <i className="fas fa-check-circle"></i> Đã kích hoạt
                                             </span>
                                         ) : (
-                                            <span className="status-badge status-inactive">
-                                                <i className="fas fa-times-circle"></i> Chưa tạo
+                                            <span className="status-badge status-pending">
+                                                <i className="fas fa-clock"></i> Chờ tạo
                                             </span>
                                         )}
                                     </td>
@@ -686,12 +692,12 @@ function UserManagement() {
                                     </div>
                                     <div className="info-row">
                                         <span className="label">Trạng thái:</span>
-                                        {selectedEmployee.hasAccount ? (
-                                            <span className={`status-badge ${selectedEmployee.authInfo?.confirmed ? 'status-active' : 'status-pending'}`}>
-                                                Đã kích hoạt
-                                            </span>
+                                        {selectedEmployee.employmentStatus === 'Nghỉ việc' ? (
+                                            <span className="status-badge status-inactive">Đã nghỉ việc</span>
+                                        ) : selectedEmployee.hasAccount ? (
+                                            <span className="status-badge status-active">Đã kích hoạt</span>
                                         ) : (
-                                            <span className="status-badge status-inactive">Chưa có tài khoản</span>
+                                            <span className="status-badge status-pending">Chờ tạo</span>
                                         )}
                                     </div>
                                     <div className="info-row">

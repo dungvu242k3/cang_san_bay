@@ -105,7 +105,7 @@ const reverseMap = {
     'kham_suc_khoe': 'kham-suc-khoe'
 };
 
-function ProfileMenu({ activeSection = 'ly_lich', onSectionChange }) {
+function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onImport, onDownloadTemplate }) {
     const [expandedSections, setExpandedSections] = useState(['so-yeu-ly-lich']);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -132,11 +132,14 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange }) {
             <div className="profile-menu-header">
                 <span className="profile-menu-title">MỤC LỤC</span>
                 <div className="profile-menu-actions">
-                    <button className="action-btn export">
+                    <button className="action-btn export" onClick={onExport}>
                         <i className="fas fa-download"></i> Export
                     </button>
-                    <button className="action-btn import">
+                    <button className="action-btn import" onClick={onImport}>
                         <i className="fas fa-upload"></i> Import
+                    </button>
+                    <button className="action-btn template" onClick={onDownloadTemplate} title="Tải file mẫu Excel">
+                        <i className="fas fa-file-alt"></i> Mẫu
                     </button>
                 </div>
             </div>
