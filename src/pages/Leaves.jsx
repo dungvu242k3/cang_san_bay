@@ -30,7 +30,7 @@ export default function LeavesPage() {
     const [customLeaveType, setCustomLeaveType] = useState('');
 
     // Filters
-    const [filterStatus, setFilterStatus] = useState('Chờ duyệt'); // Default pending
+    const [filterStatus, setFilterStatus] = useState(''); // Default All
     const [filterDate, setFilterDate] = useState('');
 
     // Form State
@@ -93,50 +93,44 @@ export default function LeavesPage() {
     const fetchLeaves = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Leaves with role-based filtering
+            // 1. Fetch ALL Leaves (No more role-based filtering here)
             let query = supabase.from('employee_leaves').select('*');
-
-            if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
-                // To filter leaves by department, we might need a join or a subquery. 
-                // Since leave table only has employee_code, we use a subquery/join logic or filter after fetching profiles.
-                // For simplicity and security, let's fetch profiles in the dept first.
-                const { data: deptEmps } = await supabase.from('employee_profiles').select('employee_code').eq('department', user.dept_scope);
-                const codes = deptEmps.map(e => e.employee_code);
-                query = query.in('employee_code', codes);
-            } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
-                const { data: teamEmps } = await supabase.from('employee_profiles').select('employee_code').eq('team', user.team_scope);
-                const codes = teamEmps.map(e => e.employee_code);
-                query = query.in('employee_code', codes);
-            } else if (user?.role_level === 'STAFF') {
-                query = query.eq('employee_code', user.employee_code);
-            }
 
             const { data: leavesData, error: leavesError } = await query.order('created_at', { ascending: false });
 
             if (leavesError) throw leavesError;
 
-            // 2. Fetch Profiles for mapping names
+            // 2. Fetch Profiles for mapping names (employees + approvers)
             const employeeCodes = [...new Set(leavesData.map(l => l.employee_code))];
+            const approverCodes = [...new Set(leavesData.filter(l => l.approved_by).map(l => l.approved_by))];
+            const allCodes = [...new Set([...employeeCodes, ...approverCodes])];
             let profilesMap = {};
 
-            if (employeeCodes.length > 0) {
+            if (allCodes.length > 0) {
                 const { data: profilesData, error: profilesError } = await supabase
                     .from('employee_profiles')
-                    .select('employee_code, first_name, last_name')
-                    .in('employee_code', employeeCodes);
+                    .select('employee_code, first_name, last_name, department, team')
+                    .in('employee_code', allCodes);
 
                 if (!profilesError && profilesData) {
                     profilesMap = profilesData.reduce((acc, profile) => {
-                        acc[profile.employee_code] = `${profile.last_name || ''} ${profile.first_name || ''}`.trim();
+                        acc[profile.employee_code] = {
+                            name: `${profile.last_name || ''} ${profile.first_name || ''}`.trim(),
+                            department: profile.department,
+                            team: profile.team
+                        };
                         return acc;
                     }, {});
                 }
             }
 
-            // 3. Map names
+            // 3. Map names and metadata (employee + approver)
             const leavesWithNames = leavesData.map(l => ({
                 ...l,
-                employee_name: profilesMap[l.employee_code] || 'Không xác định'
+                employee_name: profilesMap[l.employee_code]?.name || 'Không xác định',
+                employee_dept: profilesMap[l.employee_code]?.department,
+                employee_team: profilesMap[l.employee_code]?.team,
+                approver_name: l.approved_by ? (profilesMap[l.approved_by]?.name || l.approved_by) : null
             }));
 
             setLeaves(leavesWithNames || []);
@@ -197,13 +191,18 @@ export default function LeavesPage() {
     };
 
     const handleApprove = async (id) => {
-        if (!checkAction('edit', { module: 'leaves' })) {
-            alert('Bạn không có quyền duyệt đơn nghỉ phép!');
+        const leave = leaves.find(l => l.id === id);
+        if (!checkAction('edit', { module: 'leaves', department: leave?.employee_dept, team: leave?.employee_team })) {
+            alert('Bạn không có quyền duyệt đơn nghỉ phép này!');
             return;
         }
         if (!window.confirm('Bạn có chắc muốn CHẤP THUẬN đơn này?')) return;
         try {
-            const { error } = await supabase.from('employee_leaves').update({ status: 'Đã duyệt' }).eq('id', id);
+            const { error } = await supabase.from('employee_leaves').update({
+                status: 'Đã duyệt',
+                approved_by: user.employee_code,
+                approved_at: new Date().toISOString()
+            }).eq('id', id);
             if (error) throw error;
             fetchLeaves();
         } catch (error) {
@@ -212,8 +211,9 @@ export default function LeavesPage() {
     };
 
     const initiateReject = (id) => {
-        if (!checkAction('edit', { module: 'leaves' })) {
-            alert('Bạn không có quyền từ chối đơn nghỉ phép!');
+        const leave = leaves.find(l => l.id === id);
+        if (!checkAction('edit', { module: 'leaves', department: leave?.employee_dept, team: leave?.employee_team })) {
+            alert('Bạn không có quyền từ chối đơn nghỉ phép này!');
             return;
         }
         setSelectedLeaveId(id);
@@ -227,7 +227,9 @@ export default function LeavesPage() {
             const { error } = await supabase.from('employee_leaves')
                 .update({
                     status: 'Từ chối',
-                    note: rejectReason // Save reason to note or a new column if exists. Using note for now.
+                    note: rejectReason,
+                    approved_by: user.employee_code,
+                    approved_at: new Date().toISOString()
                 })
                 .eq('id', selectedLeaveId);
 
@@ -239,6 +241,21 @@ export default function LeavesPage() {
         }
     };
 
+    const handleDelete = async (id) => {
+        const leave = leaves.find(l => l.id === id);
+        if (!checkAction('delete', { module: 'leaves', department: leave?.employee_dept, team: leave?.employee_team })) {
+            alert('Bạn không có quyền xóa đơn nghỉ phép này!');
+            return;
+        }
+        if (!window.confirm('Bạn có chắc muốn XÓA đơn nghỉ phép này? Hành động không thể hoàn tác.')) return;
+        try {
+            const { error } = await supabase.from('employee_leaves').delete().eq('id', id);
+            if (error) throw error;
+            fetchLeaves();
+        } catch (error) {
+            alert('Lỗi xóa: ' + error.message);
+        }
+    };
     const handleExport = () => {
         if (leaves.length === 0) return alert('Không có dữ liệu để xuất!');
 
@@ -342,10 +359,10 @@ export default function LeavesPage() {
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
-                        <option value="Chờ duyệt">⏳ Chờ duyệt (Mặc định)</option>
+                        <option value="">📋 Tất cả (Mặc định)</option>
+                        <option value="Chờ duyệt">⏳ Chờ duyệt</option>
                         <option value="Đã duyệt">✅ Đã duyệt</option>
                         <option value="Từ chối">❌ Từ chối</option>
-                        <option value="">📋 Tất cả</option>
                     </select>
 
                     <input
@@ -390,14 +407,27 @@ export default function LeavesPage() {
                                             <span className="label">Lý do:</span>
                                             <span className="value">{leave.reason}</span>
                                         </div>
+                                        {leave.approver_name && (
+                                            <div className="info-row">
+                                                <span className="label">{leave.status === 'Đã duyệt' ? 'Người duyệt:' : 'Người từ chối:'}</span>
+                                                <span className="value">{leave.approver_name}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves' }) && (
+                                    {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves', department: leave.employee_dept, team: leave.employee_team }) && leave.employee_code !== user?.employee_code && (
                                         <div className="card-footer">
                                             <button className="btn-mobile-approve" onClick={() => handleApprove(leave.id)}>
                                                 <i className="fas fa-check"></i> Duyệt
                                             </button>
                                             <button className="btn-mobile-reject" onClick={() => initiateReject(leave.id)}>
                                                 <i className="fas fa-times"></i> Từ chối
+                                            </button>
+                                        </div>
+                                    )}
+                                    {checkAction('delete', { module: 'leaves', department: leave.employee_dept, team: leave.employee_team }) && (
+                                        <div className="card-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+                                            <button className="btn-mobile-reject" onClick={() => handleDelete(leave.id)} style={{ width: '100%' }}>
+                                                <i className="fas fa-trash"></i> Xóa đơn
                                             </button>
                                         </div>
                                     )}
@@ -424,6 +454,7 @@ export default function LeavesPage() {
                                 <th>Số ngày</th>
                                 <th>Lý do</th>
                                 <th>Trạng thái</th>
+                                <th>Người duyệt</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -431,7 +462,7 @@ export default function LeavesPage() {
                             {sortedDates.map(dateKey => (
                                 <Fragment key={dateKey}>
                                     <tr key={`header-${dateKey}`} className="group-header-row">
-                                        <td colSpan="9">
+                                        <td colSpan="10">
                                             <i className="far fa-calendar-alt mr-2"></i> {dateKey}
                                         </td>
                                     </tr>
@@ -449,8 +480,11 @@ export default function LeavesPage() {
                                                     {leave.status}
                                                 </span>
                                             </td>
+                                            <td style={{ fontSize: '0.85rem', color: '#4a5568' }}>
+                                                {leave.approver_name || '—'}
+                                            </td>
                                             <td>
-                                                {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves' }) && (
+                                                {leave.status === 'Chờ duyệt' && checkAction('edit', { module: 'leaves', department: leave.employee_dept, team: leave.employee_team }) && leave.employee_code !== user?.employee_code && (
                                                     <div className="d-flex">
                                                         <button
                                                             className="btn-action-approve"
@@ -468,6 +502,16 @@ export default function LeavesPage() {
                                                         </button>
                                                     </div>
                                                 )}
+                                                {checkAction('delete', { module: 'leaves', department: leave.employee_dept, team: leave.employee_team }) && (
+                                                    <button
+                                                        className="btn-action-reject"
+                                                        title="Xóa"
+                                                        onClick={() => handleDelete(leave.id)}
+                                                        style={{ marginLeft: '4px' }}
+                                                    >
+                                                        <i className="fas fa-trash"></i>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -476,7 +520,7 @@ export default function LeavesPage() {
 
                             {sortedDates.length === 0 && (
                                 <tr>
-                                    <td colSpan="9" className="text-center p-5 text-muted">
+                                    <td colSpan="10" className="text-center p-5 text-muted">
                                         {filterStatus === 'Chờ duyệt' ? 'Không có đơn chờ duyệt nào' : 'Không tìm thấy dữ liệu'}
                                     </td>
                                 </tr>

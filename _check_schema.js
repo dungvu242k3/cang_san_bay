@@ -1,5 +1,7 @@
 const { createClient } = require('@supabase/supabase-js')
-const s = createClient('https://lfwwqkehjapbtlmhhouy.supabase.co', 'sb_publishable_ilFNcDqsH6SG-SGs2QoVuQ_pG6LLfmS')
+require('dotenv').config()
+
+const s = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
 
 async function main() {
     const { data, error } = await s.from('documents').select('*').limit(1)

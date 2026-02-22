@@ -359,73 +359,54 @@ const MobileDutySchedule = ({ days, onDateClick, renderEmployees }) => {
 };
 
 const CalendarToolbar = (toolbar) => {
-    const { label, view, views, onNavigate, onView, localizer, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations } = toolbar;
-    const [showFilters, setShowFilters] = useState(false);
-    const isMobile = window.innerWidth < 768;
+    const { label, view, views, onNavigate, onView, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations, isMobile } = toolbar;
 
     const goToBack = () => onNavigate('PREV');
     const goToNext = () => onNavigate('NEXT');
     const goToToday = () => onNavigate('TODAY');
 
     return (
-        <div className={`rbc-toolbar ${isMobile ? 'flex-column align-items-stretch gap-2' : ''}`}>
-            <div className="d-flex justify-content-between align-items-center w-100">
+        <div className="rbc-toolbar">
+            <div className="d-flex align-items-center justify-content-center no-wrap-toolbar-inner">
+                {/* 1. Navigation */}
                 <span className="rbc-btn-group">
-                    <button type="button" onClick={goToBack}><i className="fas fa-chevron-left"></i></button>
-                    {!isMobile && <button type="button" onClick={goToToday}>Hôm nay</button>}
-                    <button type="button" onClick={goToNext}><i className="fas fa-chevron-right"></i></button>
+                    <button type="button" className="nav-btn" onClick={goToBack} title="Trước">
+                        <i className="fas fa-chevron-left"></i>
+                    </button>
+                    {!isMobile && (
+                        <button type="button" className="today-btn" onClick={goToToday}>
+                            Hôm nay
+                        </button>
+                    )}
+                    <button type="button" className="nav-btn" onClick={goToNext} title="Sau">
+                        <i className="fas fa-chevron-right"></i>
+                    </button>
                 </span>
 
-                <span className="rbc-toolbar-label" style={isMobile ? { fontSize: '15px' } : {}}>{label}</span>
+                {/* 2. Date Label */}
+                <span className="rbc-toolbar-label">{label}</span>
 
-                {isMobile ? (
-                    <button
-                        type="button"
-                        className={`btn-filter-mobile ${showFilters ? 'active' : ''}`}
-                        onClick={() => setShowFilters(!showFilters)}
-                        style={{
-                            border: '1px solid #d1d1d6',
-                            borderRadius: '6px',
-                            padding: '4px 8px',
-                            background: showFilters ? '#007aff' : '#fff',
-                            color: showFilters ? '#fff' : '#1d1d1f'
-                        }}
-                    >
-                        <i className="fas fa-filter"></i>
-                    </button>
-                ) : (
-                    <span className="rbc-btn-group">
-                        {views.map(v => (
-                            <button
-                                key={v}
-                                type="button"
-                                className={view === v ? 'rbc-active' : ''}
-                                onClick={() => onView(v)}
-                            >
-                                {messages[v] || v}
-                            </button>
-                        ))}
-                    </span>
-                )}
-            </div>
+                {/* 3. View Switcher */}
+                <span className="rbc-btn-group view-switcher">
+                    {views.map(v => (
+                        <button
+                            key={v}
+                            type="button"
+                            className={view === v ? 'rbc-active' : ''}
+                            onClick={() => onView(v)}
+                        >
+                            {messages[v] || v}
+                        </button>
+                    ))}
+                </span>
 
-            {(showFilters || !isMobile) && (
-                <div style={{ display: 'flex', gap: isMobile ? '8px' : '8px', alignItems: 'center', flexDirection: isMobile ? 'column' : 'row', marginTop: isMobile ? '8px' : '0', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0', background: isMobile ? '#f8f9fa' : 'transparent', borderRadius: isMobile ? '8px' : '0' }}>
+                {/* 4. Filters */}
+                <div className="calendar-filters-container d-flex">
                     <select
                         value={filterLocation}
                         onChange={(e) => setFilterLocation(e.target.value)}
-                        className="form-select-macos"
-                        style={{
-                            border: '1px solid #e5e5e7',
-                            borderRadius: '6px',
-                            padding: '4px 24px 4px 10px',
-                            fontSize: '12px',
-                            background: isMobile ? '#fff' : '#f5f5f7',
-                            cursor: 'pointer',
-                            outline: 'none',
-                            minWidth: isMobile ? '100%' : '120px',
-                            height: isMobile ? '32px' : '30px'
-                        }}
+                        className="form-control-premium calendar-select-premium"
+                        style={{ width: isMobile ? '120px' : '150px' }}
                     >
                         <option value="">-- Địa điểm --</option>
                         {getUniqueLocations().map(loc => (
@@ -436,49 +417,21 @@ const CalendarToolbar = (toolbar) => {
                     <select
                         value={filterScope}
                         onChange={(e) => setFilterScope(e.target.value)}
-                        className="form-select-macos"
-                        style={{
-                            border: '1px solid #e5e5e7',
-                            borderRadius: '6px',
-                            padding: '4px 24px 4px 10px',
-                            fontSize: '12px',
-                            background: isMobile ? '#fff' : '#f5f5f7',
-                            cursor: 'pointer',
-                            outline: 'none',
-                            minWidth: isMobile ? '100%' : '120px',
-                            height: isMobile ? '32px' : '30px'
-                        }}
+                        className="form-control-premium calendar-select-premium"
+                        style={{ width: isMobile ? '120px' : '150px' }}
                     >
                         <option value="">-- Đơn vị --</option>
-                        <option value="PERSONAL">Cá nhân</option>
-                        <option value="UNIT">Đội</option>
-                        <option value="OFFICE">Phòng</option>
-                        <option value="COMPANY">Cảng</option>
+                        <option value="all">Tất cả đơn vị</option>
+                        <option value="department">Phòng ban của tôi</option>
+                        <option value="team">Tổ của tôi</option>
                     </select>
-
-                    {isMobile && (
-                        <div className="rbc-btn-group w-100 mt-1">
-                            {views.map(v => (
-                                <button
-                                    key={v}
-                                    type="button"
-                                    className={`flex-fill ${view === v ? 'rbc-active' : ''}`}
-                                    onClick={() => {
-                                        onView(v);
-                                        setShowFilters(false);
-                                    }}
-                                    style={{ fontSize: '11px' }}
-                                >
-                                    {messages[v] || v}
-                                </button>
-                            ))}
-                        </div>
-                    )}
                 </div>
-            )}
+            </div>
         </div>
     );
 };
+
+
 
 export default function CalendarPage() {
     const { user, checkAction } = useAuth();
@@ -1840,6 +1793,7 @@ export default function CalendarPage() {
                                         filterScope={filterScope}
                                         setFilterScope={setFilterScope}
                                         getUniqueLocations={getUniqueLocations}
+                                        isMobile={isMobile}
                                     />
                                 )
                             }}

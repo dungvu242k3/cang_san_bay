@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Header from './Header'
@@ -6,7 +6,7 @@ import Sidebar from './Sidebar'
 import TopNavBar from './TopNavBar'
 
 function Layout({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, initialized } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -31,7 +31,8 @@ function Layout({ children }) {
     }
   }, [isMobileMenuOpen])
 
-  if (loading) {
+  // Wait until session check is fully done before deciding to redirect
+  if (!initialized || loading) {
     return <div>Đang tải...</div>
   }
 
@@ -41,18 +42,18 @@ function Layout({ children }) {
 
   return (
     <div>
-      <Header 
+      <Header
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         isMenuOpen={isMobileMenuOpen}
       />
       <TopNavBar isMenuOpen={isMobileMenuOpen} />
       <div className="container">
-        <Sidebar 
-          className={isMobileMenuOpen ? 'mobile-open' : ''} 
+        <Sidebar
+          className={isMobileMenuOpen ? 'mobile-open' : ''}
           onLinkClick={() => setIsMobileMenuOpen(false)}
         />
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="mobile-overlay"
             onClick={() => setIsMobileMenuOpen(false)}
           />

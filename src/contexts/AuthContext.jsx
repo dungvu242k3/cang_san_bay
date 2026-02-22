@@ -31,20 +31,52 @@ const verifyPassword = async (password, hashedPassword) => {
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(false)
+    const [initialized, setInitialized] = useState(false)
 
     useEffect(() => {
-        // Check for existing session from localStorage
-        const savedEmployeeCode = localStorage.getItem('currentEmployeeCode')
-        if (savedEmployeeCode) {
-            fetchUserRole(savedEmployeeCode).catch(err => {
-                console.warn("Session restore failed, clearing:", err)
-                localStorage.removeItem('currentEmployeeCode')
-                setUser(null)
-            })
-        } else {
-            setLoading(false)
+        const initAuth = async () => {
+            const savedEmployeeCode = localStorage.getItem('currentEmployeeCode')
+            if (!savedEmployeeCode) {
+                setInitialized(true)
+                return
+            }
+
+            // OPTIMISTIC RESTORE: immediately load from cache so UI never flashes login
+            const cachedUser = localStorage.getItem('cachedUserData')
+            if (cachedUser) {
+                try {
+                    const parsed = JSON.parse(cachedUser)
+                    if (parsed.employee_code === savedEmployeeCode) {
+                        setUser(parsed)
+                        setInitialized(true)
+                        console.log('⚡ [Auth Init] Session restored instantly from cache')
+                    }
+                } catch {
+                    localStorage.removeItem('cachedUserData')
+                }
+            }
+
+            // BACKGROUND: verify & refresh from Supabase without blocking UI
+            setLoading(true)
+            try {
+                await fetchUserRole(savedEmployeeCode)
+                console.log('✅ [Auth Init] Session verified with Supabase')
+            } catch (err) {
+                console.error('❌ [Auth Init] Session verify failed:', err)
+                if (err.message?.includes('Không tìm thấy') || err.message?.includes('Nghỉ việc')) {
+                    localStorage.removeItem('currentEmployeeCode')
+                    localStorage.removeItem('cachedUserData')
+                    setUser(null)
+                }
+                // Network error: keep cached user, don't log them out
+            } finally {
+                setLoading(false)
+                setInitialized(true) // ensure initialized even if no cache
+            }
         }
+
+        initAuth()
     }, [])
 
     const fetchUserRole = async (employeeCode) => {
@@ -156,6 +188,8 @@ export function AuthProvider({ children }) {
             })
 
             setUser(userData)
+            // Cache user data for instant restore on next page load
+            localStorage.setItem('cachedUserData', JSON.stringify(userData))
             setLoading(false)
         } catch (err) {
             console.error("❌ [Login Flow] Error fetching user role:", err)
@@ -212,6 +246,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         localStorage.removeItem('currentEmployeeCode')
+        localStorage.removeItem('cachedUserData')
         setUser(null)
     }
 
@@ -222,6 +257,7 @@ export function AuthProvider({ children }) {
         <AuthContext.Provider value={{
             user,
             loading,
+            initialized,
             checkPermission,
             checkAction,
             refreshUser: () => {

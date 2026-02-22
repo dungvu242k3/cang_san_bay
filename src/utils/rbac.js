@@ -74,17 +74,38 @@ export const canPerformAction = (user, action, targetData) => {
 
     // 1. Check Matrix for base capability (edit/delete)
     if (!user.permissions) return false
-    const rule = user.permissions.find(p => p.permission_key === targetData?.module || 'profiles')
+    const moduleKey = targetData?.module || 'profiles'
+    const rule = user.permissions.find(p => p.permission_key === moduleKey)
 
     if (!rule) return false
 
-    if (action === 'edit' && !rule.can_edit) return false
+    // 'create' is treated as an 'edit' capability in the matrix
+    if ((action === 'edit' || action === 'create') && !rule.can_edit) return false
     if (action === 'delete' && !rule.can_delete) return false
 
     // 2. Check Organizational Scope (Inheritance)
     // Level 2 (Board) can usually see all data if they have view permission
     if (user.role_level === 'BOARD_DIRECTOR') return true
 
+    // 2.5 Ownership-based or Action-based check for modules without dept/team (e.g. calendar)
+    // These modules pre-filter data by scope during fetch, so if matrix allows it,
+    // we only need to verify ownership for Staff level.
+    const hasDeptTeam = targetData?.department || targetData?.team
+    const hasOwner = targetData?.created_by || targetData?.employee_code
+
+    // If it's a creation check without specific target data, allow it (already passed matrix)
+    if (action === 'create' && !hasDeptTeam && !hasOwner) return true
+
+    if (!hasDeptTeam && hasOwner) {
+        // DEPT_HEAD / TEAM_LEADER: already see only scoped data → matrix is enough
+        if (user.role_level === 'DEPT_HEAD' || user.role_level === 'TEAM_LEADER') return true
+        // STAFF: can only edit/delete own items
+        if (user.role_level === 'STAFF') {
+            return (targetData.created_by || targetData.employee_code) === user.employee_code
+        }
+    }
+
+    // 3. Standard dept/team scope check for modules with explicit dept/team fields
     // Level 3 (Dept Head)
     if (user.role_level === 'DEPT_HEAD') {
         if (!targetData) return false

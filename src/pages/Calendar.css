@@ -62,43 +62,180 @@
 
 /* Toolbar - macOS Style */
 .rbc-toolbar {
-    padding: 16px 20px;
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e7;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(229, 229, 231, 0.8);
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    /* Allow scrolling if too narrow */
 }
 
 .rbc-toolbar button {
     border: 1px solid #d1d1d6;
     color: #1d1d1f;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 6px 14px;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
     background: #ffffff;
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .rbc-toolbar button:hover {
     background-color: #f5f5f7;
     border-color: #a1a1a6;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.rbc-toolbar button:active {
+    transform: translateY(0);
 }
 
 .rbc-toolbar button.rbc-active {
-    background-color: #007aff;
+    background: linear-gradient(135deg, #007aff, #0051d5);
     color: white;
     border-color: #007aff;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+/* Nav groups as segmented controls */
+.rbc-btn-group {
+    background: #f2f2f7;
+    padding: 3px;
+    border-radius: 10px;
+    display: flex;
+    gap: 2px;
+}
+
+.rbc-btn-group button {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 7px !important;
+    padding: 5px 12px !important;
+    font-weight: 400 !important;
+}
+
+.rbc-btn-group button.rbc-active {
+    background: #ffffff !important;
+    color: #1d1d1f !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
 }
 
 .rbc-toolbar-label {
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 800;
     color: #1d1d1f;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    min-width: unset !important;
+    width: auto !important;
+    flex-grow: 0 !important;
+}
+
+@media (max-width: 767px) {
+    .rbc-toolbar {
+        padding: 4px 6px !important;
+        justify-content: flex-start !important;
+        /* Fix cut-off at start */
+        overflow-x: auto;
+    }
+
+    .rbc-toolbar-label {
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        min-width: unset !important;
+        margin: 0 4px !important;
+        white-space: nowrap;
+    }
+
+    .rbc-btn-group {
+        padding: 2px !important;
+        gap: 1px !important;
+    }
+
+    .rbc-btn-group button {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+        min-width: unset !important;
+    }
+
+    .view-switcher button {
+        padding: 4px 5px !important;
+    }
+
+    .calendar-select-premium {
+        padding-left: 4px !important;
+        padding-right: 20px !important;
+        font-size: 10px !important;
+        height: 28px !important;
+        background-size: 8px !important;
+        background-position: right 4px center !important;
+    }
+}
+
+.no-wrap-toolbar-inner {
+    display: flex;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 4px;
+    width: max-content;
+    /* Ensure it doesn't wrap and stays full width */
+    min-width: 100%;
+    -ms-overflow-style: none;
+    /* Hide scrollbar for IE/Edge */
+    scrollbar-width: none;
+    /* Hide scrollbar for Firefox */
+}
+
+@media (min-width: 768px) {
+    .no-wrap-toolbar-inner {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .no-wrap-toolbar-inner {
+        gap: 4px !important;
+    }
+}
+
+.no-wrap-toolbar-inner::-webkit-scrollbar {
+    display: none;
+    /* Hide scrollbar for Chrome/Safari */
+}
+
+/* Modern Select for Calendar Filters */
+.calendar-select-premium {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2386868b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px;
+    padding-right: 32px !important;
+    border: 1px solid #e5e5e7 !important;
+    transition: all 0.2s ease !important;
+}
+
+.calendar-select-premium:focus {
+    border-color: #007aff !important;
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1) !important;
+    background-color: #ffffff !important;
 }
 
 /* Header - Days of week */
@@ -140,28 +277,80 @@
     background-color: #f0f9ff !important;
 }
 
-.rbc-current-time-indicator {
-    background-color: #ff3b30;
-    height: 2px;
-    z-index: 10;
-}
-
-/* Date numbers */
-.rbc-date-cell {
-    padding: 6px 8px;
-    text-align: right;
-    font-size: 13px;
-    color: #1d1d1f;
-}
-
-.rbc-off-range .rbc-date-cell {
-    color: #c7c7cc;
-}
-
 .rbc-today .rbc-date-cell {
     font-weight: 600;
     color: #007aff;
 }
+
+/* New Modern Filters Layout */
+.calendar-filters-container {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.calendar-filters-container.mobile-filters {
+    flex-direction: column;
+    width: 100%;
+    padding: 16px;
+    background: #f8f8f9;
+    border-radius: 12px;
+    margin-top: 12px;
+    border: 1px solid #e5e5ea;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.filter-item {
+    min-width: 140px;
+}
+
+.mobile-filters .filter-item {
+    width: 100%;
+}
+
+/* Toolbar Button Refinements */
+.nav-btn,
+.today-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.today-btn {
+    min-width: 80px;
+}
+
+.btn-filter-mobile {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d1d1d6;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-filter-mobile.active {
+    background: #007aff;
+    color: #fff;
+    border-color: #007aff;
+}
+
 
 /* Events - macOS Style */
 .rbc-event {
