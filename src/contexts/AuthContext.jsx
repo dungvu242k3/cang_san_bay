@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../services/supabase'
-import { canPerformAction, canViewPage } from '../utils/rbac'
+import { canPerformAction, canViewPage, inferRoleFromPosition } from '../utils/rbac'
 
 const AuthContext = createContext()
 
@@ -115,37 +115,25 @@ export function AuthProvider({ children }) {
 
             console.log('   ✅ Profile found:', profile?.last_name, profile?.first_name)
 
-            // 2. Logic synchronized with UserManagement.jsx (Roles Tab)
-            const pos = (profile.current_position || '').toLowerCase()
-            let userLevel = 'STAFF' // default
+            // 2. Logic synchronized with rbac.js and UserManagement.jsx
+            let userLevel = inferRoleFromPosition(profile.current_position)
             let deptScope = null
             let teamScope = null
 
-            // Use flexible matching with includes() - SAME AS UserManagement.jsx
-            if (pos.includes('giám đốc') && !pos.includes('phó')) {
-                userLevel = 'BOARD_DIRECTOR'
-            } else if (pos.includes('phó giám đốc')) {
-                userLevel = 'BOARD_DIRECTOR'
-            } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
-                userLevel = 'DEPT_HEAD'
+            // Assign scopes based on the inferred role
+            if (userLevel === 'DEPT_HEAD') {
                 deptScope = profile.department
-            } else if (pos.includes('phó trưởng phòng') || pos.includes('phó phòng')) {
-                userLevel = 'DEPT_HEAD'
-                deptScope = profile.department
-            } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
-                userLevel = 'TEAM_LEADER'
+            } else if (userLevel === 'TEAM_LEADER') {
                 deptScope = profile.department || profile.bo_phan
-                teamScope = profile.team || profile.to_doi || profile.group_name // Robust mapping
+                teamScope = profile.team || profile.to_doi || profile.group_name
                 console.log(`[AuthContext] Role: TEAM_LEADER, Team Scope: ${teamScope}`)
-            } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
-                userLevel = 'TEAM_LEADER'
-                deptScope = profile.department || profile.bo_phan
-                teamScope = profile.team || profile.to_doi || profile.group_name // Robust mapping
-                console.log(`[AuthContext] Role: TEAM_LEADER (Deputy), Team Scope: ${teamScope}`)
+            } else if (userLevel === 'BOARD_DIRECTOR' || userLevel === 'SUPER_ADMIN') {
+                deptScope = null
+                teamScope = null
             }
 
-            // EXTRA: Super Admin Logic (based on position or code)
-            if (pos.includes('admin') || employeeCode === 'ADMIN') {
+            // EXTRA: Super Admin Logic (based on code - hard override)
+            if (employeeCode === 'ADMIN') {
                 userLevel = 'SUPER_ADMIN'
                 deptScope = null
                 teamScope = null

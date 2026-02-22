@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
-import { PERMISSIONS } from '../utils/rbac'
+import { PERMISSIONS, inferRoleFromPosition } from '../utils/rbac'
 import './Settings.css'
 
 const ROLE_OPTIONS = [
@@ -65,25 +65,7 @@ function Settings() {
             // 3. Fetch Matrix
             const { data: matrixData } = await supabase.from('rbac_matrix').select('*')
 
-            // Helper function to infer role from current_position
-            const inferRoleFromPosition = (position) => {
-                const pos = (position || '').toLowerCase()
-                if (pos.includes('giám đốc') && !pos.includes('phó')) {
-                    return 'BOARD_DIRECTOR'
-                } else if (pos.includes('phó giám đốc')) {
-                    return 'BOARD_DIRECTOR'
-                } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
-                    return 'DEPT_HEAD'
-                } else if (pos.includes('phó trưởng phòng')) {
-                    return 'DEPT_HEAD'
-                } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
-                    return 'TEAM_LEADER'
-                } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
-                    return 'TEAM_LEADER'
-                } else {
-                    return 'STAFF'
-                }
-            }
+
 
             // Build Roles Map: Infer from position, override with SUPER_ADMIN only
             const superAdminSet = new Set()

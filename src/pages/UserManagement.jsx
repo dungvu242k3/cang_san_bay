@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import SearchableDropdown from '../components/SearchableDropdown'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
+import { getRoleLabel, inferRoleFromPosition } from '../utils/rbac'
 import './UserManagement.css'
 
 function UserManagement() {
@@ -69,23 +70,7 @@ function UserManagement() {
             // 3. Merge Data
             const employeesWithAuth = (profiles || []).map(emp => {
                 // ALWAYS infer role from current_position first
-                const pos = (emp.current_position || '').toLowerCase()
-                let role = 'STAFF' // default
-
-                // Use flexible matching with includes()
-                if (pos.includes('giám đốc') && !pos.includes('phó')) {
-                    role = 'BOARD_DIRECTOR'
-                } else if (pos.includes('phó giám đốc')) {
-                    role = 'BOARD_DIRECTOR'
-                } else if (pos.includes('trưởng phòng') && !pos.includes('phó')) {
-                    role = 'DEPT_HEAD'
-                } else if (pos.includes('phó trưởng phòng') || pos.includes('phó phòng')) {
-                    role = 'DEPT_HEAD'
-                } else if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
-                    role = 'TEAM_LEADER'
-                } else if (pos.includes('đội phó') || pos.includes('tổ phó')) {
-                    role = 'TEAM_LEADER'
-                }
+                let role = inferRoleFromPosition(emp.current_position)
 
                 // ONLY override if user_roles has SUPER_ADMIN (for special admin accounts)
                 if (roleMap[emp.employee_code] === 'SUPER_ADMIN') {
@@ -388,16 +373,7 @@ function UserManagement() {
     const departments = [...new Set(employees.map(e => e.department).filter(Boolean))].sort()
     const teams = [...new Set(employees.map(e => e.team).filter(Boolean))].sort()
 
-    const getRoleLabel = (role) => {
-        const labels = {
-            'SUPER_ADMIN': 'Siêu quản trị',
-            'BOARD_DIRECTOR': 'Giám đốc',
-            'DEPT_HEAD': 'Trưởng phòng',
-            'TEAM_LEADER': 'Đội trưởng',
-            'STAFF': 'Nhân viên'
-        }
-        return labels[role] || role
-    }
+
 
     if (loading) {
         return (

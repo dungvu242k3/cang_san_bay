@@ -531,7 +531,6 @@
     border-radius: 24px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.6);
-    overflow: hidden;
     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
@@ -810,4 +809,49 @@ textarea.form-control-premium {
 
 .btn-filter-mobile.active {
     box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.4);
+}
+
+/* Employee Dropdown in Duty Modal */
+.employee-select-wrapper {
+    position: relative;
+}
+
+.employee-dropdown {
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    max-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-dropdown-search {
+    padding: 8px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.employee-dropdown-list {
+    overflow-y: auto;
+    max-height: 220px;
+    padding: 4px;
+}
+
+.employee-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.employee-dropdown-item:hover {
+    background: #f0f7ff;
+}
+
+.employee-dropdown-item.selected {
+    background: #e3f2fd;
 }

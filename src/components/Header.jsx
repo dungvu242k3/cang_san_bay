@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { getRoleLabel } from '../utils/rbac'
 import './Header.css'
 
 function Header({ onMenuToggle, isMenuOpen = false }) {
@@ -11,16 +12,7 @@ function Header({ onMenuToggle, isMenuOpen = false }) {
   const firstName = user?.profile?.first_name || displayName.split(' ').pop() || 'U'
   const initial = firstName.charAt(0).toUpperCase()
 
-  const getRoleLabel = (roleLevel) => {
-    const roleMap = {
-      'SUPER_ADMIN': 'Quản trị viên',
-      'BOARD_DIRECTOR': 'Ban Giám đốc',
-      'DEPT_HEAD': 'Trưởng phòng',
-      'TEAM_LEADER': 'Đội trưởng',
-      'STAFF': 'Nhân viên'
-    }
-    return roleMap[roleLevel] || 'Nhân viên'
-  }
+
 
   const getRoleBadgeClass = (roleLevel) => {
     const classMap = {

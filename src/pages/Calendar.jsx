@@ -4,6 +4,7 @@ import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { inferRoleFromPosition } from '../utils/rbac';
 import './Calendar.css';
 
 import 'moment/locale/vi';
@@ -47,7 +48,15 @@ const MultiEmployeeSelector = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const containerRef = useRef(null);
+
+    // Track mobile state
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Close on click outside
     useEffect(() => {
@@ -401,7 +410,6 @@ const CalendarToolbar = (toolbar) => {
                                 style={{ width: '150px' }}
                             >
                                 <option value="">-- Đơn vị --</option>
-                                <option value="all">Tất cả đơn vị</option>
                                 <option value="department">Phòng ban của tôi</option>
                                 <option value="team">Tổ của tôi</option>
                             </select>
@@ -435,7 +443,6 @@ const CalendarToolbar = (toolbar) => {
                             className="form-control-premium w-100"
                         >
                             <option value="">-- Đơn vị --</option>
-                            <option value="all">Tất cả đơn vị</option>
                             <option value="department">Phòng ban của tôi</option>
                             <option value="team">Tổ của tôi</option>
                         </select>
@@ -534,35 +541,36 @@ export default function CalendarPage() {
     };
 
     const getFilteredEvents = () => {
+        const myDept = user?.dept_scope || myProfile?.department;
         return events.filter(e => {
+            // 0. LEAVE events: only show when department filter is active
+            if (e.resource?.type === 'LEAVE') {
+                if (filterScope !== 'department') return false;
+                // When department filter is active, only show leaves from user's department
+                return e.resource.data._department === myDept;
+            }
+
             // 1. Apply Location Filter
             if (filterLocation) {
-                // If the item is an EVENT, check its location
                 if (e.resource?.type === 'EVENT') {
                     const eventLoc = (e.resource?.data?.location || '').trim();
                     if (eventLoc !== filterLocation) return false;
                 } else {
-                    // For non-events (Tasks, Leaves, etc.), strictly hide them when filtering by location
-                    // because they don't have a location.
                     return false;
                 }
             }
 
-            // 2. Apply Scope Filter
-            if (filterScope) {
+            // 2. Apply Scope Filter (skip for 'all' — show everything)
+            if (filterScope && filterScope !== 'all') {
                 const itemType = e.resource?.type;
 
                 if (itemType === 'EVENT') {
-                    // Strict match for explicit Events
                     if (e.resource?.data?.scope !== filterScope) return false;
                 }
-                else if (itemType === 'TASK' || itemType === 'LEAVE') {
-                    // Tasks and Leaves are considering 'PERSONAL'
+                else if (itemType === 'TASK') {
                     if (filterScope !== 'PERSONAL') return false;
                 }
                 else if (itemType === 'BIRTHDAY') {
-                    // Birthdays are considered 'OFFICE' (Department level) or 'UNIT' depending on view
-                    // Let's assume 'OFFICE' (Phòng ban) for now as they are fetched by Dept
                     if (filterScope !== 'OFFICE') return false;
                 }
             }
@@ -694,17 +702,36 @@ export default function CalendarPage() {
                 });
             }
 
-            // Process Leaves
+            // Process Leaves — enrich with department/team from profiles
             if (leaves) {
+                const leaveCodes = leaves.map(l => l.employee_code);
+                const empInfoMap = {};
+                if (leaveCodes.length > 0) {
+                    const { data: leaveProfiles } = await supabase
+                        .from('employee_profiles')
+                        .select('employee_code, first_name, last_name, department, team')
+                        .in('employee_code', leaveCodes);
+                    (leaveProfiles || []).forEach(p => {
+                        empInfoMap[p.employee_code] = {
+                            department: p.department,
+                            team: p.team,
+                            name: `${p.last_name} ${p.first_name}`
+                        };
+                    });
+                }
+
                 leaves.forEach(l => {
+                    const empInfo = empInfoMap[l.employee_code] || {};
+                    const displayName = empInfo.name || l.employee_code;
+                    const displayTeam = empInfo.team ? ` - ${empInfo.team}` : '';
                     formattedEvents.push({
                         id: `leave-${l.id}`,
-                        title: `Nghỉ phép: ${l.employee_code}`,
+                        title: `Nghỉ phép: ${displayName}${displayTeam}`,
                         start: new Date(l.from_date),
                         end: new Date(l.to_date),
                         allDay: true,
-                        resource: { type: 'LEAVE', data: l },
-                        color: '#ffc107', // Warning Yellow
+                        resource: { type: 'LEAVE', data: { ...l, _department: empInfo.department || '' } },
+                        color: '#ffc107',
                         textColor: '#000'
                     });
                 });
@@ -966,13 +993,18 @@ export default function CalendarPage() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, first_name, last_name, avatar_url, department, current_position, phone')
+                .select('employee_code, first_name, last_name, avatar_url, department, current_position, phone, user_roles(role_level)')
                 .order('department')
                 .order('last_name')
                 .order('first_name')
 
             if (error) throw error
-            setDutyEmployees(data || [])
+            // Flatten role_level from the join, fallback to inferred role
+            const enriched = (data || []).map(emp => ({
+                ...emp,
+                role_level: emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
+            }))
+            setDutyEmployees(enriched)
         } catch (error) {
             console.error('Error loading employees:', error)
         }
@@ -1256,39 +1288,35 @@ export default function CalendarPage() {
     const getEligibleEmployees = (field) => {
         return dutyEmployees.filter(emp => {
             const dept = (emp.department || '').toLowerCase()
-            const pos = (emp.current_position || '').toLowerCase()
+            const role = emp.role_level || 'STAFF'
 
-            // Filter logic based on field
             if (field === 'director_on_duty') {
-                const isDirectorDept = dept.includes('ban giám đốc');
-                const isDirectorTitle = pos.includes('giám đốc') && !pos.includes('thư ký');
-                if (!isDirectorDept && !isDirectorTitle) return false;
+                // Ban Giám đốc: chỉ lấy BOARD_DIRECTOR
+                return role === 'BOARD_DIRECTOR' || role === 'SUPER_ADMIN'
             }
             else if (field === 'office_duty') {
-                if (!dept.includes('văn phòng')) return false;
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && dept.includes('văn phòng')
             }
             else if (field === 'finance_planning_duty') {
-                if (!dept.includes('tài chính') && !dept.includes('kế hoạch') && !dept.includes('tc-kh')) return false;
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh'))
             }
             else if (field === 'operations_duty') {
-                if (!dept.includes('phục vụ mặt đất') && !dept.includes('pvmd')) return false;
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('phục vụ mặt đất') || dept.includes('pvmd'))
             }
             else if (field === 'technical_duty') {
-                if (!dept.includes('kỹ thuật') && !dept.includes('hạ tầng') && !dept.includes('ktht')) return false;
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht'))
             }
             else if (field === 'atc_duty') {
-                if (!dept.includes('điều hành') && !dept.includes('đhsb')) return false;
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('điều hành') || dept.includes('đhsb'))
             }
             else if (field === 'port_duty_officer') {
-                // Trực ban cảng thường là lãnh đạo các phòng vận hành hoặc ban giám đốc
-                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc'];
-                const hasRelevantDept = relevantDepts.some(d => dept.includes(d));
-                const isDutyRole = pos.includes('trực ban') || pos.includes('đội trưởng');
-
-                if (!hasRelevantDept && !isDutyRole) return false;
+                // Trực ban cảng: lãnh đạo các phòng vận hành hoặc ban giám đốc
+                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc']
+                const hasRelevantDept = relevantDepts.some(d => dept.includes(d))
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && hasRelevantDept
             }
 
-            return true;
+            return false
         })
     }
 

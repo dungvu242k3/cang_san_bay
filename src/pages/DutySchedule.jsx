@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
+import { inferRoleFromPosition } from '../utils/rbac'
 import './DutySchedule.css'
 
 export default function DutySchedule() {
@@ -32,15 +33,56 @@ export default function DutySchedule() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, ho_va_ten, first_name, last_name')
+                .select('employee_code, ho_va_ten, first_name, last_name, department, current_position, user_roles(role_level)')
+                .order('department')
                 .order('ho_va_ten')
-            
+
             if (error) throw error
-            
-            setEmployees(data || [])
+
+            // Flatten role_level from the join, fallback to inferred role
+            const enriched = (data || []).map(emp => ({
+                ...emp,
+                role_level: emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
+            }))
+            setEmployees(enriched)
         } catch (error) {
             console.error('Error loading employees:', error)
         }
+    }
+
+    const getEligibleEmployees = (field) => {
+        return employees.filter(emp => {
+            const dept = (emp.department || '').toLowerCase()
+            const role = emp.role_level || 'STAFF'
+
+            if (field === 'director_on_duty') {
+                // Ban Giám đốc: chỉ lấy BOARD_DIRECTOR
+                return role === 'BOARD_DIRECTOR' || role === 'SUPER_ADMIN'
+            }
+            else if (field === 'office_duty') {
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && dept.includes('văn phòng')
+            }
+            else if (field === 'finance_planning_duty') {
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh'))
+            }
+            else if (field === 'operations_duty') {
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('phục vụ mặt đất') || dept.includes('pvmd'))
+            }
+            else if (field === 'technical_duty') {
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht'))
+            }
+            else if (field === 'atc_duty') {
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('điều hành') || dept.includes('đhsb'))
+            }
+            else if (field === 'port_duty_officer') {
+                // Trực ban cảng: lãnh đạo các phòng vận hành hoặc ban giám đốc
+                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc']
+                const hasRelevantDept = relevantDepts.some(d => dept.includes(d))
+                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && hasRelevantDept
+            }
+
+            return false
+        })
     }
 
     const loadSchedules = async () => {
@@ -50,7 +92,7 @@ export default function DutySchedule() {
             const startOfWeek = new Date(selectedWeek)
             startOfWeek.setDate(selectedWeek.getDate() - selectedWeek.getDay() + 1) // Monday
             startOfWeek.setHours(0, 0, 0, 0)
-            
+
             const endOfWeek = new Date(startOfWeek)
             endOfWeek.setDate(startOfWeek.getDate() + 6) // Sunday
             endOfWeek.setHours(23, 59, 59, 999)
@@ -61,7 +103,7 @@ export default function DutySchedule() {
                 .gte('duty_date', startOfWeek.toISOString().split('T')[0])
                 .lte('duty_date', endOfWeek.toISOString().split('T')[0])
                 .order('duty_date')
-            
+
             if (error) throw error
 
             // Generate week days if not exists
@@ -71,7 +113,7 @@ export default function DutySchedule() {
                 date.setDate(startOfWeek.getDate() + i)
                 const dateStr = date.toISOString().split('T')[0]
                 const existing = data?.find(s => s.duty_date === dateStr)
-                
+
                 weekDays.push({
                     date: dateStr,
                     dayOfWeek: getDayOfWeek(date.getDay()),
@@ -152,14 +194,14 @@ export default function DutySchedule() {
                     .from('duty_schedules')
                     .update(scheduleData)
                     .eq('id', editingSchedule)
-                
+
                 if (error) throw error
             } else {
                 // Insert
                 const { error } = await supabase
                     .from('duty_schedules')
                     .insert(scheduleData)
-                
+
                 if (error) throw error
             }
 
@@ -179,9 +221,9 @@ export default function DutySchedule() {
                 .from('duty_schedules')
                 .delete()
                 .eq('id', id)
-            
+
             if (error) throw error
-            
+
             loadSchedules()
         } catch (error) {
             console.error('Error deleting schedule:', error)
@@ -263,16 +305,16 @@ export default function DutySchedule() {
                                     <br />
                                     <span className="date-text">({formatDate(day.date)})</span>
                                     <div className="day-actions">
-                                        <button 
-                                            className="btn-icon" 
+                                        <button
+                                            className="btn-icon"
                                             onClick={() => handleEdit(day.schedule)}
                                             title="Sửa"
                                         >
                                             <i className="fas fa-edit"></i>
                                         </button>
                                         {day.schedule && (
-                                            <button 
-                                                className="btn-icon text-danger" 
+                                            <button
+                                                className="btn-icon text-danger"
                                                 onClick={() => handleDelete(day.schedule.id)}
                                                 title="Xóa"
                                             >
@@ -326,7 +368,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, director_on_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('director_on_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -342,7 +384,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, port_duty_officer: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('port_duty_officer').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -358,7 +400,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, office_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('office_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -374,7 +416,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, finance_planning_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('finance_planning_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -390,7 +432,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, operations_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('operations_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -406,7 +448,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, technical_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('technical_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>
@@ -422,7 +464,7 @@ export default function DutySchedule() {
                                     onChange={(e) => setFormData({ ...formData, atc_duty: e.target.value })}
                                 >
                                     <option value="">-- Chọn --</option>
-                                    {employees.map(emp => (
+                                    {getEligibleEmployees('atc_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
                                             {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                         </option>

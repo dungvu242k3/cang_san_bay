@@ -33,7 +33,7 @@ export const inferRoleFromPosition = (position) => {
 
     // Dept Head
     if (pos.includes('trưởng phòng') || pos.includes('phó trưởng phòng') || pos.includes('phó phòng') ||
-        pos.includes('quyền trưởng phòng') || pos.includes('phụ trách phòng') || pos.includes('giám đốc trung tâm')) {
+        pos.includes('quyền trưởng phòng') || pos.includes('phụ trách phòng') || pos.includes('chánh văn phòng') || pos.includes('phó chánh văn phòng')) {
         return 'DEPT_HEAD'
     }
 
@@ -137,6 +137,18 @@ export const ROLE_LEVELS = {
     'DEPT_HEAD': 50,
     'TEAM_LEADER': 30,
     'STAFF': 10
+}
+
+export const ROLE_LABELS = {
+    'SUPER_ADMIN': 'Siêu quản trị',
+    'BOARD_DIRECTOR': 'Giám đốc',
+    'DEPT_HEAD': 'Trưởng phòng',
+    'TEAM_LEADER': 'Đội trưởng',
+    'STAFF': 'Nhân viên'
+}
+
+export const getRoleLabel = (role) => {
+    return ROLE_LABELS[role] || role
 }
 
 /**
