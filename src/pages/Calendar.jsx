@@ -154,95 +154,64 @@ const MultiEmployeeSelector = ({
                     <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ marginLeft: 'auto', color: '#a0aec0', fontSize: '0.8rem' }}></i>
                 </div>
                 {isOpen && (
-                    <div className="employee-dropdown" style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        marginTop: '4px',
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '10px',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                        zIndex: 1000,
-                        maxHeight: '250px',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column'
-                    }}>
-                        <div style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>
-                            <input
-                                type="text"
-                                placeholder="Tìm kiếm..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    fontSize: '0.85rem'
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus
-                            />
-                        </div>
-                        <div style={{ overflowY: 'auto', maxHeight: '200px' }}>
-                            {filtered.length > 0 ? (
-                                filtered.map(emp => {
-                                    const isSelected = selectedCodes.includes(emp.employee_code);
-                                    return (
-                                        <div
-                                            key={emp.employee_code}
-                                            onClick={() => toggleEmployee(emp.employee_code)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '10px',
-                                                background: isSelected ? '#f0f9ff' : 'white',
-                                                transition: 'background 0.2s',
-                                                borderLeft: isSelected ? '3px solid #1976d2' : '3px solid transparent'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (!isSelected) e.currentTarget.style.background = '#f7fafc';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (!isSelected) e.currentTarget.style.background = 'white';
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '28px', height: '28px', borderRadius: '50%',
-                                                background: '#e2e8f0', display: 'flex', alignItems: 'center',
-                                                justifyContent: 'center', fontSize: '12px', fontWeight: '600',
-                                                color: '#4a5568', overflow: 'hidden'
-                                            }}>
-                                                {emp.avatar_url ? (
-                                                    <img src={emp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    (emp.last_name?.[0] || '') + (emp.first_name?.[0] || '')
-                                                )}
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#2d3748' }}>
-                                                    {emp.last_name} {emp.first_name}
+                    <>
+                        {isMobile && <div className="modal-overlay" onClick={() => setIsOpen(false)} style={{ display: 'block', zIndex: 999 }}></div>}
+                        <div className={`employee-dropdown ${isMobile ? 'mobile-bottom-sheet' : ''}`} style={!isMobile ? { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px' } : {}}>
+                            {isMobile && <div className="bottom-sheet-drag-handle"></div>}
+                            <div className="employee-dropdown-search">
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="form-control-premium"
+                                    style={{ fontSize: '0.9rem' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="employee-dropdown-list">
+                                {filtered.length > 0 ? (
+                                    filtered.map(emp => {
+                                        const isSelected = selectedCodes.includes(emp.employee_code);
+                                        return (
+                                            <div
+                                                key={emp.employee_code}
+                                                onClick={() => toggleEmployee(emp.employee_code)}
+                                                className={`employee-dropdown-item ${isSelected ? 'selected' : ''}`}
+                                            >
+                                                <div style={{
+                                                    width: '32px', height: '32px', borderRadius: '50%',
+                                                    background: '#e2e8f0', display: 'flex', alignItems: 'center',
+                                                    justifyContent: 'center', fontSize: '13px', fontWeight: '600',
+                                                    color: '#4a5568', overflow: 'hidden', flexShrink: 0
+                                                }}>
+                                                    {emp.avatar_url ? (
+                                                        <img src={emp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        (emp.last_name?.[0] || '') + (emp.first_name?.[0] || '')
+                                                    )}
                                                 </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#718096' }}>
-                                                    {emp.current_position || emp.department || emp.employee_code}
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#2d3748' }}>
+                                                        {emp.last_name} {emp.first_name}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#718096' }}>
+                                                        {emp.current_position || emp.department || emp.employee_code}
+                                                    </div>
                                                 </div>
+                                                {isSelected && <i className="fas fa-check text-primary"></i>}
                                             </div>
-                                            {isSelected && <i className="fas fa-check text-primary"></i>}
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div style={{ padding: '12px', textAlign: 'center', color: '#a0aec0', fontSize: '0.9rem' }}>
-                                    Không tìm thấy kết quả
-                                </div>
-                            )}
+                                        );
+                                    })
+                                ) : (
+                                    <div style={{ padding: '20px', textAlign: 'center', color: '#a0aec0', fontSize: '0.9rem' }}>
+                                        Không tìm thấy kết quả
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
         </div>
@@ -360,73 +329,125 @@ const MobileDutySchedule = ({ days, onDateClick, renderEmployees }) => {
 
 const CalendarToolbar = (toolbar) => {
     const { label, view, views, onNavigate, onView, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations, isMobile } = toolbar;
+    const [showFilters, setShowFilters] = useState(false);
 
     const goToBack = () => onNavigate('PREV');
     const goToNext = () => onNavigate('NEXT');
     const goToToday = () => onNavigate('TODAY');
 
     return (
-        <div className="rbc-toolbar">
-            <div className="d-flex align-items-center justify-content-center no-wrap-toolbar-inner">
-                {/* 1. Navigation */}
-                <span className="rbc-btn-group">
-                    <button type="button" className="nav-btn" onClick={goToBack} title="Trước">
-                        <i className="fas fa-chevron-left"></i>
-                    </button>
-                    {!isMobile && (
-                        <button type="button" className="today-btn" onClick={goToToday}>
-                            Hôm nay
+        <div className="rbc-toolbar-container">
+            <div className="rbc-toolbar">
+                <div className="d-flex align-items-center justify-content-center no-wrap-toolbar-inner">
+                    {/* 1. Navigation */}
+                    <span className="rbc-btn-group">
+                        <button type="button" className="nav-btn" onClick={goToBack} title="Trước">
+                            <i className="fas fa-chevron-left"></i>
                         </button>
-                    )}
-                    <button type="button" className="nav-btn" onClick={goToNext} title="Sau">
-                        <i className="fas fa-chevron-right"></i>
-                    </button>
-                </span>
-
-                {/* 2. Date Label */}
-                <span className="rbc-toolbar-label">{label}</span>
-
-                {/* 3. View Switcher */}
-                <span className="rbc-btn-group view-switcher">
-                    {views.map(v => (
-                        <button
-                            key={v}
-                            type="button"
-                            className={view === v ? 'rbc-active' : ''}
-                            onClick={() => onView(v)}
-                        >
-                            {messages[v] || v}
+                        {!isMobile && (
+                            <button type="button" className="today-btn" onClick={goToToday}>
+                                Hôm nay
+                            </button>
+                        )}
+                        <button type="button" className="nav-btn" onClick={goToNext} title="Sau">
+                            <i className="fas fa-chevron-right"></i>
                         </button>
-                    ))}
-                </span>
+                    </span>
 
-                {/* 4. Filters */}
-                <div className="calendar-filters-container d-flex">
-                    <select
-                        value={filterLocation}
-                        onChange={(e) => setFilterLocation(e.target.value)}
-                        className="form-control-premium calendar-select-premium"
-                        style={{ width: isMobile ? '120px' : '150px' }}
-                    >
-                        <option value="">-- Địa điểm --</option>
-                        {getUniqueLocations().map(loc => (
-                            <option key={loc} value={loc}>{loc}</option>
+                    {/* 2. Date Label */}
+                    <span className="rbc-toolbar-label">{label}</span>
+
+                    {/* 3. View Switcher */}
+                    <span className="rbc-btn-group view-switcher">
+                        {views.map(v => (
+                            <button
+                                key={v}
+                                type="button"
+                                className={view === v ? 'rbc-active' : ''}
+                                onClick={() => onView(v)}
+                            >
+                                {messages[v] || v}
+                            </button>
                         ))}
-                    </select>
+                    </span>
 
-                    <select
-                        value={filterScope}
-                        onChange={(e) => setFilterScope(e.target.value)}
-                        className="form-control-premium calendar-select-premium"
-                        style={{ width: isMobile ? '120px' : '150px' }}
-                    >
-                        <option value="">-- Đơn vị --</option>
-                        <option value="all">Tất cả đơn vị</option>
-                        <option value="department">Phòng ban của tôi</option>
-                        <option value="team">Tổ của tôi</option>
-                    </select>
+                    {/* 4. Filters Toggle (Mobile) or Filters (Desktop) */}
+                    {isMobile ? (
+                        <button
+                            type="button"
+                            className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
+                            <i className="fas fa-filter"></i>
+                        </button>
+                    ) : (
+                        <div className="calendar-filters-container d-flex">
+                            <select
+                                value={filterLocation}
+                                onChange={(e) => setFilterLocation(e.target.value)}
+                                className="form-control-premium calendar-select-premium"
+                                style={{ width: '150px' }}
+                            >
+                                <option value="">-- Địa điểm --</option>
+                                {getUniqueLocations().map(loc => (
+                                    <option key={loc} value={loc}>{loc}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={filterScope}
+                                onChange={(e) => setFilterScope(e.target.value)}
+                                className="form-control-premium calendar-select-premium"
+                                style={{ width: '150px' }}
+                            >
+                                <option value="">-- Đơn vị --</option>
+                                <option value="all">Tất cả đơn vị</option>
+                                <option value="department">Phòng ban của tôi</option>
+                                <option value="team">Tổ của tôi</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Mobile Filter Panel */}
+            {isMobile && showFilters && (
+                <div className="mobile-filter-panel slide-down">
+                    <div className="mobile-filter-row">
+                        <label>📍 Địa điểm:</label>
+                        <select
+                            value={filterLocation}
+                            onChange={(e) => setFilterLocation(e.target.value)}
+                            className="form-control-premium w-100"
+                        >
+                            <option value="">Tất cả địa điểm</option>
+                            {getUniqueLocations().map(loc => (
+                                <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="mobile-filter-row">
+                        <label>🏢 Đơn vị:</label>
+                        <select
+                            value={filterScope}
+                            onChange={(e) => setFilterScope(e.target.value)}
+                            className="form-control-premium w-100"
+                        >
+                            <option value="">-- Đơn vị --</option>
+                            <option value="all">Tất cả đơn vị</option>
+                            <option value="department">Phòng ban của tôi</option>
+                            <option value="team">Tổ của tôi</option>
+                        </select>
+                    </div>
+
+                    <div className="mobile-filter-row">
+                        <button type="button" className="today-btn w-100" onClick={goToToday} style={{ height: '38px', borderRadius: '10px' }}>
+                            Về hôm nay
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1503,100 +1524,61 @@ export default function CalendarPage() {
                         <i className={`fas fa-chevron-${openDropdowns[field] ? 'up' : 'down'}`} style={{ marginLeft: 'auto', color: '#a0aec0' }}></i>
                     </div>
                     {openDropdowns[field] && (
-                        <div className="employee-dropdown" style={{
-                            position: 'absolute',
-                            top: '100%',
-                            left: 0,
-                            right: 0,
-                            marginTop: '4px',
-                            background: 'white',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '14px',
-                            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                            zIndex: 1000,
-                            maxHeight: '300px',
-                            overflow: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}>
-                            <div style={{ padding: '12px', borderBottom: '1px solid #e2e8f0' }}>
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm tên hoặc mã nhân viên..."
-                                    value={searchTerms[field] || ''}
-                                    onChange={(e) => setSearchTerms({ ...searchTerms, [field]: e.target.value })}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '8px',
-                                        fontSize: '0.9rem'
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    autoFocus
-                                />
-                            </div>
-                            <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
-                                {filteredEmployees(field).length > 0 ? (
-                                    filteredEmployees(field).map(emp => (
-                                        <div
-                                            key={emp.employee_code}
-                                            onClick={() => handleEmployeeSelect(field, emp.employee_code)}
-                                            style={{
-                                                padding: '12px 16px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                cursor: 'pointer',
-                                                borderBottom: '1px solid #f1f3f5',
-                                                background: selectedCode === emp.employee_code ? '#e3f2fd' : 'white',
-                                                transition: 'background 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (selectedCode !== emp.employee_code) {
-                                                    e.currentTarget.style.background = '#f8f9fa'
-                                                }
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (selectedCode !== emp.employee_code) {
-                                                    e.currentTarget.style.background = 'white'
-                                                }
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCode === emp.employee_code}
-                                                onChange={() => { }}
-                                                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#1976d2' }}
-                                            />
-                                            {emp.avatar_url ? (
-                                                <img
-                                                    src={emp.avatar_url}
-                                                    alt={`${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
-                                                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-                                                />
-                                            ) : (
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '16px', fontWeight: '600' }}>
-                                                    {(emp.first_name || emp.last_name || 'U')[0]}
+                        <>
+                            {isMobile && <div className="modal-overlay" onClick={() => toggleDropdown(field)} style={{ display: 'block', zIndex: 999 }}></div>}
+                            <div className={`employee-dropdown ${isMobile ? 'mobile-bottom-sheet' : ''}`} style={!isMobile ? { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px' } : {}}>
+                                {isMobile && <div className="bottom-sheet-drag-handle"></div>}
+                                <div className="employee-dropdown-search">
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm kiếm tên hoặc mã nhân viên..."
+                                        value={searchTerms[field] || ''}
+                                        onChange={(e) => setSearchTerms({ ...searchTerms, [field]: e.target.value })}
+                                        className="form-control-premium"
+                                        style={{ fontSize: '0.9rem' }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="employee-dropdown-list">
+                                    {filteredEmployees(field).length > 0 ? (
+                                        filteredEmployees(field).map(emp => (
+                                            <div
+                                                key={emp.employee_code}
+                                                onClick={() => handleEmployeeSelect(field, emp.employee_code)}
+                                                className={`employee-dropdown-item ${selectedCode === emp.employee_code ? 'selected' : ''}`}
+                                            >
+                                                <div style={{
+                                                    width: '40px', height: '40px', borderRadius: '50%',
+                                                    background: '#e2e8f0', display: 'flex', alignItems: 'center',
+                                                    justifyContent: 'center', fontSize: '16px', fontWeight: '600',
+                                                    color: '#666', overflow: 'hidden', flexShrink: 0
+                                                }}>
+                                                    {emp.avatar_url ? (
+                                                        <img src={emp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        (emp.first_name || emp.last_name || 'U')[0]
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: '600', color: '#2d3748' }}>
-                                                    {`${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '15px' }}>
+                                                        {`${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: '#718096' }}>
+                                                        {emp.employee_code} {emp.department ? ` • ${emp.department}` : ''}
+                                                    </div>
                                                 </div>
-                                                <div style={{ fontSize: '0.85rem', color: '#718096' }}>
-                                                    {emp.employee_code} {emp.department ? `• ${emp.department}` : ''}
-                                                </div>
+                                                {selectedCode === emp.employee_code && <i className="fas fa-check-circle text-primary" style={{ fontSize: '18px' }}></i>}
                                             </div>
+                                        ))
+                                    ) : (
+                                        <div style={{ padding: '30px', textAlign: 'center', color: '#a0aec0' }}>
+                                            Không tìm thấy nhân viên
                                         </div>
-                                    ))
-                                ) : (
-                                    <div style={{ padding: '20px', textAlign: 'center', color: '#a0aec0' }}>
-                                        Không tìm thấy nhân viên
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>

@@ -135,6 +135,25 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
 }
 
+.filter-toggle-btn {
+    border: none;
+    background: rgba(0, 122, 255, 0.08);
+    color: #007aff;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.filter-toggle-btn.active {
+    background: #007aff;
+    color: white;
+}
+
 .rbc-toolbar-label {
     font-size: 18px;
     font-weight: 800;
@@ -287,6 +306,47 @@
     display: flex;
     gap: 4px;
     align-items: center;
+}
+
+/* Mobile Filter Panel */
+.mobile-filter-panel {
+    background: #ffffff;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e5e7;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-filter-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobile-filter-row label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #86868b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.slide-down {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .calendar-filters-container.mobile-filters {
