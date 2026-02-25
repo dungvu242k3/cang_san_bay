@@ -1,4 +1,4 @@
-# HRM Cảng Hàng Không - Quản Lý Nhân Sự (React)
+# BPM Cảng hàng không quốc tế Cát Bi (React)
 
 Ứng dụng quản lý nhân sự được xây dựng với React và Vite.
 

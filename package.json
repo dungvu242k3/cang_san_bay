@@ -1,7 +1,7 @@
 {
   "name": "hr-management",
   "version": "1.0.0",
-  "description": "HRM Cảng Hàng Không - Quản Lý Nhân Sự",
+  "description": "BPM Cảng hàng không quốc tế Cát Bi",
   "private": true,
   "scripts": {
     "dev": "vite",
