@@ -1,8 +1,14 @@
 
+require('dotenv').config() // Load variables from .env
 const { createClient } = require('@supabase/supabase-js')
 
-const supabaseUrl = 'https://gsjhsmxyxjyiqovauyrp.supabase.co'
-const supabaseAnonKey = 'sb_publishable_vXBSa3eP8cvjIK2qLWI6Ug_FoYm4CNy'
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing Supabase credentials in .env file")
+    process.exit(1)
+}
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
