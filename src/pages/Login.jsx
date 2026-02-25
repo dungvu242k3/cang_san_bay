@@ -38,10 +38,15 @@ function Login() {
                 return
             }
 
-            await login(employeeCode.trim().toUpperCase(), password)
+            const res = await login(employeeCode.trim().toUpperCase(), password)
 
-            const from = location.state?.from?.pathname || '/dashboard'
-            navigate(from, { replace: true })
+            if (res.requirePasswordChange) {
+                // Redirect user to the forced password change screen
+                navigate('/change-password', { replace: true })
+            } else {
+                const from = location.state?.from?.pathname || '/dashboard'
+                navigate(from, { replace: true })
+            }
         } catch (err) {
             console.error('Login error:', err)
             if (err.message?.includes('Invalid login credentials')) {
@@ -59,8 +64,7 @@ function Login() {
                 <div className="login-header" style={{ background: '#1e3e72', borderRadius: '16px 16px 0 0', padding: '24px', margin: '-48px -48px 24px -48px' }}>
                     <div className="logo-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <img src="/1.png" alt="ACV Logo" loading="eager" style={{ height: '80px', width: 'auto', marginBottom: '15px' }} />
-                        <h2 style={{ margin: 0, color: '#fff', fontWeight: '800', fontSize: '1.4rem', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>CẢNG HÀNG KHÔNG</h2>
-                        <span style={{ fontSize: '0.9rem', color: '#fdb813', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>Quốc Tế</span>
+                        <h2 style={{ margin: 0, color: '#fff', fontWeight: '800', fontSize: '1.2rem', textShadow: '0 2px 4px rgba(0,0,0,0.2)', textAlign: 'center' }}>HPH Business Process Management</h2>
                     </div>
                 </div>
 
@@ -137,51 +141,7 @@ function Login() {
                     </div>
                 </form>
 
-                {/* Thông tin đăng nhập mặc định */}
-                <div className="login-credentials">
-                    <div className="credentials-header">
-                        <i className="fas fa-key"></i>
-                        <span>Thông tin đăng nhập mặc định</span>
-                    </div>
-                    <div className="credentials-list">
-                        <div className="credential-item">
-                            <div className="credential-role">
-                                <i className="fas fa-user-shield"></i>
-                                <span>Admin (Quản trị viên)</span>
-                            </div>
-                            <div className="credential-details">
-                                <div className="credential-row">
-                                    <span className="label">Mã nhân viên:</span>
-                                    <span className="value" onClick={() => setEmployeeCode('ADMIN')} style={{ cursor: 'pointer' }}>ADMIN</span>
-                                </div>
-                                <div className="credential-row">
-                                    <span className="label">Mật khẩu:</span>
-                                    <span className="value" onClick={() => setPassword('123456')} style={{ cursor: 'pointer' }}>123456</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="credential-item">
-                            <div className="credential-role">
-                                <i className="fas fa-user-tie"></i>
-                                <span>Nhân viên mẫu</span>
-                            </div>
-                            <div className="credential-details">
-                                <div className="credential-row">
-                                    <span className="label">Mã nhân viên:</span>
-                                    <span className="value" onClick={() => setEmployeeCode('CBA0001')} style={{ cursor: 'pointer' }}>CBA0001</span>
-                                </div>
-                                <div className="credential-row">
-                                    <span className="label">Mật khẩu:</span>
-                                    <span className="value" onClick={() => setPassword('123456')} style={{ cursor: 'pointer' }}>123456</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <p className="credentials-note">
-                        <i className="fas fa-info-circle"></i>
-                        Click vào mã nhân viên hoặc mật khẩu để tự động điền
-                    </p>
-                </div>
+
             </div>
         </div>
     )

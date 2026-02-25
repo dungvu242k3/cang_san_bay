@@ -94,6 +94,7 @@ function Tasks() {
     const [fromDate, setFromDate] = useState('')
     const [toDate, setToDate] = useState('')
     const [filterEmployee, setFilterEmployee] = useState('')
+    const [filterDepartment, setFilterDepartment] = useState('')
 
     const [showModal, setShowModal] = useState(false)
     const [modalTab, setModalTab] = useState('detail')
@@ -209,15 +210,31 @@ function Tasks() {
 
     const getVisibleEmployees = () => {
         if (!myProfile) return []
-        if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(myProfile.role)) return employees
-        if (myProfile.role === 'DEPT_HEAD') return employees.filter(e => e.dept === myProfile.dept_scope)
-        if (myProfile.role === 'TEAM_LEADER') return employees.filter(e => e.team === myProfile.team_scope)
-        return employees.filter(e => e.code === myProfile.employee_code)
+
+        let visibleEmps = []
+        if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(myProfile.role)) {
+            visibleEmps = employees
+        } else if (myProfile.role === 'DEPT_HEAD') {
+            visibleEmps = employees.filter(e => e.dept === myProfile.dept_scope)
+        } else if (myProfile.role === 'TEAM_LEADER') {
+            visibleEmps = employees.filter(e => e.team === myProfile.team_scope)
+        } else {
+            visibleEmps = employees.filter(e => e.code === myProfile.employee_code)
+        }
+
+        // If a department is selected in the filter, strictly show employees of that department
+        if (filterDepartment) {
+            visibleEmps = visibleEmps.filter(e => e.dept === filterDepartment)
+        }
+
+        return visibleEmps
     }
 
     const getVisibleDepartments = () => {
         if (!myProfile) return []
-        if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(myProfile.role)) return departments
+        if (['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(myProfile.role)) {
+            return departments.filter(d => d !== 'SUPER_ADMIN' && d !== 'SUPER ADMIN')
+        }
         return departments.filter(d => d === (myProfile.dept_scope || myProfile.department))
     }
 
@@ -297,33 +314,68 @@ function Tasks() {
             subjectCode = filterEmployee
             const emp = employees.find(e => e.code === filterEmployee)
             if (emp) subjectDept = emp.dept
+        } else if (filterDepartment) {
+            // When filtering by department, we evaluate all employees in that department
+            const deptEmps = employees.filter(e => e.dept === filterDepartment).map(e => e.code)
+            subjectDept = filterDepartment
+            // subjectCode is null, we check against an array of deptEmps below
         } else if (activeTab === 'mine') {
             subjectCode = myCode
             subjectDept = myDept
         }
 
         // Sub-tab Logic
-        if (subjectCode) {
+        if (subjectCode || filterDepartment) {
             if (subTab === 'received') {
                 filtered = filtered.filter(t => {
-                    return t.assignments.some(a =>
-                        (a.assignee_type === 'PERSON' && a.assignee_code === subjectCode) ||
-                        (a.assignee_type === 'DEPARTMENT' && a.assignee_code === subjectDept)
-                    )
+                    return t.assignments.some(a => {
+                        if (a.assignee_type === 'DEPARTMENT' && a.assignee_code === subjectDept) return true;
+                        if (a.assignee_type === 'PERSON') {
+                            if (filterEmployee) return a.assignee_code === subjectCode;
+                            if (filterDepartment) {
+                                const emp = employees.find(e => e.code === a.assignee_code);
+                                return emp && emp.dept === subjectDept;
+                            }
+                            return a.assignee_code === subjectCode;
+                        }
+                        return false;
+                    })
                 })
             } else if (subTab === 'actions') {
                 filtered = filtered.filter(t => {
-                    const isAssignee = t.assignments.some(a =>
-                        (a.assignee_type === 'PERSON' && a.assignee_code === subjectCode) ||
-                        (a.assignee_type === 'DEPARTMENT' && a.assignee_code === subjectDept)
-                    )
+                    const isAssignee = t.assignments.some(a => {
+                        if (a.assignee_type === 'DEPARTMENT' && a.assignee_code === subjectDept) return true;
+                        if (a.assignee_type === 'PERSON') {
+                            if (filterEmployee) return a.assignee_code === subjectCode;
+                            if (filterDepartment) {
+                                const emp = employees.find(e => e.code === a.assignee_code);
+                                return emp && emp.dept === subjectDept;
+                            }
+                            return a.assignee_code === subjectCode;
+                        }
+                        return false;
+                    })
                     const needsAction = ['Mới giao', 'Đang làm'].includes(t.status)
                     return isAssignee && needsAction
                 })
             } else if (subTab === 'sent') {
-                filtered = filtered.filter(t => t.created_by === subjectCode && t.assignments.length > 0)
+                filtered = filtered.filter(t => {
+                    if (filterEmployee) return t.created_by === subjectCode && t.assignments.length > 0;
+                    if (filterDepartment) {
+                        const creatorEmp = employees.find(e => e.code === t.created_by);
+                        return creatorEmp && creatorEmp.dept === subjectDept && t.assignments.length > 0;
+                    }
+                    return t.created_by === subjectCode && t.assignments.length > 0;
+                })
             } else if (subTab === 'unassigned') {
-                filtered = filtered.filter(t => t.created_by === subjectCode && t.assignments.length === 0)
+                filtered = filtered.filter(t => {
+                    if (filterEmployee) return t.created_by === subjectCode && t.assignments.length === 0;
+                    if (filterDepartment) {
+                        const creatorEmp = employees.find(e => e.code === t.created_by);
+                        return creatorEmp && creatorEmp.dept === subjectDept && t.assignments.length === 0;
+                    }
+                    return t.created_by === subjectCode && t.assignments.length === 0;
+                })
             }
         }
 
@@ -910,7 +962,26 @@ function Tasks() {
                 )}
 
                 <div className="task-filter-group">
-                    <div className="search-input-wrapper" style={isMobile ? { width: '100%', maxWidth: 'none' } : { maxWidth: '220px' }}>
+                    <div className="search-input-wrapper" style={isMobile ? { width: '100%', maxWidth: 'none' } : { maxWidth: '200px' }}>
+                        <i className="fas fa-building"></i>
+                        <select
+                            className="input-styled"
+                            style={{ paddingLeft: '36px' }}
+                            value={filterDepartment}
+                            onChange={e => {
+                                setFilterDepartment(e.target.value)
+                                setFilterEmployee('') // Reset employee when changing department
+                            }}
+                        >
+                            <option value="">-- {isMobile ? 'Phòng ban' : 'Tất cả phòng ban'} --</option>
+                            {getVisibleDepartments()
+                                .map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                        </select>
+                    </div>
+
+                    <div className="search-input-wrapper" style={isMobile ? { width: '100%', maxWidth: 'none' } : { maxWidth: '200px' }}>
                         <i className="fas fa-user-tag"></i>
                         <select
                             className="input-styled"

@@ -93,8 +93,47 @@ export default function LeavesPage() {
     const fetchLeaves = async () => {
         setLoading(true);
         try {
-            // 1. Fetch ALL Leaves (No more role-based filtering here)
+            // 1. Fetch Leaves with Role-Based Filtering
             let query = supabase.from('employee_leaves').select('*');
+
+            if (user?.role_level === 'STAFF') {
+                // STAFF only sees their own leaves
+                query = query.eq('employee_code', user.employee_code);
+            } else if (user?.role_level === 'TEAM_LEADER' && user.team_scope) {
+                // 1. Get all employee codes in the team
+                const { data: teamMembers } = await supabase
+                    .from('employee_profiles')
+                    .select('employee_code')
+                    .eq('team', user.team_scope);
+
+                const memberCodes = teamMembers ? teamMembers.map(m => m.employee_code) : [];
+                // Include their own requests + their team's requests
+                const targetCodes = [...new Set([user.employee_code, ...memberCodes])];
+
+                if (targetCodes.length > 0) {
+                    query = query.in('employee_code', targetCodes);
+                } else {
+                    query = query.eq('employee_code', user.employee_code);
+                }
+
+            } else if (user?.role_level === 'DEPT_HEAD' && user.dept_scope) {
+                // 1. Get all employee codes in the department
+                const { data: deptMembers } = await supabase
+                    .from('employee_profiles')
+                    .select('employee_code')
+                    .eq('department', user.dept_scope);
+
+                const memberCodes = deptMembers ? deptMembers.map(m => m.employee_code) : [];
+                // Include their own requests + their department's requests
+                const targetCodes = [...new Set([user.employee_code, ...memberCodes])];
+
+                if (targetCodes.length > 0) {
+                    query = query.in('employee_code', targetCodes);
+                } else {
+                    query = query.eq('employee_code', user.employee_code);
+                }
+            }
+            // SUPER_ADMIN and BOARD_DIRECTOR will not have filters applied and see all.
 
             const { data: leavesData, error: leavesError } = await query.order('created_at', { ascending: false });
 

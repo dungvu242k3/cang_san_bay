@@ -4,30 +4,8 @@ import { canPerformAction, canViewPage, inferRoleFromPosition } from '../utils/r
 
 const AuthContext = createContext()
 
-// Simple password hashing (for development - in production use proper hashing)
-const hashPassword = async (password) => {
-    // Use Web Crypto API for hashing
-    const encoder = new TextEncoder()
-    const data = encoder.encode(password)
-    const hash = await crypto.subtle.digest('SHA-256', data)
-    return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('')
-}
-
-const verifyPassword = async (password, hashedPassword) => {
-    // If password is null/empty in DB, allow default password '123456'
-    if (!hashedPassword || hashedPassword.trim() === '') {
-        return password === '123456'
-    }
-    // If password is plain text (short), compare directly
-    if (hashedPassword.length < 64) {
-        return password === hashedPassword
-    }
-    // Otherwise, hash and compare
-    const hashed = await hashPassword(password)
-    return hashed === hashedPassword
-}
+// The client-side password hashing logic (SHA-256) has been removed.
+// We are migrating to PostgreSQL `pgcrypto` bcrypt hashing at the database layer.
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -194,7 +172,24 @@ export function AuthProvider({ children }) {
 
         const code = employeeCode.trim().toUpperCase()
 
-        // 1. Fetch employee profile with password
+        // 1. Dùng Database Backend RPC "verify_user_password" để so sánh mật khẩu
+        // Đầu tiên check password (so sánh với plain-text cũ "123456" hoặc bcrypt mới)
+        const { data: isPasswordValid, error: rpcError } = await supabase.rpc(
+            'verify_user_password',
+            { p_employee_code: code, p_password: password }
+        )
+
+        if (rpcError) {
+            console.error('❌ [Login] RPC Error calling verify_user_password:', rpcError)
+            throw new Error('Lỗi xác thực hệ thống: ' + rpcError.message)
+        }
+
+        if (!isPasswordValid) {
+            console.error('❌ [Login] Password mismatch or user not found')
+            throw new Error('Mã nhân viên hoặc mật khẩu không đúng')
+        }
+
+        // 2. Fetch employee profile
         const { data: profile, error: profileError } = await supabase
             .from('employee_profiles')
             .select('*')
@@ -202,15 +197,7 @@ export function AuthProvider({ children }) {
             .single()
 
         if (profileError || !profile) {
-            console.error('❌ [Login] Employee not found:', profileError)
-            throw new Error('Mã nhân viên hoặc mật khẩu không đúng')
-        }
-
-        // 2. Verify password
-        const passwordMatch = await verifyPassword(password, profile.password)
-
-        if (!passwordMatch) {
-            console.error('❌ [Login] Password mismatch')
+            console.error('❌ [Login] Employee profile fetch failed:', profileError)
             throw new Error('Mã nhân viên hoặc mật khẩu không đúng')
         }
 
@@ -226,10 +213,14 @@ export function AuthProvider({ children }) {
         // 3. Save session to localStorage
         localStorage.setItem('currentEmployeeCode', code)
 
-        // 4. Fetch user role and permissions
+        // 4. Lấy Role và Quyền (Permissions)
         await fetchUserRole(code)
 
-        return { success: true }
+        // 5. Kiểm tra trạng thái buộc đổi mật khẩu (nếu đang dùng "123456")
+        // Trả cờ về Frontend để Frontend điều hướng qua màn hình/nhập khẩu mới
+        const requirePasswordChange = password === '123456' || profile.password === '123456';
+
+        return { success: true, requirePasswordChange }
     }
 
     const logout = async () => {

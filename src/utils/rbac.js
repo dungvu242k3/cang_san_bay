@@ -87,41 +87,41 @@ export const canPerformAction = (user, action, targetData) => {
     // Level 2 (Board) can usually see all data if they have view permission
     if (user.role_level === 'BOARD_DIRECTOR') return true
 
-    // 2.5 Ownership-based or Action-based check for modules without dept/team (e.g. calendar)
-    // These modules pre-filter data by scope during fetch, so if matrix allows it,
-    // we only need to verify ownership for Staff level.
-    const hasDeptTeam = targetData?.department || targetData?.team
-    const hasOwner = targetData?.created_by || targetData?.employee_code
+    // 2.5 Extract actual data if nested (like calendar events)
+    const actualData = targetData?.resource?.data || targetData
 
-    // If it's a creation check without specific target data, allow it (already passed matrix)
-    if (action === 'create' && !hasDeptTeam && !hasOwner) return true
+    const hasDeptTeam = actualData?.department || actualData?.team || actualData?._department || actualData?._team
+    const hasOwner = actualData?.created_by || actualData?.employee_code
+
+    // If it's a creation check without specific target data, allow it (already passed matrix check)
+    if (action === 'create' && !actualData?.id) return true
 
     if (!hasDeptTeam && hasOwner) {
         // DEPT_HEAD / TEAM_LEADER: already see only scoped data → matrix is enough
         if (user.role_level === 'DEPT_HEAD' || user.role_level === 'TEAM_LEADER') return true
         // STAFF: can only edit/delete own items
         if (user.role_level === 'STAFF') {
-            return (targetData.created_by || targetData.employee_code) === user.employee_code
+            return (actualData.created_by || actualData.employee_code) === user.employee_code
         }
     }
 
     // 3. Standard dept/team scope check for modules with explicit dept/team fields
     // Level 3 (Dept Head)
     if (user.role_level === 'DEPT_HEAD') {
-        if (!targetData) return false
-        return targetData.department === user.dept_scope
+        if (!actualData) return false
+        return (actualData.department || actualData._department) === user.dept_scope
     }
 
     // Level 4 (Team Leader)
     if (user.role_level === 'TEAM_LEADER') {
-        if (!targetData) return false
-        return targetData.team === user.team_scope
+        if (!actualData) return false
+        return (actualData.team || actualData._team) === user.team_scope
     }
 
     // Level 5 (Staff) - Self only
     if (user.role_level === 'STAFF') {
-        if (!targetData) return false
-        return targetData.employee_code === user.employee_code
+        if (!actualData) return false
+        return (actualData.employee_code || actualData.created_by) === user.employee_code
     }
 
     return false

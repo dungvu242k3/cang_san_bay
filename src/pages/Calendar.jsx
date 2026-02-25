@@ -673,7 +673,27 @@ export default function CalendarPage() {
 
             // Process Calendar Events
             if (calendarEvents) {
+                const creatorCodes = [...new Set(calendarEvents.map(e => e.created_by).filter(Boolean))];
+                let creatorProfilesMap = {};
+                if (creatorCodes.length > 0) {
+                    const { data: creatorProfiles } = await supabase
+                        .from('employee_profiles')
+                        .select('employee_code, department, team')
+                        .in('employee_code', creatorCodes);
+
+                    (creatorProfiles || []).forEach(p => {
+                        creatorProfilesMap[p.employee_code] = {
+                            department: p.department,
+                            team: p.team
+                        };
+                    });
+                }
+
                 calendarEvents.forEach(e => {
+                    const cProfile = creatorProfilesMap[e.created_by] || {};
+                    e._department = cProfile.department;
+                    e._team = cProfile.team;
+
                     formattedEvents.push({
                         id: e.id,
                         title: e.title,
@@ -1699,7 +1719,7 @@ export default function CalendarPage() {
                     </div>
                     {/* Action button */}
                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {activeTab === 'calendar' && (
+                        {activeTab === 'calendar' && checkAction('create', { module: 'calendar' }) && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <button
                                     className="btn-macos-primary"
@@ -1732,7 +1752,7 @@ export default function CalendarPage() {
                                 </button>
                             </div>
                         )}
-                        {activeTab === 'duty' && (
+                        {activeTab === 'duty' && checkAction('create', { module: 'calendar' }) && (
                             <button
                                 className="btn-macos-primary"
                                 onClick={() => {

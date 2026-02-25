@@ -17,6 +17,7 @@ const Library = lazy(() => import('./pages/Library'))
 const Reports = lazy(() => import('./pages/Reports'))
 const UserManagement = lazy(() => import('./pages/UserManagement'))
 const Login = lazy(() => import('./pages/Login'))
+const MustChangePassword = lazy(() => import('./pages/MustChangePassword'))
 const Profile = lazy(() => import('./pages/Profile'))
 const EmployeeImport = lazy(() => import('./pages/EmployeeImport'))
 const TeamDiscussion = lazy(() => import('./pages/TeamDiscussion'))
@@ -30,6 +31,7 @@ function App() {
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/change-password" element={<MustChangePassword />} />
             <Route path="/*" element={
               <Layout>
                 <Routes>

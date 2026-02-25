@@ -296,10 +296,11 @@ function Employees() {
             }))
             setEmployees(mappedData)
 
-            // Auto-select first active employee if none selected or forced
+            // Auto-select logged-in employee if found, otherwise first active employee
             if (forceReselect || (!selectedEmployee && mappedData.length > 0)) {
+                const myProfile = mappedData.find(e => e.employee_code === user?.employee_code)
                 const firstActive = mappedData.find(e => e.status !== 'Nghỉ việc') || mappedData[0]
-                setSelectedEmployee(firstActive || null)
+                setSelectedEmployee(myProfile || firstActive || null)
             }
 
             setLoading(false)
