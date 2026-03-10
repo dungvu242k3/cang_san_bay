@@ -172,7 +172,26 @@ const DEFAULT_FORM_DATA = {
     unemployment_insurance_issue_date: ''
 }
 
-const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich', onSectionChange, allowEditProfile = true, onDisable, onActivate, onDelete, onResetPassword, canManage = false, onOpenEmployeeSelector, onSelectEmployee, employees = [], currentMonth }) => {
+const EmployeeDetail = ({
+    employee,
+    onSave,
+    onCancel,
+    activeSection: initialActiveSection = 'ly_lich',
+    onSectionChange,
+    allowEditProfile = true,
+    onDisable,
+    onActivate,
+    onDelete,
+    onResetPassword,
+    canManage = false,
+    onOpenEmployeeSelector,
+    onSelectEmployee,
+    employees = [],
+    currentMonth,
+    activeGradingTab: externalActiveGradingTab,
+    setActiveGradingTab: externalSetActiveGradingTab,
+    isMobile
+}) => {
     const { user: authUser, checkAction } = useAuth()
     const navigate = useNavigate()
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA)
@@ -180,8 +199,20 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
 
-    // Use internal state if no external control
-    const setActiveSection = onSectionChange || (() => { })
+    const [internalActiveSection, setInternalActiveSection] = useState(initialActiveSection)
+    const activeSection = initialActiveSection === 'ly_lich' && !onSectionChange ? internalActiveSection : initialActiveSection
+    const setActiveSection = onSectionChange || setInternalActiveSection
+
+    const [internalActiveGradingTab, setInternalActiveGradingTab] = useState('grading') // 'grading', 'my_score', 'approval'
+    const activeGradingTab = externalActiveGradingTab !== undefined ? externalActiveGradingTab : internalActiveGradingTab
+    const setActiveGradingTab = externalSetActiveGradingTab || setInternalActiveGradingTab
+
+    // Synchronize external activeGradingTab
+    useEffect(() => {
+        if (externalActiveGradingTab && externalActiveGradingTab !== internalActiveGradingTab) {
+            setInternalActiveGradingTab(externalActiveGradingTab)
+        }
+    }, [externalActiveGradingTab])
 
     // Sub-data states
     const [familyMembers, setFamilyMembers] = useState([])
@@ -240,8 +271,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
     const [editingWorkAccident, setEditingWorkAccident] = useState(null)
     const [editingHealthCheckup, setEditingHealthCheckup] = useState(null)
 
-    // Grading Tabs State
-    const [activeGradingTab, setActiveGradingTab] = useState('grading') // 'grading', 'my_score', 'approval'
+    // Grading Tabs State (Moved to parent props)
     const [myScoreData, setMyScoreData] = useState({
         id: null,
         selfAssessment: {},
@@ -4033,7 +4063,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         })
 
         return (
-            <div className="section-content">
+            <>
                 <div className="section-header-modern">
                     <h3><i className="fas fa-history"></i> Lịch sử đánh giá - Năm {myScoreYearFilter}</h3>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -4088,14 +4118,14 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         setMonth(item.month)
                                         setMyScoreViewMode('DETAIL')
                                     }}>
-                                        <td>Tháng {item.month.split('-')[1]}</td>
-                                        <td className="text-center text-primary font-weight-bold">{review ? review.self_total_score : '-'}</td>
-                                        <td className="text-center text-success font-weight-bold">{review ? review.supervisor_total_score : '-'}</td>
-                                        <td className="text-center">
+                                        <td data-label="Tháng">Tháng {item.month.split('-')[1]}</td>
+                                        <td data-label="Tự chấm" className="text-center text-primary font-weight-bold">{review ? review.self_total_score : '-'}</td>
+                                        <td data-label="QL chấm" className="text-center text-success font-weight-bold">{review ? review.supervisor_total_score : '-'}</td>
+                                        <td data-label="Xếp loại" className="text-center">
                                             {review && review.supervisor_grade ? <span className="badge badge-primary">{review.supervisor_grade}</span> : '-'}
                                         </td>
-                                        <td className="text-center"><span className={`badge badge-${badge}`}>{status}</span></td>
-                                        <td className="text-right">
+                                        <td data-label="Trạng thái" className="text-center"><span className={`badge badge-${badge}`}>{status}</span></td>
+                                        <td data-label="Hành động" className="text-right">
                                             <button className="btn btn-sm btn-outline-primary" onClick={(e) => {
                                                 e.stopPropagation()
                                                 setMonth(item.month)
@@ -4110,7 +4140,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </>
         )
     }
 
@@ -4130,7 +4160,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         })
 
         return (
-            <div className="section-content">
+            <>
                 <div className="section-header-modern">
                     <h3><i className="fas fa-check-double"></i> Danh sách cần duyệt - Tháng {month ? month.split('-').reverse().join('/') : ''}</h3>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -4192,24 +4222,24 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                                         alert("Chức năng chọn nhân viên chưa được cấu hình đúng.")
                                     }
                                 }}>
-                                    <td>{emp.employee_code}</td>
-                                    <td>
+                                    <td data-label="Mã NV">{emp.employee_code}</td>
+                                    <td data-label="Họ Tên">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             {emp.avatar_url && <img src={emp.avatar_url} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />}
                                             {emp.last_name} {emp.first_name}
                                         </div>
                                     </td>
-                                    <td>{emp.department}</td>
-                                    <td><span className={`badge badge-${emp.badgeClass}`}>{emp.reviewStatus}</span></td>
-                                    <td className="text-center">{emp.reviewStatus !== 'Chưa đánh giá' ? emp.selfGrade : '-'}</td>
-                                    <td className="text-center">{emp.supervisorGrade || '-'}</td>
-                                    <td><i className="fas fa-chevron-right"></i></td>
+                                    <td data-label="Phòng ban">{emp.department}</td>
+                                    <td data-label="Trạng thái"><span className={`badge badge-${emp.badgeClass}`}>{emp.reviewStatus}</span></td>
+                                    <td data-label="Điểm tự chấm" className="text-center">{emp.reviewStatus !== 'Chưa đánh giá' ? emp.selfGrade : '-'}</td>
+                                    <td data-label="Điểm quản lý" className="text-center">{emp.supervisorGrade || '-'}</td>
+                                    <td data-label="Chi tiết"><i className="fas fa-chevron-right"></i></td>
                                 </tr>
                             )) : <tr><td colSpan="7" className="text-center">Không tìm thấy kết quả phù hợp</td></tr>}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </>
         )
     }
 
@@ -4226,7 +4256,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     <button
                         className={`btn ${activeGradingTab === 'my_score' ? 'btn-primary' : 'btn-outline-secondary'}`}
                         onClick={() => {
-                            setActiveGradingTab('my_score')
+                            if (setActiveGradingTab) setActiveGradingTab('my_score')
                             setMyScoreViewMode('LIST')
                         }}
                     >
@@ -4234,7 +4264,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
                     </button>
                     <button
                         className={`btn ${activeGradingTab === 'approval' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                        onClick={() => setActiveGradingTab('approval')}
+                        onClick={() => setActiveGradingTab && setActiveGradingTab('approval')}
                     >
                         <i className="fas fa-list-check"></i> Cần duyệt
                     </button>
@@ -4245,8 +4275,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         if (activeGradingTab === 'approval') {
             return (
                 <div className="section-content">
-                    {renderTabs()}
-                    {renderGradingApproval().props.children}
+                    {!isMobile && renderTabs()}
+                    {renderGradingApproval()}
                 </div>
             )
         }
@@ -4254,8 +4284,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
         if (activeGradingTab === 'my_score' && myScoreViewMode === 'LIST') {
             return (
                 <div className="section-content">
-                    {renderTabs()}
-                    {renderMyScoreHistory().props.children}
+                    {!isMobile && renderTabs()}
+                    {renderMyScoreHistory()}
                 </div>
             )
         }
@@ -4273,8 +4303,8 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
             spCommentData = myScoreData.supervisorComment
             isLockedData = myScoreData.isLocked || myScoreData.loading
 
-            targetEmpCode = authUser.employee_code
-            targetName = authUser.profile?.ho_va_ten || ''
+            targetEmpCode = authUser?.employee_code || ''
+            targetName = authUser?.profile?.ho_va_ten || ''
             targetTemplate = 'NVTT'
         } else {
             svData = selfAssessment
@@ -4332,7 +4362,7 @@ const EmployeeDetail = ({ employee, onSave, onCancel, activeSection = 'ly_lich',
 
         return (
             <div className="section-content">
-                {renderTabs()}
+                {!isMobile && renderTabs()}
                 <div className="section-header-modern">
                     <h3 className="grading-title"><i className="fas fa-star-half-alt"></i> {isMyScore ? 'Điểm của tôi' : 'Chấm điểm'} - Tháng</h3>
                     <div className="grading-date-controls">

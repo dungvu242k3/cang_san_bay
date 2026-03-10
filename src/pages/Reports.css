@@ -1,70 +1,14 @@
-.reports-page {
-    padding: 30px;
-    background: #f8f9fa;
-    min-height: 100vh;
+/* Custom Utilities for Reports Page */
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }
 
-.reports-header {
-    margin-bottom: 30px;
-}
-
-.reports-header h1 {
-    font-size: 2rem;
-    color: #212529;
-    margin: 0 0 8px 0;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.reports-header p {
-    color: #6c757d;
-    margin: 0;
-}
-
-.reports-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-}
-
-.report-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease;
-}
-
-.report-card:hover {
-    transform: translateY(-4px);
-}
-
-.report-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 1.5rem;
-}
-
-.report-info h3 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #212529;
-    margin: 0;
-}
-
-.report-info p {
-    color: #6c757d;
-    margin: 4px 0 0 0;
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
 }
 
 .loading-state {
@@ -90,52 +34,5 @@
 
     100% {
         transform: rotate(360deg);
-    }
-}
-
-/* ============================================
-   MOBILE RESPONSIVE
-   ============================================ */
-
-@media (max-width: 768px) {
-    .reports-page {
-        padding: 20px 16px;
-    }
-
-    .reports-header h1 {
-        font-size: 1.5rem;
-    }
-
-    .reports-header p {
-        font-size: 0.9rem;
-    }
-
-    .reports-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .report-card {
-        padding: 16px;
-        gap: 16px;
-    }
-
-    .report-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
-        border-radius: 12px;
-    }
-
-    .report-info h3 {
-        font-size: 1.5rem;
-    }
-
-    .report-info p {
-        font-size: 0.9rem;
-    }
-
-    .loading-state {
-        padding: 60px 20px;
     }
 }

@@ -148,7 +148,7 @@ function Dashboard() {
         <div className="dashboard-page">
             <div className="dashboard-header">
                 <h1><i className="fas fa-chart-line"></i> Dashboard</h1>
-                <p>Tổng quan hệ thống quản lý nhân sự</p>
+                <p>Tổng quan hệ thống quản trị Cảng HKQT Cát Bi</p>
             </div>
 
             {/* Summary Cards */}

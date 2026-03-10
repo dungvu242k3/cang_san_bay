@@ -304,6 +304,27 @@
     box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
+/* GRADING TABS - Desktop Only */
+.grading-tabs-wrapper {
+    background: #fff;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 15px;
+}
+
+.grading-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.grading-tabs .btn {
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
 .employee-detail .section-header-modern {
     display: flex;
     flex-direction: column;
@@ -1049,6 +1070,76 @@ input.grading-input[type=number] {
     .employee-detail .form-group select,
     .employee-detail .form-group textarea {
         font-size: 0.9rem;
+    }
+
+    /* Table to Card transformation for History & Approval */
+    .table-wrapper .table {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .table-wrapper .table thead {
+        display: none !important;
+        /* Hide headers on mobile */
+    }
+
+    .table-wrapper .table tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .table-wrapper .table tbody tr {
+        display: block !important;
+        background: #fff !important;
+        border: 1px solid #eee !important;
+        border-radius: 12px !important;
+        margin-bottom: 15px !important;
+        padding: 5px 10px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+        position: relative !important;
+    }
+
+    .table-wrapper .table tbody td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 5px !important;
+        border-bottom: 1px solid #f9f9f9 !important;
+        border-top: none !important;
+        text-align: right !important;
+        font-size: 0.85rem !important;
+        min-height: 40px !important;
+    }
+
+    .table-wrapper .table tbody td:last-child {
+        border-bottom: none !important;
+        justify-content: center !important;
+        padding-top: 12px !important;
+    }
+
+    .table-wrapper .table tbody td:before {
+        content: attr(data-label) !important;
+        font-weight: 700 !important;
+        text-align: left !important;
+        color: #666 !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        flex: 1 !important;
+    }
+
+    /* Reset some specifics for buttons in cards */
+    .table-wrapper .table tbody td .btn {
+        width: 100% !important;
+        justify-content: center !important;
+        margin-top: 5px !important;
+    }
+
+    /* Fix Avatar display in cards */
+    .table-wrapper .table tbody td[data-label="Họ Tên"]>div {
+        justify-content: flex-end !important;
+        width: 100% !important;
     }
 }
 

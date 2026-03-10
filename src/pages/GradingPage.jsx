@@ -17,6 +17,7 @@ function GradingPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [gradingModalEmployee, setGradingModalEmployee] = useState(null)
+    const [activeGradingTab, setActiveGradingTab] = useState('grading') // 'grading', 'my_score', 'approval'
 
     // Scroll ref to top on selection
     const detailRef = useRef(null)
@@ -264,145 +265,175 @@ function GradingPage() {
         }
     }
 
+    const handleTabChange = (tab) => {
+        setActiveGradingTab(tab)
+        if (isMobile) {
+            setIsMobileMenuOpen(false)
+        }
+    }
+
     return (
         <div className="grading-page-container">
-            {/* MOBILE OVERLAY */}
-            {isMobileMenuOpen && (
-                <div
-                    className="mobile-overlay"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                ></div>
-            )}
-
-            {/* LEFT SIDEBAR: LIST VIEW */}
-            <div className={`grading-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-                <div className="grading-sidebar-header">
-                    <h2><i className="fas fa-list-ul"></i> Danh sách nhân sự</h2>
+            {/* GLOBAL TABS - Only on mobile */}
+            {isMobile && (
+                <div className="grading-global-tabs">
                     <button
-                        className="mobile-close-btn"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        aria-label="Close menu"
+                        className={`tab-btn ${activeGradingTab === 'grading' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('grading')}
                     >
-                        <i className="fas fa-times"></i>
+                        <i className="fas fa-list-check"></i> Chấm điểm
+                    </button>
+                    <button
+                        className={`tab-btn ${activeGradingTab === 'my_score' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('my_score')}
+                    >
+                        <i className="fas fa-star"></i> Điểm của tôi
+                    </button>
+                    <button
+                        className={`tab-btn ${activeGradingTab === 'approval' ? 'active' : ''}`}
+                        onClick={() => handleTabChange('approval')}
+                    >
+                        <i className="fas fa-check-double"></i> Cần duyệt
                     </button>
                 </div>
+            )}
 
-                {user?.role_level !== 'STAFF' && (
-                    <>
-                        <div className="sidebar-toolbar">
-                            <div className="sidebar-search">
-                                <input
-                                    type="text"
-                                    placeholder="Tìm tên hoặc mã nhân viên..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                {['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level) && (
-                                    <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                                        <option value="">Tất cả phòng ban</option>
-                                        {departments.map(dept => (
-                                            <option key={dept} value={dept}>{dept}</option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        </div>
+            <div className="grading-page-body">
 
-                        <div className="sidebar-stats">
-                            Hiển thị {filteredEmployees.length} nhân viên
-                        </div>
-                    </>
+                {/* MOBILE OVERLAY - only for non-mobile drawer (desktop stays the same) */}
+                {!isMobile && isMobileMenuOpen && (
+                    <div
+                        className="mobile-overlay"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    ></div>
                 )}
 
-                <div className="grading-sidebar-list">
-                    {loading ? (
-                        <div className="p-4 text-center">Đang tải...</div>
-                    ) : filteredEmployees.map(emp => (
-                        <div
-                            key={emp.id}
-                            className={`employee-item ${selectedEmployee && selectedEmployee.id === emp.id ? 'active' : ''}`}
-                            onClick={() => {
-                                // Mở popup chấm điểm khi click vào dòng
-                                setGradingModalEmployee(emp);
-                                if (isMobile) {
-                                    setIsMobileMenuOpen(false);
-                                }
-                            }}
+                {/* LEFT SIDEBAR: LIST VIEW - hidden on mobile if not in 'grading' tab */}
+                <div className={`grading-sidebar ${!isMobile && isMobileMenuOpen ? 'mobile-open' : ''} ${isMobile && activeGradingTab !== 'grading' ? 'mobile-hidden' : ''}`}>
+                    <div className="grading-sidebar-header">
+                        <h2><i className="fas fa-list-ul"></i> Danh sách nhân sự</h2>
+                        <button
+                            className="mobile-close-btn"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            aria-label="Close menu"
                         >
-                            <div className="item-main">
-                                <span className="item-name">{emp.ho_va_ten}</span>
-                                <span className="item-code">{emp.employeeId}</span>
-                            </div>
-                            <div className="item-sub">
-                                <span>{emp.bo_phan}</span>
-                                {emp.gradingStatus === 'READY_FOR_SUPERVISOR' && <span className="status-badge status-ready" title="Nhân viên đã tự chấm xong">Cần chấm</span>}
-                                {emp.gradingStatus === 'READY_FOR_SELF' && <span className="status-badge status-ready" title="Bạn cần tự chấm điểm">Cần chấm</span>}
-                                {emp.gradingStatus === 'WAITING_FOR_EMPLOYEE' && <span className="status-badge status-waiting" title="Chờ nhân viên tự chấm">Chờ NV</span>}
-                                {emp.gradingStatus === 'COMPLETED' && <span className="status-badge status-completed" title="Đã hoàn thành đánh giá">Đã xong</span>}
-                            </div>
-                        </div>
-                    ))}
-                    {!loading && filteredEmployees.length === 0 && (
-                        <div className="empty-state">Không tìm thấy kết quả</div>
-                    )}
-                </div>
-            </div>
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
 
-            {/* RIGHT MAIN CONTENT: GRADING VIEW */}
-            <div className="grading-main-content" ref={detailRef}>
-                {selectedEmployee ? (
-                    <div className="grading-content-wrapper">
-                        <div className="grading-content-header">
-                            <div className="employee-header-info">
-                                <h3 className="employee-name">{selectedEmployee.ho_va_ten}</h3>
-                                <div className="employee-meta">
-                                    <span className="employee-code">{selectedEmployee.employeeId}</span>
-                                    <span className="employee-dept">{selectedEmployee.bo_phan}</span>
+                    {user?.role_level !== 'STAFF' && (
+                        <>
+                            <div className="sidebar-toolbar">
+                                <div className="sidebar-search">
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm tên hoặc mã nhân viên..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                    {['SUPER_ADMIN', 'BOARD_DIRECTOR'].includes(user?.role_level) && (
+                                        <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                                            <option value="">Tất cả phòng ban</option>
+                                            {departments.map(dept => (
+                                                <option key={dept} value={dept}>{dept}</option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                        <EmployeeDetail
-                            employee={selectedEmployee}
-                            activeSection="grading"
-                            allowEditProfile={false}
-                            onSave={handleSave}
-                            onCancel={() => { }}
-                            onSectionChange={() => { }}
-                            onOpenEmployeeSelector={handleOpenEmployeeSelector}
-                            onSelectEmployee={setSelectedEmployee}
-                            employees={filteredEmployees}
-                            currentMonth={new Date().toISOString().slice(0, 7)}
-                        />
-                    </div>
-                ) : (
-                    <div className="grading-empty-state">
-                        <div className="empty-state-icon">
-                            <i className="fas fa-user-edit"></i>
-                        </div>
-                        <h3>Chọn nhân viên để chấm điểm</h3>
-                        <p>Chọn nhân viên từ danh sách bên trái để bắt đầu chấm điểm</p>
-                        {isMobile && (
-                            <button
-                                className="btn-select-employee"
-                                onClick={() => setIsMobileMenuOpen(true)}
+
+                            <div className="sidebar-stats">
+                                Hiển thị {filteredEmployees.length} nhân viên
+                            </div>
+                        </>
+                    )}
+
+                    <div className="grading-sidebar-list">
+                        {loading ? (
+                            <div className="p-4 text-center">Đang tải...</div>
+                        ) : filteredEmployees.map(emp => (
+                            <div
+                                key={emp.id}
+                                className={`employee-item ${selectedEmployee && selectedEmployee.id === emp.id ? 'active' : ''}`}
+                                onClick={() => {
+                                    // Mở popup chấm điểm khi click vào dòng
+                                    setGradingModalEmployee(emp);
+                                    if (isMobile) {
+                                        setIsMobileMenuOpen(false);
+                                    }
+                                }}
                             >
-                                <i className="fas fa-list"></i> Xem danh sách
-                            </button>
+                                <div className="item-main">
+                                    <span className="item-name">{emp.ho_va_ten}</span>
+                                    <span className="item-code">{emp.employeeId}</span>
+                                </div>
+                                <div className="item-sub">
+                                    <span>{emp.bo_phan}</span>
+                                    {emp.gradingStatus === 'READY_FOR_SUPERVISOR' && <span className="status-badge status-ready" title="Nhân viên đã tự chấm xong">Cần chấm</span>}
+                                    {emp.gradingStatus === 'READY_FOR_SELF' && <span className="status-badge status-ready" title="Bạn cần tự chấm điểm">Cần chấm</span>}
+                                    {emp.gradingStatus === 'WAITING_FOR_EMPLOYEE' && <span className="status-badge status-waiting" title="Chờ nhân viên tự chấm">Chờ NV</span>}
+                                    {emp.gradingStatus === 'COMPLETED' && <span className="status-badge status-completed" title="Đã hoàn thành đánh giá">Đã xong</span>}
+                                </div>
+                            </div>
+                        ))}
+                        {!loading && filteredEmployees.length === 0 && (
+                            <div className="empty-state">Không tìm thấy kết quả</div>
                         )}
                     </div>
-                )}
-            </div>
+                </div>
 
-            {/* Grading Modal */}
-            <GradingModal
-                employee={gradingModalEmployee}
-                isOpen={!!gradingModalEmployee}
-                onClose={() => setGradingModalEmployee(null)}
-                onSave={() => {
-                    // Reload employees sau khi lưu
-                    if (user) loadEmployees();
-                }}
-            />
+                {/* RIGHT MAIN CONTENT: GRADING VIEW - shown on mobile if tab is not 'grading' or if employee selected */}
+                <div className={`grading-main-content ${isMobile && activeGradingTab === 'grading' && !selectedEmployee ? 'mobile-hidden' : ''}`} ref={detailRef}>
+                    {selectedEmployee || ['my_score', 'approval'].includes(activeGradingTab) ? (
+                        <div className="grading-content-wrapper">
+                            {selectedEmployee && activeGradingTab === 'grading' && (
+                                <div className="grading-content-header">
+                                    <div className="employee-header-info">
+                                        <h3 className="employee-name">{selectedEmployee.ho_va_ten}</h3>
+                                        <div className="employee-meta">
+                                            <span className="employee-code">{selectedEmployee.employeeId}</span>
+                                            <span className="employee-dept">{selectedEmployee.bo_phan}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <EmployeeDetail
+                                employee={selectedEmployee}
+                                activeSection="grading"
+                                allowEditProfile={false}
+                                onSave={handleSave}
+                                onCancel={() => { }}
+                                onSectionChange={() => { }}
+                                onOpenEmployeeSelector={handleOpenEmployeeSelector}
+                                onSelectEmployee={setSelectedEmployee}
+                                employees={filteredEmployees}
+                                currentMonth={new Date().toISOString().slice(0, 7)}
+                                activeGradingTab={activeGradingTab}
+                                setActiveGradingTab={handleTabChange}
+                                isMobile={isMobile}
+                            />
+                        </div>
+                    ) : (
+                        <div className="grading-empty-state">
+                            <div className="empty-state-icon">
+                                <i className="fas fa-user-edit"></i>
+                            </div>
+                            <h3>Chọn nhân viên để chấm điểm</h3>
+                            <p>Chọn nhân viên từ danh sách bên trái để bắt đầu chấm điểm</p>
+                        </div>
+                    )}
+                </div>
+
+                <GradingModal
+                    employee={gradingModalEmployee}
+                    isOpen={!!gradingModalEmployee}
+                    onClose={() => setGradingModalEmployee(null)}
+                    onSave={() => {
+                        // Reload employees sau khi lưu
+                        if (user) loadEmployees();
+                    }}
+                />
+            </div>
         </div>
     )
 }

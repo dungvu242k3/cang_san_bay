@@ -68,6 +68,7 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
     const [isGradingLocked, setIsGradingLocked] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [activeTab, setActiveTab] = useState('self'); // 'self' | 'supervisor'
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -429,49 +430,60 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
 
                             {isMobile ? (
                                 <div className="grading-mobile-list">
-                                    {getCriteria(employee.gradeTemplateCode).map(section => (
+                                    {/* Tab Bar */}
+                                    <div className="grading-tab-bar">
+                                        <button
+                                            className={`grading-tab ${activeTab === 'self' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('self')}
+                                        >
+                                            <i className="fas fa-user"></i> Tự chấm
+                                            <span className="tab-score">{selfTotals.total} đ</span>
+                                        </button>
+                                        <button
+                                            className={`grading-tab ${activeTab === 'supervisor' ? 'active' : ''}`}
+                                            onClick={() => setActiveTab('supervisor')}
+                                        >
+                                            <i className="fas fa-user-tie"></i> QL chấm
+                                            <span className="tab-score">{supervisorTotals.total} đ</span>
+                                        </button>
+                                    </div>
+
+                                    {getCriteria(employee.score_template_code || 'NVTT').map(section => (
                                         <div key={section.section} className="grading-mobile-section">
                                             <div className={`grading-mobile-section-header section-${section.section === 'A' ? 'negative' : section.section === 'B' ? 'positive' : 'bonus'}`}>
                                                 <span>Phần {section.section}: {
                                                     section.section === 'A' ? 'Điểm trừ' :
                                                         section.section === 'B' ? 'Điểm đạt' : 'Điểm cộng'
                                                 }</span>
-                                                <div className="section-scores-group">
-                                                    <span className="section-score self">Tự: {section.section === 'A' ? selfTotals.scoreA : section.section === 'B' ? selfTotals.scoreB : selfTotals.scoreC}</span>
-                                                    <span className="section-score supervisor">QL: {section.section === 'A' ? supervisorTotals.scoreA : section.section === 'B' ? supervisorTotals.scoreB : supervisorTotals.scoreC}</span>
-                                                </div>
+                                                <span className="section-score-single">
+                                                    {activeTab === 'self'
+                                                        ? (section.section === 'A' ? selfTotals.scoreA : section.section === 'B' ? selfTotals.scoreB : selfTotals.scoreC)
+                                                        : (section.section === 'A' ? supervisorTotals.scoreA : section.section === 'B' ? supervisorTotals.scoreB : supervisorTotals.scoreC)
+                                                    }
+                                                </span>
                                             </div>
                                             {section.items.map(item => (
                                                 <div key={item.id} className={`grading-mobile-card ${item.isHeader ? 'is-header' : ''}`}>
                                                     <div className="card-header-row">
                                                         <span className="card-title">{item.id} {item.title}</span>
-                                                        <span className="card-max">{item.isHeader ? `Max: ${item.maxScore}` : `Khoảng: ${item.range}`}</span>
+                                                        <span className="card-max">{item.isHeader ? `Max: ${item.maxScore}` : item.range}</span>
                                                     </div>
 
                                                     {!item.isHeader && (
-                                                        <div className="card-inputs">
-                                                            <div className="input-group">
-                                                                <label>Tôi ĐG</label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="grading-input"
-                                                                    value={selfAssessment[item.id] || ''}
-                                                                    onChange={(e) => handleSelfInput(item.id, e.target.value, item)}
-                                                                    disabled={disableSelf}
-                                                                    min="0"
-                                                                />
-                                                            </div>
-                                                            <div className="input-group">
-                                                                <label>QL ĐG</label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="grading-input"
-                                                                    value={supervisorAssessment[item.id] || ''}
-                                                                    onChange={(e) => handleSupervisorInput(item.id, e.target.value, item)}
-                                                                    disabled={disableSupervisor}
-                                                                    min="0"
-                                                                />
-                                                            </div>
+                                                        <div className="card-input-single">
+                                                            <input
+                                                                type="number"
+                                                                className="grading-input-mobile"
+                                                                inputMode="numeric"
+                                                                value={activeTab === 'self' ? (selfAssessment[item.id] || '') : (supervisorAssessment[item.id] || '')}
+                                                                onChange={(e) => activeTab === 'self'
+                                                                    ? handleSelfInput(item.id, e.target.value, item)
+                                                                    : handleSupervisorInput(item.id, e.target.value, item)
+                                                                }
+                                                                disabled={activeTab === 'self' ? disableSelf : disableSupervisor}
+                                                                min="0"
+                                                                placeholder="0"
+                                                            />
                                                         </div>
                                                     )}
                                                 </div>
@@ -639,13 +651,13 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                                 <div className="grading-mobile-summary-card">
                                     <h3>Kết quả đánh giá</h3>
                                     <div className="summary-result-grid">
-                                        <div className="result-item self">
-                                            <span className="label">Bạn tự chấm</span>
+                                        <div className={`result-item self ${activeTab === 'self' ? 'result-active' : ''}`} onClick={() => setActiveTab('self')}>
+                                            <span className="label">Tự chấm</span>
                                             <span className="score">{selfTotals.total}</span>
                                             <span className={`grade-badge grade-${selfGrade.toLowerCase()}`}>{selfGrade}</span>
                                         </div>
-                                        <div className="result-item supervisor">
-                                            <span className="label">Quản lý chấm</span>
+                                        <div className={`result-item supervisor ${activeTab === 'supervisor' ? 'result-active' : ''}`} onClick={() => setActiveTab('supervisor')}>
+                                            <span className="label">QL chấm</span>
                                             <span className="score">{supervisorTotals.total}</span>
                                             <span className={`grade-badge grade-${supervisorGrade.toLowerCase()}`}>{supervisorGrade}</span>
                                         </div>
@@ -686,30 +698,46 @@ function GradingModal({ employee, isOpen, onClose, onSave }) {
                             )}
 
                             {/* Comments */}
-                            <div className="grading-comments">
-                                <div className="grading-comment-group">
-                                    <label>Giải trình / Ý kiến nhân viên:</label>
-                                    <textarea
-                                        className="form-control"
-                                        rows={3}
-                                        value={selfComment}
-                                        onChange={e => setSelfComment(e.target.value)}
-                                        disabled={disableSelf}
-                                        placeholder="Nhập ý kiến của bạn..."
-                                    />
+                            {isMobile ? (
+                                <div className="grading-comments grading-comments-mobile">
+                                    <div className="grading-comment-group">
+                                        <label>{activeTab === 'self' ? 'Giải trình / Ý kiến nhân viên:' : 'Ý kiến quản lý:'}</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows={3}
+                                            value={activeTab === 'self' ? selfComment : supervisorComment}
+                                            onChange={e => activeTab === 'self' ? setSelfComment(e.target.value) : setSupervisorComment(e.target.value)}
+                                            disabled={activeTab === 'self' ? disableSelf : disableSupervisor}
+                                            placeholder={activeTab === 'self' ? 'Nhập ý kiến của bạn...' : 'Nhập ý kiến quản lý...'}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="grading-comment-group">
-                                    <label>Ý kiến quản lý:</label>
-                                    <textarea
-                                        className="form-control"
-                                        rows={3}
-                                        value={supervisorComment}
-                                        onChange={e => setSupervisorComment(e.target.value)}
-                                        disabled={disableSupervisor}
-                                        placeholder="Nhập ý kiến quản lý..."
-                                    />
+                            ) : (
+                                <div className="grading-comments">
+                                    <div className="grading-comment-group">
+                                        <label>Giải trình / Ý kiến nhân viên:</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows={3}
+                                            value={selfComment}
+                                            onChange={e => setSelfComment(e.target.value)}
+                                            disabled={disableSelf}
+                                            placeholder="Nhập ý kiến của bạn..."
+                                        />
+                                    </div>
+                                    <div className="grading-comment-group">
+                                        <label>Ý kiến quản lý:</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows={3}
+                                            value={supervisorComment}
+                                            onChange={e => setSupervisorComment(e.target.value)}
+                                            disabled={disableSupervisor}
+                                            placeholder="Nhập ý kiến quản lý..."
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </>
                     )}
                 </div>

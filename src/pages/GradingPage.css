@@ -3,12 +3,80 @@
    ============================================ */
 
 .grading-page-container {
-    display: flex;
-    height: calc(100vh - 130px);
-    /* Header (80px) + TopNavBar (~50px) */
+    height: calc(100vh - 60px);
     background: #f5f7fa;
     overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.grading-page-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    width: 100%;
+    flex-direction: row;
+}
+
+@media (max-width: 768px) {
+    .grading-page-body {
+        flex-direction: column;
+    }
+}
+
+.grading-global-tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0 10px;
+    gap: 5px;
+    z-index: 100;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #1976d2;
+    background: #f8f9ff;
+}
+
+.tab-btn.active {
+    color: #1976d2;
+    border-bottom-color: #1976d2;
+}
+
+.grading-page-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .tab-btn {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .mobile-hidden {
+        display: none !important;
+    }
 }
 
 @media (max-width: 968px) {
@@ -399,41 +467,27 @@
     .grading-page-container {
         flex-direction: column;
         height: calc(100vh - 110px);
-        /* Header (56px) + TopNavBar (~54px) */
-        overflow: visible;
+        overflow: hidden;
     }
 
     .mobile-overlay {
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        z-index: 90;
+        display: none;
     }
 
     .grading-sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 85%;
-        max-width: 320px;
-        transform: translateX(-100%);
-        z-index: 100;
-        box-shadow: 16px 0 32px rgba(0, 0, 0, 0.1);
-        height: 100vh;
-    }
-
-    .grading-sidebar.mobile-open {
-        transform: translateX(0);
+        position: static;
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        height: 100%;
+        transform: none;
+        box-shadow: none;
+        border-right: none;
+        z-index: auto;
     }
 
     .grading-sidebar-header {
-        padding: 16px;
+        padding: 14px 16px;
     }
 
     .grading-sidebar-header h2 {
@@ -441,7 +495,7 @@
     }
 
     .mobile-close-btn {
-        display: flex;
+        display: none;
     }
 
     .sidebar-toolbar {
@@ -450,23 +504,25 @@
 
     .sidebar-search input,
     .sidebar-search select {
-        padding: 14px 16px;
+        padding: 12px 16px;
         font-size: 1rem;
         min-height: 44px;
     }
 
     .sidebar-stats {
-        padding: 12px 16px;
+        padding: 10px 16px;
         font-size: 0.8125rem;
     }
 
     .grading-sidebar-list {
-        max-height: calc(100vh - 200px);
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .employee-item {
-        padding: 16px;
-        min-height: 76px;
+        padding: 14px 16px;
+        min-height: 68px;
     }
 
     .item-name {
@@ -482,38 +538,11 @@
     }
 
     .grading-main-content {
-        width: 100%;
-        flex: 1 1 auto;
-        min-height: 0;
-    }
-
-    .grading-content-header {
-        padding: 12px 16px;
-    }
-
-    .employee-name {
-        font-size: 1.125rem;
-    }
-
-    .employee-meta {
-        font-size: 0.8125rem;
+        display: none;
     }
 
     .grading-empty-state {
-        padding: 32px 20px;
-        min-height: 300px;
-    }
-
-    .empty-state-icon i {
-        font-size: 3rem;
-    }
-
-    .grading-empty-state h3 {
-        font-size: 1.125rem;
-    }
-
-    .grading-empty-state p {
-        font-size: 0.875rem;
+        display: none;
     }
 }
 

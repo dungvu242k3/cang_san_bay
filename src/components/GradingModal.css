@@ -69,13 +69,82 @@
     flex-shrink: 0;
 }
 
-/* Mobile Card Styles (Preserving Original Palette) */
+/* ============================================
+   MOBILE TAB BAR & CARD STYLES
+   ============================================ */
+
+.grading-tab-bar {
+    display: none;
+}
+
 @media (max-width: 768px) {
+    .grading-tab-bar {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #fff;
+        border-bottom: 2px solid #e2e8f0;
+        margin: -16px -20px 16px -20px;
+        padding: 0;
+    }
+
+    .grading-tab {
+        flex: 1;
+        padding: 14px 12px;
+        border: none;
+        background: transparent;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        transition: color 0.2s;
+        font-family: inherit;
+    }
+
+    .grading-tab.active {
+        color: #1976d2;
+        font-weight: 600;
+    }
+
+    .grading-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 12px;
+        right: 12px;
+        height: 3px;
+        background: #1976d2;
+        border-radius: 3px 3px 0 0;
+    }
+
+    .tab-score {
+        font-size: 0.75rem;
+        background: #f1f5f9;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .grading-tab.active .tab-score {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
     .grading-mobile-list {
         display: flex;
         flex-direction: column;
-        gap: 24px;
-        padding: 16px;
+        gap: 16px;
+        padding: 0;
+    }
+
+    .grading-template-badge {
+        display: none !important;
     }
 
     .grading-mobile-section {
@@ -83,13 +152,13 @@
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .grading-mobile-section-header {
         padding: 12px 16px;
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -111,41 +180,117 @@
         color: #1e40af;
     }
 
-    .section-scores-group {
+    .section-score-single {
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 0.8125rem;
+        background: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+        min-width: 36px;
+        text-align: center;
+    }
+
+    .grading-mobile-card {
+        padding: 14px 16px;
+        background: white;
+        border-bottom: 1px solid #f1f5f9;
         display: flex;
-        gap: 8px;
+        align-items: center;
+        gap: 12px;
     }
 
-    .section-score {
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        background: rgba(255, 255, 255, 0.4);
-        color: inherit;
+    .grading-mobile-card:last-child {
+        border-bottom: none;
+    }
+
+    .grading-mobile-card.is-header {
+        background: #f8f9ff;
+        border-bottom: 1px solid #eef2ff;
+    }
+
+    .card-header-row {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .card-title {
+        font-size: 0.875rem;
         font-weight: 500;
+        color: #334155;
+        line-height: 1.4;
     }
 
-    .section-score.self {
-        border: 1px dashed rgba(0, 0, 0, 0.1);
+    .grading-mobile-card.is-header .card-title {
+        font-weight: 700;
+        color: #1e293b;
     }
 
-    .section-score.supervisor {
-        background: rgba(25, 118, 210, 0.15);
-        border: 1px solid rgba(25, 118, 210, 0.2);
+    .card-max {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        white-space: nowrap;
     }
 
+    .card-input-single {
+        flex-shrink: 0;
+    }
+
+    .grading-input-mobile {
+        width: 64px;
+        height: 44px;
+        font-size: 1.0625rem;
+        font-weight: 600;
+        text-align: center;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #1e293b;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        -moz-appearance: textfield;
+        appearance: textfield;
+        font-family: inherit;
+    }
+
+    .grading-input-mobile::-webkit-inner-spin-button,
+    .grading-input-mobile::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .grading-input-mobile:focus {
+        outline: none;
+        border-color: #1976d2;
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+        background: #fff;
+    }
+
+    .grading-input-mobile:disabled {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border-color: #e2e8f0;
+        cursor: not-allowed;
+    }
+
+    .grading-input-mobile::placeholder {
+        color: #cbd5e1;
+    }
+
+    /* Summary Card */
     .grading-mobile-summary-card {
-        margin: 20px 16px;
+        margin: 16px 0;
         background: white;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
         padding: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .grading-mobile-summary-card h3 {
-        margin: 0 0 16px 0;
-        font-size: 1rem;
+        margin: 0 0 12px 0;
+        font-size: 0.9375rem;
         color: #1e293b;
         text-align: center;
     }
@@ -153,26 +298,33 @@
     .summary-result-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 
     .result-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
-        padding: 12px;
+        gap: 4px;
+        padding: 12px 8px;
         border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
     }
 
     .result-item.self {
         background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        border: 2px solid #e2e8f0;
     }
 
     .result-item.supervisor {
         background: #eff6ff;
-        border: 1px solid #bfdbfe;
+        border: 2px solid #bfdbfe;
+    }
+
+    .result-item.result-active {
+        border-color: #1976d2;
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
     }
 
     .result-item .label {
@@ -188,9 +340,9 @@
     }
 
     .grade-badge {
-        padding: 4px 12px;
+        padding: 3px 10px;
         border-radius: 20px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
     }
@@ -211,67 +363,16 @@
         color: #991b1b;
     }
 
-    .grading-mobile-card {
-        padding: 16px;
-        background: white;
-        border-bottom: 1px solid #f1f5f9;
+    .grade-badge.grade-d {
+        background: #fef3c7;
+        color: #92400e;
     }
 
-    .grading-mobile-card:last-child {
-        border-bottom: none;
-    }
-
-    .grading-mobile-card.is-header {
-        background: #f8f9ff;
-        border-bottom: 1px solid #eef2ff;
-    }
-
-    .card-header-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .card-title {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #333;
-        line-height: 1.4;
-    }
-
-    .card-max {
-        font-size: 0.75rem;
-        color: #666;
-        white-space: nowrap;
-    }
-
-    .card-inputs {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .input-group label {
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: #777;
-    }
-
-    .input-group .grading-input {
-        width: 100% !important;
-        height: 40px;
-        font-size: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 0 8px;
+    /* Comments mobile */
+    .grading-comments-mobile {
+        grid-template-columns: 1fr !important;
+        padding: 0;
+        margin: 0 0 16px 0;
     }
 }
 
@@ -699,13 +800,14 @@
 @media (max-width: 768px) {
     .grading-modal-overlay {
         padding: 0;
-        align-items: flex-end;
+        align-items: stretch;
     }
 
     .grading-modal-content {
         max-width: 100%;
-        max-height: 90vh;
-        border-radius: 16px 16px 0 0;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
         animation: slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -720,11 +822,11 @@
     }
 
     .grading-modal-header {
-        padding: 16px 20px;
+        padding: 14px 16px;
     }
 
     .grading-modal-title h3 {
-        font-size: 1.125rem;
+        font-size: 1rem;
     }
 
     .grading-modal-body {
@@ -734,47 +836,44 @@
     .grading-modal-controls {
         flex-direction: column;
         align-items: stretch;
+        margin-bottom: 8px;
     }
 
     .grading-month-selector {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
         gap: 8px;
     }
 
     .grading-month-selector label {
         font-size: 0.875rem;
+        white-space: nowrap;
     }
 
-    .grading-table {
-        font-size: 0.8125rem;
-    }
-
-    .grading-table th,
-    .grading-table td {
-        padding: 8px 6px;
-    }
-
-    .grading-input {
-        width: 50px;
-        padding: 6px;
-        font-size: 0.8125rem;
+    .grading-month-selector input {
+        padding: 10px 12px;
+        min-height: 44px;
     }
 
     .grading-comments {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 
     .grading-modal-footer {
-        padding: 12px 20px;
+        padding: 12px 16px;
         flex-direction: column-reverse;
+        gap: 8px;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
     }
 
     .btn-premium,
     .btn-premium-outline {
         width: 100%;
         justify-content: center;
+        min-height: 48px;
+        font-size: 1rem;
     }
 }
 
