@@ -186,6 +186,69 @@
     font-weight: 500;
 }
 
+/* Mobile Responsiveness for ProfileMenu */
+.profile-menu-mobile-header {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .profile-menu {
+        width: 100%;
+        margin: 0 0 10px 0;
+        height: auto;
+        max-height: 50px;
+        /* Collapsed height */
+        transition: max-height 0.3s ease-out;
+        border-radius: 12px;
+    }
+
+    .profile-menu.mobile-expanded {
+        max-height: 500px;
+        /* Expanded height */
+    }
+
+    .profile-menu-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #ffffff;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        z-index: 10;
+        border-radius: 12px;
+    }
+
+    .profile-menu-mobile-header i {
+        font-size: 0.8rem;
+    }
+
+    .profile-menu-header,
+    .profile-menu-search,
+    .profile-menu-nav {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease;
+    }
+
+    .profile-menu.mobile-expanded .profile-menu-header,
+    .profile-menu.mobile-expanded .profile-menu-search,
+    .profile-menu.mobile-expanded .profile-menu-nav {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .profile-menu-header {
+        padding: 15px;
+    }
+
+    .profile-menu-nav {
+        max-height: 350px;
+    }
+}
+
 /* Scrollbar */
 .profile-menu::-webkit-scrollbar,
 .profile-menu-nav::-webkit-scrollbar {

@@ -173,6 +173,7 @@ function Employees() {
     const [filterBranch, setFilterBranch] = useState('')
     const [filterDept, setFilterDept] = useState('')
     const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [mobileViewMode, setMobileViewMode] = useState('list') // 'list' or 'detail'
     const [activeSection, setActiveSection] = useState('ly_lich')
     const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
     const [employeeToReset, setEmployeeToReset] = useState(null)
@@ -190,6 +191,10 @@ function Employees() {
         if (user) {
             loadEmployees()
             loadPendingChanges()
+            // Default to detail view for STAFF on mobile as they don't have a list
+            if (user.role_level === 'STAFF') {
+                setMobileViewMode('detail')
+            }
         }
     }, [user])
 
@@ -301,6 +306,8 @@ function Employees() {
                 const myProfile = mappedData.find(e => e.employee_code === user?.employee_code)
                 const firstActive = mappedData.find(e => e.status !== 'Nghỉ việc') || mappedData[0]
                 setSelectedEmployee(myProfile || firstActive || null)
+                // On mobile, if we don't have a selection yet, stay in list mode
+                // If we do (auto-select), we might want to stay in list mode initially too
             }
 
             setLoading(false)
@@ -1281,10 +1288,10 @@ function Employees() {
             />
 
             {/* RIGHT: MAIN CONTENT */}
-            <div className="employees-content">
+            <div className={`employees-content ${mobileViewMode}`}>
                 {/* LEFT PANEL: LIST VIEW */}
                 {user?.role_level !== 'STAFF' && (
-                    <div className="list-panel">
+                    <div className={`list-panel ${mobileViewMode === 'detail' ? 'mobile-hidden' : ''}`}>
                         <div className="list-toolbar">
                             <div className="search-group">
                                 <input
@@ -1331,7 +1338,10 @@ function Employees() {
                                             {group.employees.map(emp => (
                                                 <tr
                                                     key={emp.id}
-                                                    onClick={() => setSelectedEmployee(emp)}
+                                                    onClick={() => {
+                                                        setSelectedEmployee(emp)
+                                                        setMobileViewMode('detail')
+                                                    }}
                                                     className={selectedEmployee && selectedEmployee.id === emp.id ? 'active-row' : ''}
                                                 >
                                                     <td className="employee-code">{emp.employeeId}</td>
@@ -1356,9 +1366,18 @@ function Employees() {
                 )}
 
                 {/* RIGHT PANEL: DETAIL VIEW */}
-                < div className="detail-panel" ref={detailRef} >
+                < div className={`detail-panel ${mobileViewMode === 'list' ? 'mobile-hidden' : ''}`} ref={detailRef} >
                     <div className="panel-header">
-                        <h2><i className="fas fa-id-card"></i> Hồ sơ nhân viên</h2>
+                        <h2>
+                            {/* Back button for mobile */}
+                            <button
+                                className="mobile-only-btn back-btn"
+                                onClick={() => setMobileViewMode('list')}
+                            >
+                                <i className="fas fa-arrow-left"></i>
+                            </button>
+                            <i className="fas fa-id-card"></i> Hồ sơ nhân viên
+                        </h2>
                         <div className="panel-actions">
                             {/* Pending tab button for HR/Admin */}
                             {['SUPER_ADMIN', 'BOARD_DIRECTOR', 'DEPT_HEAD'].includes(user?.role_level) && pendingChanges.length > 0 && (

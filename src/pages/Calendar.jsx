@@ -432,16 +432,32 @@ const CalendarToolbar = (toolbar) => {
                         </select>
                     </div>
 
-                    <div className="mobile-filter-row" style={{ marginTop: '10px' }}>
-                        <label className="d-flex align-items-center mb-0" style={{ cursor: 'pointer', userSelect: 'none', gap: '8px', padding: '8px 0' }}>
-                            <input
-                                type="checkbox"
-                                checked={hideBirthdays}
-                                onChange={(e) => setHideBirthdays(e.target.checked)}
-                                style={{ cursor: 'pointer', width: '20px', height: '20px' }}
-                            />
-                            <span style={{ color: '#4a5568', fontWeight: 600, fontSize: '0.95rem' }}>Ẩn sinh nhật</span>
-                        </label>
+                    <div className="mobile-filter-row" style={{ marginTop: '15px', borderTop: '1px solid #f0f0f0', paddingTop: '15px' }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: '#f8fafc',
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            cursor: 'pointer'
+                        }} onClick={() => setHideBirthdays(!hideBirthdays)}>
+                            <div className="d-flex align-items-center" style={{ gap: '10px' }}>
+                                <i className="fas fa-birthday-cake text-danger" style={{ fontSize: '1.1rem' }}></i>
+                                <span style={{ color: '#334155', fontWeight: 600, fontSize: '0.95rem' }}>Ẩn sinh nhật</span>
+                            </div>
+                            <div className="custom-control custom-switch">
+                                <input
+                                    type="checkbox"
+                                    className="custom-control-input"
+                                    id="hideBirthdaysMobile"
+                                    checked={hideBirthdays}
+                                    onChange={(e) => setHideBirthdays(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                <label className="custom-control-label" htmlFor="hideBirthdaysMobile" style={{ cursor: 'pointer' }}></label>
+                            </div>
+                        </div>
                     </div>
                     <div className="mobile-filter-row">
                         <button type="button" className="today-btn w-100" onClick={goToToday} style={{ height: '38px', borderRadius: '10px' }}>
