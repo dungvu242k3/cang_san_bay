@@ -108,6 +108,7 @@ const reverseMap = {
 function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onImport, onDownloadTemplate }) {
     const [expandedSections, setExpandedSections] = useState(['so-yeu-ly-lich']);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Convert EmployeeDetail section ID to ProfileMenu item ID for highlighting
     const activeItemId = reverseMap[activeSection] || activeSection;
@@ -124,10 +125,17 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onI
         if (onSectionChange) {
             onSectionChange(itemId);
         }
+        // Auto-close menu on mobile after selection
+        setIsMobileMenuOpen(false);
     };
 
     return (
-        <div className="profile-menu">
+        <div className={`profile-menu ${isMobileMenuOpen ? 'mobile-expanded' : ''}`}>
+            {/* Mobile Toggle Header */}
+            <div className="profile-menu-mobile-header" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                <span><i className="fas fa-list-ul"></i> Mục lục hồ sơ</span>
+                <i className={`fas fa-chevron-${isMobileMenuOpen ? 'up' : 'down'}`}></i>
+            </div>
             {/* Header */}
             <div className="profile-menu-header">
                 <span className="profile-menu-title">MỤC LỤC</span>

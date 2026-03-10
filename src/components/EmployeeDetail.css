@@ -319,30 +319,33 @@
 
 .employee-detail .grid-2 {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    /* Increased gap */
-    margin-bottom: 20px;
-    /* Increased margin */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .employee-detail .form-group {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    /* Slightly clearer border */
-    border-radius: 8px;
-    /* Slightly tighter radius */
-    padding: 10px 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 4px;
     height: 100%;
-    transition: box-shadow 0.2s, border-color 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.employee-detail .form-group:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
 }
 
 .employee-detail .form-group:focus-within {
-    border-color: #1976d2;
-    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.1);
+    border-color: #00a0e9;
+    box-shadow: 0 0 0 3px rgba(0, 160, 233, 0.1);
 }
 
 .employee-detail .form-group.full-width {
@@ -361,12 +364,12 @@
 
 
 .employee-detail .form-group label {
-    font-size: 0.7rem;
-    color: #888;
-    font-weight: 500;
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
     text-transform: uppercase;
-    /* Cleaner look */
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
 }
 
 .employee-detail .form-group input,
@@ -375,10 +378,12 @@
     padding: 0;
     border: none !important;
     background: transparent !important;
-    font-size: 0.95rem;
-    color: #333;
-    font-weight: 500;
+    font-size: 1rem;
+    color: #1e293b;
+    font-weight: 600;
     width: 100%;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .employee-detail .form-group input:focus,
@@ -1024,5 +1029,31 @@ input.grading-input[type=number] {
     .menu-item {
         padding: 8px 10px;
         font-size: 0.85rem;
+    }
+
+    /* Cards Responsive */
+    .employee-detail .grid-2 {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .employee-detail .form-group {
+        padding: 10px 14px;
+    }
+
+    .employee-detail .form-group label {
+        font-size: 0.7rem;
+    }
+
+    .employee-detail .form-group input,
+    .employee-detail .form-group select,
+    .employee-detail .form-group textarea {
+        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 480px) and (max-width: 768px) {
+    .employee-detail .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
