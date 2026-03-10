@@ -278,6 +278,14 @@ BEGIN
 END $$;
 
 -- 6. TẠO ADMIN USER VÀ ROLE
+-- Đảm bảo không bị lỗi CHECK constraint trên cột current_position
+DO $$
+BEGIN
+    ALTER TABLE public.employee_profiles DROP CONSTRAINT IF EXISTS employee_profiles_current_position_check;
+EXCEPTION WHEN OTHERS THEN
+    -- Bỏ qua nếu bảng không có constraint
+END $$;
+
 -- Chỉ insert các cột bắt buộc, các cột khác sẽ dùng giá trị mặc định
 -- Password mặc định: 123456 (plain text, sẽ được hash khi đăng nhập lần đầu)
 INSERT INTO public.employee_profiles (employee_code, last_name, first_name, department, current_position, email_acv, password)
@@ -293,7 +301,17 @@ SET last_name = EXCLUDED.last_name,
 INSERT INTO public.user_roles (employee_code, role_level)
 VALUES ('ADMIN', 'SUPER_ADMIN')
 ON CONFLICT (employee_code) DO UPDATE SET role_level = 'SUPER_ADMIN';
-
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'rbac_matrix'
+        AND column_name = 'sort_order'
+    ) THEN
+        ALTER TABLE public.rbac_matrix ADD COLUMN sort_order INTEGER DEFAULT 10;
+    END IF;
+END $$;
 -- 7. SEED RBAC MATRIX
 INSERT INTO public.rbac_matrix (role_level, permission_key, can_view, can_edit, can_delete, sort_order)
 VALUES 

@@ -123,27 +123,18 @@ function UserManagement() {
         }
     }
 
-    const hashPassword = async (password) => {
-        const encoder = new TextEncoder()
-        const data = encoder.encode(password)
-        const hash = await crypto.subtle.digest('SHA-256', data)
-        return Array.from(new Uint8Array(hash))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('')
-    }
-
     const handleCreateAccount = async (employee) => {
         try {
             const defaultPassword = '123456'
-            const hashedPassword = await hashPassword(defaultPassword)
 
-            // Update password in employee_profiles
-            const { error } = await supabase
-                .from('employee_profiles')
-                .update({ password: hashedPassword })
-                .eq('employee_code', employee.employee_code)
+            // Use Supabase RPC to securely hash and update password via Bcrypt in the database
+            const { data, error } = await supabase.rpc('update_user_password', {
+                p_employee_code: employee.employee_code,
+                p_new_password: defaultPassword
+            })
 
             if (error) throw error
+            if (!data) throw new Error('Không thể cập nhật mật khẩu')
 
             alert(`Đã tạo tài khoản cho ${employee.employee_code}!\nMật khẩu mặc định: ${defaultPassword}`)
             loadEmployees()
@@ -177,22 +168,14 @@ function UserManagement() {
                 return
             }
 
-            // Hash password
-            const hashedPassword = await hashPassword(newPassword)
-
-            // Check if new password is the same as current password
-            if (selectedEmployee.password && hashedPassword === selectedEmployee.password) {
-                alert('Mật khẩu mới không được trùng với mật khẩu hiện tại')
-                return
-            }
-
-            // Update password in database
-            const { error } = await supabase
-                .from('employee_profiles')
-                .update({ password: hashedPassword })
-                .eq('employee_code', selectedEmployee.employee_code)
+            // Use Supabase RPC to securely hash and update password via Bcrypt in the database
+            const { data, error } = await supabase.rpc('update_user_password', {
+                p_employee_code: selectedEmployee.employee_code,
+                p_new_password: newPassword
+            })
 
             if (error) throw error
+            if (!data) throw new Error('Không thể cập nhật mật khẩu')
 
             alert('Đã đặt lại mật khẩu thành công!')
             setShowPasswordModal(false)
@@ -312,10 +295,7 @@ function UserManagement() {
         try {
             const { error } = await supabase
                 .from('employee_profiles')
-                .update({
-                    department: newDept,
-                    bo_phan: newDept // Update both fields to be safe
-                })
+                .update({ department: newDept })
                 .eq('employee_code', employee.employee_code)
 
             if (error) throw error
@@ -337,10 +317,7 @@ function UserManagement() {
         try {
             const { error } = await supabase
                 .from('employee_profiles')
-                .update({
-                    team: newTeam,
-                    doi: newTeam // Update both fields if needed (assuming 'doi' might be used loosely)
-                })
+                .update({ team: newTeam })
                 .eq('employee_code', employee.employee_code)
 
             if (error) throw error

@@ -49,7 +49,9 @@ function Header({ onMenuToggle, isMenuOpen = false }) {
           <div className="user-details">
             <div className="user-name">{displayName}</div>
             <div className="user-role">
-              <span className={`role-badge ${roleBadgeClass}`}>{currentRoleLabel}</span>
+              <span className={`role-badge ${roleBadgeClass}`}>
+                {user?.profile?.current_position || currentRoleLabel}
+              </span>
             </div>
           </div>
           <div className="user-avatar">
