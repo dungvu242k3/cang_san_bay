@@ -136,6 +136,10 @@ COMMENT ON COLUMN public.employee_profiles.trade_union_notes IS 'Ghi chú về C
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.employee_profiles ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist to prevent 42710 error
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.employee_profiles;
+DROP POLICY IF EXISTS "Enable write access for authenticated users" ON public.employee_profiles;
+
 -- Create policy to allow authenticated users to view all profiles (Adjust specific rules as needed)
 CREATE POLICY "Enable read access for authenticated users" ON public.employee_profiles
     FOR SELECT

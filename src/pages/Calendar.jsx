@@ -337,7 +337,7 @@ const MobileDutySchedule = ({ days, onDateClick, renderEmployees }) => {
 };
 
 const CalendarToolbar = (toolbar) => {
-    const { label, view, views, onNavigate, onView, filterLocation, setFilterLocation, filterScope, setFilterScope, getUniqueLocations, isMobile } = toolbar;
+    const { label, view, views, onNavigate, onView, filterScope, setFilterScope, isMobile, hideBirthdays, setHideBirthdays } = toolbar;
     const [showFilters, setShowFilters] = useState(false);
 
     const goToBack = () => onNavigate('PREV');
@@ -392,18 +392,6 @@ const CalendarToolbar = (toolbar) => {
                     ) : (
                         <div className="calendar-filters-container d-flex">
                             <select
-                                value={filterLocation}
-                                onChange={(e) => setFilterLocation(e.target.value)}
-                                className="form-control-premium calendar-select-premium"
-                                style={{ width: '150px' }}
-                            >
-                                <option value="">-- Địa điểm --</option>
-                                {getUniqueLocations().map(loc => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
-                            </select>
-
-                            <select
                                 value={filterScope}
                                 onChange={(e) => setFilterScope(e.target.value)}
                                 className="form-control-premium calendar-select-premium"
@@ -413,6 +401,16 @@ const CalendarToolbar = (toolbar) => {
                                 <option value="department">Phòng ban của tôi</option>
                                 <option value="team">Tổ của tôi</option>
                             </select>
+
+                            <label className="d-flex align-items-center mb-0" style={{ cursor: 'pointer', userSelect: 'none', gap: '8px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={hideBirthdays}
+                                    onChange={(e) => setHideBirthdays(e.target.checked)}
+                                    style={{ cursor: 'pointer', width: '15px', height: '13px' }}
+                                />
+                                <span style={{ color: '#4a5568', fontWeight: 500, fontSize: '0.9rem' }}> Ẩn sinh nhật</span>
+                            </label>
                         </div>
                     )}
                 </div>
@@ -421,20 +419,6 @@ const CalendarToolbar = (toolbar) => {
             {/* Mobile Filter Panel */}
             {isMobile && showFilters && (
                 <div className="mobile-filter-panel slide-down">
-                    <div className="mobile-filter-row">
-                        <label>📍 Địa điểm:</label>
-                        <select
-                            value={filterLocation}
-                            onChange={(e) => setFilterLocation(e.target.value)}
-                            className="form-control-premium w-100"
-                        >
-                            <option value="">Tất cả địa điểm</option>
-                            {getUniqueLocations().map(loc => (
-                                <option key={loc} value={loc}>{loc}</option>
-                            ))}
-                        </select>
-                    </div>
-
                     <div className="mobile-filter-row">
                         <label>🏢 Đơn vị:</label>
                         <select
@@ -448,6 +432,17 @@ const CalendarToolbar = (toolbar) => {
                         </select>
                     </div>
 
+                    <div className="mobile-filter-row" style={{ marginTop: '10px' }}>
+                        <label className="d-flex align-items-center mb-0" style={{ cursor: 'pointer', userSelect: 'none', gap: '8px', padding: '8px 0' }}>
+                            <input
+                                type="checkbox"
+                                checked={hideBirthdays}
+                                onChange={(e) => setHideBirthdays(e.target.checked)}
+                                style={{ cursor: 'pointer', width: '20px', height: '20px' }}
+                            />
+                            <span style={{ color: '#4a5568', fontWeight: 600, fontSize: '0.95rem' }}>Ẩn sinh nhật</span>
+                        </label>
+                    </div>
                     <div className="mobile-filter-row">
                         <button type="button" className="today-btn w-100" onClick={goToToday} style={{ height: '38px', borderRadius: '10px' }}>
                             Về hôm nay
@@ -525,24 +520,19 @@ export default function CalendarPage() {
     // Removed openDropdowns and dropdownRefs as they are no longer used
 
     // Filters
-    const [filterLocation, setFilterLocation] = useState('');
     const [filterScope, setFilterScope] = useState('');
+    const [hideBirthdays, setHideBirthdays] = useState(false);
 
-    // Derived Filter Options
-    const getUniqueLocations = () => {
-        const locs = new Set();
-        events.forEach(e => {
-            if (e.resource?.type === 'EVENT' && e.resource?.data?.location) {
-                const loc = e.resource.data.location.trim();
-                if (loc) locs.add(loc);
-            }
-        });
-        return Array.from(locs).sort();
-    };
+
 
     const getFilteredEvents = () => {
         const myDept = user?.dept_scope || myProfile?.department;
         return events.filter(e => {
+            // Check global hide birthday toggle
+            if (hideBirthdays && e.resource?.type === 'BIRTHDAY') {
+                return false;
+            }
+
             // 0. LEAVE events: only show when department filter is active
             if (e.resource?.type === 'LEAVE') {
                 if (filterScope !== 'department') return false;
@@ -550,15 +540,7 @@ export default function CalendarPage() {
                 return e.resource.data._department === myDept;
             }
 
-            // 1. Apply Location Filter
-            if (filterLocation) {
-                if (e.resource?.type === 'EVENT') {
-                    const eventLoc = (e.resource?.data?.location || '').trim();
-                    if (eventLoc !== filterLocation) return false;
-                } else {
-                    return false;
-                }
-            }
+
 
             // 2. Apply Scope Filter (skip for 'all' — show everything)
             if (filterScope && filterScope !== 'all') {
@@ -662,11 +644,8 @@ export default function CalendarPage() {
             }
             const { data: leaves } = await leaveQuery;
 
-            // 4. Fetch Birthdays (Filter by Dept for privacy)
-            let profileQuery = supabase.from('employee_profiles').select('employee_code, first_name, last_name, date_of_birth, department').not('date_of_birth', 'is', null);
-            if (myRole === 'STAFF' || myRole === 'TEAM_LEADER' || myRole === 'DEPT_HEAD') {
-                profileQuery = profileQuery.eq('department', myDept);
-            }
+            // 4. Fetch Birthdays (All employees)
+            let profileQuery = supabase.from('employee_profiles').select('employee_code, first_name, last_name, date_of_birth, department, current_position').not('date_of_birth', 'is', null);
             const { data: profiles } = await profileQuery;
 
             const formattedEvents = [];
@@ -763,9 +742,16 @@ export default function CalendarPage() {
                 profiles.forEach(p => {
                     const dob = new Date(p.date_of_birth);
                     const birthday = new Date(currentYear, dob.getMonth(), dob.getDate());
+
+                    // Format: Sinh nhật [Họ Tên] - [Chức danh] - [Phòng ban]
+                    const fullName = `${p.last_name || ''} ${p.first_name || ''}`.trim();
+                    const position = p.current_position || 'Nhân viên';
+                    const department = p.department || 'Chưa phân loại';
+                    const birthdayTitle = `🎂 Sinh nhật ${fullName} - ${position} - ${department}`;
+
                     formattedEvents.push({
                         id: `dob-${p.employee_code}`,
-                        title: `🎂 SN ${p.last_name} ${p.first_name}`,
+                        title: birthdayTitle,
                         start: birthday,
                         end: birthday,
                         allDay: true,
@@ -996,13 +982,37 @@ export default function CalendarPage() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, first_name, last_name, avatar_url, department')
-                .order('department')
-                .order('last_name')
-                .order('first_name')
+                .select('employee_code, first_name, last_name, avatar_url, department, current_position')
 
             if (error) throw error
-            setEventEmployees(data || [])
+
+            // Prioritize managers ("cán bộ")
+            const isManager = (pos) => {
+                if (!pos) return false;
+                const p = pos.toLowerCase();
+                return p.includes('giám đốc') || p.includes('trưởng phòng') ||
+                    p.includes('đội trưởng') || p.includes('chủ đội') ||
+                    p.includes('tổ trưởng') || p.includes('chủ tổ');
+            };
+
+            const sortedData = (data || []).sort((a, b) => {
+                const aManager = isManager(a.current_position);
+                const bManager = isManager(b.current_position);
+
+                if (aManager && !bManager) return -1;
+                if (!aManager && bManager) return 1;
+
+                // Then sort by department
+                const deptCompare = (a.department || '').localeCompare(b.department || '');
+                if (deptCompare !== 0) return deptCompare;
+
+                // Then sort by name
+                const nameA = `${a.first_name || ''} ${a.last_name || ''}`;
+                const nameB = `${b.first_name || ''} ${b.last_name || ''}`;
+                return nameA.localeCompare(nameB);
+            });
+
+            setEventEmployees(sortedData)
         } catch (error) {
             console.error('Error loading employees:', error)
         }
@@ -1441,7 +1451,7 @@ export default function CalendarPage() {
                             <div style={{ padding: '12px', borderBottom: '1px solid #e2e8f0' }}>
                                 <input
                                     type="text"
-                                    placeholder="Tìm kiếm tên hoặc mã nhân viên..."
+                                    placeholder="Tìm kiếm tên hoặc phòng ban..."
                                     value={participantsSearchTerm}
                                     onChange={(e) => setParticipantsSearchTerm(e.target.value)}
                                     style={{
@@ -1503,7 +1513,7 @@ export default function CalendarPage() {
                                                         {`${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                                     </div>
                                                     <div style={{ fontSize: '12px', color: '#86868b' }}>
-                                                        {emp.employee_code} {emp.department ? `• ${emp.department}` : ''}
+                                                        {emp.current_position || 'Nhân viên'} {emp.department ? `• ${emp.department}` : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1818,12 +1828,11 @@ export default function CalendarPage() {
                                 toolbar: (props) => (
                                     <CalendarToolbar
                                         {...props}
-                                        filterLocation={filterLocation}
-                                        setFilterLocation={setFilterLocation}
                                         filterScope={filterScope}
                                         setFilterScope={setFilterScope}
-                                        getUniqueLocations={getUniqueLocations}
                                         isMobile={isMobile}
+                                        hideBirthdays={hideBirthdays}
+                                        setHideBirthdays={setHideBirthdays}
                                     />
                                 )
                             }}
@@ -2172,12 +2181,14 @@ export default function CalendarPage() {
                             <div className="modal-body-premium">
                                 <h4 className="text-primary font-weight-bold mb-3">{selectedEvent.title}</h4>
 
-                                <div className="mb-3 d-flex align-items-center text-muted">
-                                    <i className="far fa-clock mr-2" style={{ width: '20px' }}></i>
-                                    <span>
-                                        {moment(selectedEvent.start).format('HH:mm DD/MM')} - {moment(selectedEvent.end).format('HH:mm DD/MM/YYYY')}
-                                    </span>
-                                </div>
+                                {selectedEvent.resource?.type !== 'BIRTHDAY' && (
+                                    <div className="mb-3 d-flex align-items-center text-muted">
+                                        <i className="far fa-clock mr-2" style={{ width: '20px' }}></i>
+                                        <span>
+                                            {moment(selectedEvent.start).format('HH:mm DD/MM')} - {moment(selectedEvent.end).format('HH:mm DD/MM/YYYY')}
+                                        </span>
+                                    </div>
+                                )}
 
                                 {selectedEvent.resource?.type === 'EVENT' && (
                                     <>
