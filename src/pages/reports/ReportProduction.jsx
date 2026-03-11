@@ -190,15 +190,15 @@ function ReportProduction({ showPage }) {
 
             {/* Tabs & Table */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="flex border-b border-slate-200">
+                <div className="flex justify-center gap-8 border-b border-slate-200 overflow-x-auto rpt-hide-scrollbar px-4 pt-1">
                     {[['overview', 'Tổng quan'], ['structure', 'Cơ cấu'], ['top-routes', 'Top tuyến/điểm'], ['details', 'Chi tiết']].map(([key, label]) => (
                         <button key={key} onClick={() => setActiveTab(key)}
-                            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === key ? 'rpt-tab-active' : 'text-slate-600 hover:text-blue-700 border-transparent'}`}>
+                            className={`whitespace-nowrap px-2 py-4 text-base font-medium border-b-2 transition-colors ${activeTab === key ? 'border-blue-700 text-blue-800' : 'text-slate-600 hover:text-blue-700 border-transparent'}`}>
                             {label}
                         </button>
                     ))}
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto mt-4 rpt-hide-scrollbar">
                     <table className="w-full text-sm">
                         <thead className="bg-slate-50">
                             <tr>

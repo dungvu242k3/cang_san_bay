@@ -1,4 +1,31 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../../services/supabase'
+
 function ReportHome({ showPage }) {
+    const [hrStats, setHrStats] = useState({ total: 0, partyPct: 0, unionPct: 0, loading: true })
+
+    useEffect(() => {
+        const fetchHrStats = async () => {
+            try {
+                const { data, error } = await supabase.from('employee_profiles').select('is_party_member, is_youth_union_member').neq('status', 'Nghỉ việc')
+                if (data && !error) {
+                    const total = data.length
+                    const party = data.filter(d => d.is_party_member === true || d.is_party_member === 'true').length
+                    const union = data.filter(d => d.is_youth_union_member === true || d.is_youth_union_member === 'true').length
+                    setHrStats({
+                        total,
+                        partyPct: total > 0 ? Math.round((party / total) * 100) : 0,
+                        unionPct: total > 0 ? Math.round((union / total) * 100) : 0,
+                        loading: false
+                    })
+                }
+            } catch (err) {
+                console.error("Error fetching hr stats for home:", err)
+                setHrStats(s => ({...s, loading: false}))
+            }
+        }
+        fetchHrStats()
+    }, [])
     return (
         <main className="w-full" style={{ padding: '20px 24px 24px 24px' }}>
             <div style={{ marginBottom: '20px' }}>
@@ -42,10 +69,9 @@ function ReportHome({ showPage }) {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-slate-500 font-medium">Tổng nhân sự</p>
-                            <p className="text-2xl font-bold text-slate-800 mt-1">350</p>
+                            <p className="text-2xl font-bold text-slate-800 mt-1">{hrStats.loading ? '...' : hrStats.total}</p>
                             <div className="flex items-center gap-2 mt-2">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">+5</span>
-                                <span className="text-xs text-slate-500">tháng này</span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Thực tế</span>
                             </div>
                         </div>
                         <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -133,8 +159,8 @@ function ReportHome({ showPage }) {
                     </div>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div><p className="text-xs text-slate-400">Đảng viên</p><p className="text-sm font-semibold text-slate-700">35%</p></div>
-                            <div><p className="text-xs text-slate-400">Đoàn viên</p><p className="text-sm font-semibold text-slate-700">42%</p></div>
+                            <div><p className="text-xs text-slate-400">Đảng viên</p><p className="text-sm font-semibold text-slate-700">{hrStats.loading ? '...' : `${hrStats.partyPct}%`}</p></div>
+                            <div><p className="text-xs text-slate-400">Đoàn viên</p><p className="text-sm font-semibold text-slate-700">{hrStats.loading ? '...' : `${hrStats.unionPct}%`}</p></div>
                         </div>
                         <span className="flex items-center gap-1 text-green-600 font-medium text-sm">Xem <i className="fas fa-chevron-right text-xs"></i></span>
                     </div>

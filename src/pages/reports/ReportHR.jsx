@@ -1,47 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
     Bar, BarChart, CartesianGrid, Cell,
     Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts'
+import { supabase } from '../../services/supabase'
 
-const deptData = [
-    { name: 'Văn phòng', value: 85, fill: '#10b981' },
-    { name: 'TCKH', value: 70, fill: '#3b82f6' },
-    { name: 'Phục vụ MD', value: 85, fill: '#8b5cf6' },
-    { name: 'Kỹ thuật', value: 75, fill: '#f59e0b' },
-    { name: 'Điều hành', value: 65, fill: '#ec4899' },
-]
-
-const ageData = [
-    { name: 'Dưới 30', value: 105, fill: '#10b981' },
-    { name: '30-40', value: 122, fill: '#3b82f6' },
-    { name: '41-50', value: 77, fill: '#f59e0b' },
-    { name: 'Trên 50', value: 46, fill: '#ef4444' },
-]
-
-const certRows = [
-    { stt: 1, name: 'Nguyễn Văn A', dept: 'Kỹ thuật', cert: 'ATPL', date: '15/03/2026', status: 'Quá hạn', color: 'red' },
-    { stt: 2, name: 'Trần Thị B', dept: 'Phục vụ MD', cert: 'Tay nghề', date: '20/04/2026', status: '60 ngày', color: 'yellow' },
-    { stt: 3, name: 'Phạm Văn C', dept: 'Điều hành', cert: 'Quản lý', date: '10/05/2026', status: '75 ngày', color: 'yellow' },
-]
-
-const salaryRows = [
-    { stt: 1, name: 'Lê Văn D', dept: 'Văn phòng', grade: 'Bậc 4', date: '01/03/2026', status: 'Chuẩn bị', color: 'green' },
-    { stt: 2, name: 'Hoàng Thị E', dept: 'TCKH', grade: 'Bậc 3', date: '15/03/2026', status: 'Chuẩn bị', color: 'green' },
-    { stt: 3, name: 'Đặng Văn F', dept: 'Phục vụ MD', grade: 'Bậc 5', date: '01/04/2026', status: 'Chờ duyệt', color: 'blue' },
-]
-
-const retireRows = [
-    { stt: 1, name: 'Vũ Văn G', dept: 'Kỹ thuật', dob: '1962', date: '15/06/2026', remain: '4 tháng', color: 'red' },
-    { stt: 2, name: 'Bùi Thị H', dept: 'Văn phòng', dob: '1965', date: '01/09/2026', remain: '7 tháng', color: 'yellow' },
-    { stt: 3, name: 'Đinh Văn I', dept: 'Điều hành', dob: '1964', date: '20/11/2026', remain: '9 tháng', color: 'yellow' },
-]
-
-const leaveRows = [
-    { stt: 1, name: 'Phan Văn K', dept: 'Phục vụ MD', type: 'Nghỉ phép', typeColor: 'blue', from: '20/02/2026', to: '28/02/2026' },
-    { stt: 2, name: 'Chu Thị L', dept: 'TCKH', type: 'Thai sản', typeColor: 'pink', from: '01/01/2026', to: '15/05/2026' },
-    { stt: 3, name: 'Tô Văn M', dept: 'Kỹ thuật', type: 'Nghỉ phép', typeColor: 'blue', from: '24/02/2026', to: '01/03/2026' },
-]
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e']
 
 const BADGE_CLASSES = {
     red: 'px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700',
@@ -55,14 +19,233 @@ const BADGE_CLASSES = {
 function ReportHR({ showPage }) {
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    // Raw Data States
+    const [profiles, setProfiles] = useState([])
+    const [certificates, setCertificates] = useState([])
+    const [salaries, setSalaries] = useState([])
+    const [leaves, setLeaves] = useState([])
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true)
+            try {
+                const [profRes, certRes, salRes, leaveRes] = await Promise.all([
+                    supabase.from('employee_profiles').select('*').neq('status', 'Nghỉ việc'),
+                    supabase.from('employee_certificates').select('*'),
+                    supabase.from('employee_salaries').select('*').eq('is_active', true),
+                    supabase.from('employee_leaves').select('*')
+                ])
+
+                if (profRes.data) setProfiles(profRes.data)
+                if (certRes.data) setCertificates(certRes.data)
+                if (salRes.data) setSalaries(salRes.data)
+                if (leaveRes.data) setLeaves(leaveRes.data)
+            } catch (err) {
+                console.error("Error fetching HR data:", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [])
+
+    const deptData = useMemo(() => {
+        if (!profiles.length) return [{ name: 'Chưa có data', value: 1, fill: '#cbd5e1' }]
+        const counts = {}
+        profiles.forEach(p => {
+            const d = p.department || 'Phòng ban khác'
+            counts[d] = (counts[d] || 0) + 1
+        })
+        return Object.entries(counts)
+            .sort((a, b) => b[1] - a[1]) // highest first
+            .map(([name, value], idx) => ({
+                name, value, fill: COLORS[idx % COLORS.length]
+            }))
+    }, [profiles])
+
+    const ageData = useMemo(() => {
+        if (!profiles.length) return [{ name: 'Chưa có data', value: 1, fill: '#cbd5e1' }]
+        let u30 = 0, u40 = 0, u50 = 0, o50 = 0
+        const currentYear = new Date().getFullYear()
+        profiles.forEach(p => {
+            if (!p.date_of_birth) return
+            let birthYear = 0
+            const yearMatch = p.date_of_birth.match(/\d{4}/)
+            if (yearMatch) birthYear = parseInt(yearMatch[0])
+            else return // unparseable
+
+            const age = currentYear - birthYear
+            if (age < 30) u30++
+            else if (age <= 40) u40++
+            else if (age <= 50) u50++
+            else o50++
+        })
+        return [
+            { name: 'Dưới 30', value: u30, fill: '#10b981' },
+            { name: '30-40', value: u40, fill: '#3b82f6' },
+            { name: '41-50', value: u50, fill: '#f59e0b' },
+            { name: 'Trên 50', value: o50, fill: '#ef4444' },
+        ].filter(i => i.value > 0)
+    }, [profiles])
+
+    const certRows = useMemo(() => {
+        const today = new Date()
+        const next90 = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000)
+        let filtered = certificates.filter(c => {
+            if (!c.expiry_date) return false
+            // Check parsing DD/MM/YYYY vs YYYY-MM-DD
+            let exp = new Date(c.expiry_date)
+            if (isNaN(exp.getTime()) && c.expiry_date.includes('/')) {
+                const [d, m, y] = c.expiry_date.split('/')
+                exp = new Date(`${y}-${m}-${d}`)
+            }
+            if (isNaN(exp.getTime())) return false
+            c._parsedExpiry = exp
+            return exp <= next90 // expired or expiring in 90 days
+        })
+
+        return filtered.map((c, idx) => {
+            const emp = profiles.find(p => p.employee_code === c.employee_code) || {}
+            const daysLeft = Math.floor((c._parsedExpiry - today) / (1000 * 60 * 60 * 24))
+            const status = c._parsedExpiry < today ? 'Quá hạn' : (daysLeft < 30 ? 'Sắp hạn' : `${daysLeft} ngày`)
+            const color = c._parsedExpiry < today ? 'red' : (daysLeft < 30 ? 'amber' : 'yellow')
+
+            return {
+                stt: idx + 1,
+                name: `${emp.last_name || ''} ${emp.first_name || ''}`.trim() || c.employee_code || 'N/A',
+                dept: emp.department || 'N/A',
+                cert: c.certificate_name || 'N/A',
+                date: c.expiry_date,
+                status,
+                color,
+                employeeDetails: emp
+            }
+        }).sort((a,b) => a.color === 'red' ? -1 : 1) // expired first
+    }, [certificates, profiles])
+
+    const salaryRows = useMemo(() => {
+        const today = new Date()
+        let filtered = salaries.filter(s => {
+            if (!s.date_received_level) return false
+            let received = new Date(s.date_received_level)
+            if (isNaN(received.getTime()) && s.date_received_level.includes('/')) {
+                const [d, m, y] = s.date_received_level.split('/')
+                received = new Date(`${y}-${m}-${d}`)
+            }
+            if (isNaN(received.getTime())) return false
+            const years = (today - received) / (1000 * 60 * 60 * 24 * 365)
+            s._parsedReceived = received
+            return years >= 2.8 && years <= 4 // roughly due for a 3-year raise, or slightly overdue
+        })
+        
+        return filtered.map((s, idx) => {
+            const emp = profiles.find(p => p.employee_code === s.employee_code) || {}
+            const nextRaise = new Date(s._parsedReceived.getTime())
+            nextRaise.setFullYear(nextRaise.getFullYear() + 3)
+            
+            const daysOverdue = (today - nextRaise) / (1000 * 60 * 60 * 24)
+            const status = daysOverdue > 0 ? 'Quá hạn' : (daysOverdue > -30 ? 'Chuẩn bị' : 'Chờ duyệt')
+            
+            return {
+                stt: idx + 1,
+                name: `${emp.last_name || ''} ${emp.first_name || ''}`.trim() || s.employee_code || 'N/A',
+                dept: emp.department || 'N/A',
+                grade: s.salary_level || 'N/A',
+                date: nextRaise.toLocaleDateString('vi-VN'),
+                status,
+                color: status === 'Quá hạn' ? 'red' : (status === 'Chuẩn bị' ? 'amber' : 'green'),
+                employeeDetails: emp
+            }
+        }).sort((a,b) => a.color === 'red' ? -1 : 1)
+    }, [salaries, profiles])
+
+    const retireRows = useMemo(() => {
+        const today = new Date()
+        let rows = []
+        profiles.forEach(p => {
+            if (!p.date_of_birth) return
+            let birthDate = new Date(p.date_of_birth)
+            if (isNaN(birthDate.getTime()) && p.date_of_birth.includes('/')) {
+                const [d, m, y] = p.date_of_birth.split('/')
+                birthDate = new Date(`${y}-${m}-${d}`)
+            }
+            if (isNaN(birthDate.getTime())) return
+            
+            const isFemale = p.gender && p.gender.toLowerCase() === 'nữ'
+            const retirementAge = isFemale ? 60 : 62 
+            const retireDate = new Date(birthDate.getTime())
+            retireDate.setFullYear(retireDate.getFullYear() + retirementAge)
+            
+            const monthsLeft = (retireDate - today) / (1000 * 60 * 60 * 24 * 30.4)
+            if (monthsLeft >= -6 && monthsLeft <= 12) { // also show recently retired for tracking?
+                rows.push({ emp: p, retireDate, monthsLeft, birthYear: birthDate.getFullYear() })
+            }
+        })
+        return rows.map((r, idx) => ({
+            stt: idx + 1,
+            name: `${r.emp.last_name || ''} ${r.emp.first_name || ''}`.trim() || r.emp.employee_code,
+            dept: r.emp.department || 'N/A',
+            dob: r.birthYear,
+            date: r.retireDate.toLocaleDateString('vi-VN'),
+            remain: r.monthsLeft <= 0 ? 'Đã đến hạn' : `${Math.ceil(r.monthsLeft)} tháng`,
+            color: r.monthsLeft <= 3 ? 'red' : 'yellow',
+            employeeDetails: r.emp
+        })).sort((a,b) => parseInt(a.remain) - parseInt(b.remain)) // very crude sort
+    }, [profiles])
+
+    const leaveRows = useMemo(() => {
+        const today = new Date()
+        let filtered = leaves.filter(l => {
+            if (!l.from_date || !l.to_date) return false
+            let from = new Date(l.from_date), to = new Date(l.to_date)
+            if (isNaN(from.getTime()) && l.from_date.includes('/')) from = new Date(l.from_date.split('/').reverse().join('-'))
+            if (isNaN(to.getTime()) && l.to_date.includes('/')) to = new Date(l.to_date.split('/').reverse().join('-'))
+            
+            if (isNaN(from.getTime()) || isNaN(to.getTime())) return false
+            l._parsedFrom = from; l._parsedTo = to;
+            
+            return from <= today && to >= today
+        })
+        
+        return filtered.map((l, idx) => {
+            const emp = profiles.find(p => p.employee_code === l.employee_code) || {}
+            const isThaiSan = l.leave_type?.toLowerCase().includes('thai sản')
+            return {
+                stt: idx + 1,
+                name: `${emp.last_name || ''} ${emp.first_name || ''}`.trim() || l.employee_code || 'N/A',
+                dept: emp.department || 'N/A',
+                type: l.leave_type || 'Nghỉ phép',
+                typeColor: isThaiSan ? 'pink' : 'blue',
+                from: l._parsedFrom.toLocaleDateString('vi-VN'),
+                to: l._parsedTo.toLocaleDateString('vi-VN'),
+                employeeDetails: emp
+            }
+        })
+    }, [leaves, profiles])
 
     const openDrawer = (emp) => {
         setSelectedEmployee(emp)
         setDrawerOpen(true)
     }
 
+    // KPI Values
+    const totalEmployees = profiles.length || 0
+    const totalLeavesCount = leaveRows.length || 0
+    const leavePercentage = totalEmployees > 0 ? ((totalLeavesCount / totalEmployees) * 100).toFixed(1) : 0
+    const maternityLeavesCount = leaveRows.filter(r => r.typeColor === 'pink').length || 0
+    const maternityPercentage = totalEmployees > 0 ? ((maternityLeavesCount / totalEmployees) * 100).toFixed(1) : 0
+    const retiringSoonCount = retireRows.filter(r => r.remain !== 'Đã đến hạn').length || 0
+
     return (
-        <main className="w-full" style={{ padding: '20px 24px 24px 24px' }}>
+        <main className="w-full relative" style={{ padding: '20px 24px 24px 24px', minHeight: '100vh' }}>
+            {loading && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                </div>
+            )}
+            
             {/* Header */}
             <div className="flex items-center justify-between" style={{ marginBottom: '24px' }}>
                 <div>
@@ -98,22 +281,22 @@ function ReportHR({ showPage }) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4" style={{ marginBottom: '24px' }}>
                 <div className="bg-white rounded-xl shadow-sm border-l-4 border-green-500" style={{ padding: '20px' }}>
                     <p className="text-xs text-slate-500 font-medium">Tổng nhân sự</p>
-                    <p className="text-3xl font-bold text-green-600 mt-2">350</p>
+                    <p className="text-3xl font-bold text-green-600 mt-2">{totalEmployees}</p>
                     <p className="text-xs text-green-500 mt-1">người</p>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border-l-4 border-blue-500" style={{ padding: '20px' }}>
                     <p className="text-xs text-slate-500 font-medium">Đang nghỉ phép</p>
-                    <p className="text-3xl font-bold text-blue-600 mt-2">12</p>
-                    <p className="text-xs text-blue-500 mt-1">3.4% tổng số</p>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">{totalLeavesCount}</p>
+                    <p className="text-xs text-blue-500 mt-1">{leavePercentage}% tổng số</p>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border-l-4 border-pink-500" style={{ padding: '20px' }}>
                     <p className="text-xs text-slate-500 font-medium">Đang nghỉ thai sản</p>
-                    <p className="text-3xl font-bold text-pink-600 mt-2">5</p>
-                    <p className="text-xs text-pink-500 mt-1">1.4% tổng số</p>
+                    <p className="text-3xl font-bold text-pink-600 mt-2">{maternityLeavesCount}</p>
+                    <p className="text-xs text-pink-500 mt-1">{maternityPercentage}% tổng số</p>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border-l-4 border-amber-500" style={{ padding: '20px' }}>
                     <p className="text-xs text-slate-500 font-medium">Sắp về hưu</p>
-                    <p className="text-3xl font-bold text-amber-600 mt-2">8</p>
+                    <p className="text-3xl font-bold text-amber-600 mt-2">{retiringSoonCount}</p>
                     <p className="text-xs text-amber-500 mt-1">12 tháng tới</p>
                 </div>
             </div>
@@ -280,8 +463,8 @@ function ReportHR({ showPage }) {
                         <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-slate-800">Danh sách nghỉ hiện tại</h3>
                             <div className="flex gap-2">
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">NPhép: 12</span>
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-700">TSản: 5</span>
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">NPhép: {totalLeavesCount - maternityLeavesCount}</span>
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-700">TSản: {maternityLeavesCount}</span>
                             </div>
                         </div>
                     </div>
@@ -386,21 +569,21 @@ function ReportHR({ showPage }) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-xs text-slate-500 font-medium">Mã NV</p>
-                                        <p className="text-sm font-semibold text-slate-800 mt-0.5">NV{String(selectedEmployee?.stt || Math.floor(Math.random() * 1000)).padStart(4, '0')}</p>
+                                        <p className="text-sm font-semibold text-slate-800 mt-0.5">{selectedEmployee?.employeeDetails?.employee_code || 'Chưa cập nhật'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-slate-500 font-medium">Chức vụ</p>
-                                        <p className="text-sm font-semibold text-slate-800 mt-0.5">Chuyên viên</p>
+                                        <p className="text-xs text-slate-500 font-medium">Chức vụ / Chức danh</p>
+                                        <p className="text-sm font-semibold text-slate-800 mt-0.5">{selectedEmployee?.employeeDetails?.job_title || selectedEmployee?.employeeDetails?.job_position || 'Chuyên viên'}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-xs text-slate-500 font-medium">Số điện thoại</p>
-                                        <p className="text-sm font-semibold text-blue-600 mt-0.5">090* *** ***</p>
+                                        <p className="text-sm font-semibold text-blue-600 mt-0.5">{selectedEmployee?.employeeDetails?.phone || 'Chưa cập nhật'}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-slate-500 font-medium">Email</p>
-                                        <p className="text-sm font-semibold text-blue-600 mt-0.5 text-truncate">nv*@cangcatbi.vn</p>
+                                        <p className="text-sm font-semibold text-blue-600 mt-0.5 truncate max-w-[150px]" title={selectedEmployee?.employeeDetails?.email_acv || selectedEmployee?.employeeDetails?.email_personal}>{selectedEmployee?.employeeDetails?.email_acv || selectedEmployee?.employeeDetails?.email_personal || 'Chưa cập nhật'}</p>
                                     </div>
                                 </div>
                             </div>
