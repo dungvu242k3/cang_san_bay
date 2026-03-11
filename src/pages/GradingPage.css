@@ -538,7 +538,8 @@
     }
 
     .grading-main-content {
-        display: none;
+        flex: 1;
+        overflow-y: auto;
     }
 
     .grading-empty-state {

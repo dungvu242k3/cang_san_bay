@@ -4059,9 +4059,135 @@ const EmployeeDetail = ({
             const m = i + 1
             const monthStr = `${myScoreYearFilter}-${m.toString().padStart(2, '0')}`
             const review = myScoreHistory.find(r => r.month === monthStr)
-            return { month: monthStr, review }
+            return { month: monthStr, review, monthNum: m }
         })
 
+        const getStatusInfo = (review) => {
+            if (!review) return { status: 'Chưa đánh giá', badge: 'secondary', icon: 'fa-circle', color: '#94a3b8' }
+            if (review.supervisor_total_score) return { status: 'Hoàn thành', badge: 'success', icon: 'fa-check-circle', color: '#22c55e' }
+            if (review.self_total_score) return { status: 'Chờ duyệt', badge: 'warning', icon: 'fa-clock', color: '#f59e0b' }
+            return { status: 'Nháp', badge: 'info', icon: 'fa-pencil', color: '#3b82f6' }
+        }
+
+        const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
+
+        // Mobile Card Layout
+        if (isMobile) {
+            return (
+                <div className="myscore-mobile-container">
+                    {/* Header */}
+                    <div className="myscore-mobile-header">
+                        <div className="myscore-mobile-header-top">
+                            <h3 className="myscore-mobile-title">
+                                <i className="fas fa-star" style={{ color: '#f59e0b' }}></i> Điểm của tôi
+                            </h3>
+                        </div>
+                        <div className="myscore-mobile-year-selector">
+                            <button
+                                className="myscore-year-btn"
+                                onClick={() => setMyScoreYearFilter(prev => prev - 1)}
+                            >
+                                <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <span className="myscore-year-label">{myScoreYearFilter}</span>
+                            <button
+                                className="myscore-year-btn"
+                                onClick={() => setMyScoreYearFilter(prev => prev + 1)}
+                            >
+                                <i className="fas fa-chevron-right"></i>
+                            </button>
+                            <button className="myscore-refresh-btn" onClick={() => loadMyScoreHistory()}>
+                                <i className="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Score Summary */}
+                    {(() => {
+                        const completedMonths = months.filter(m => m.review?.supervisor_total_score)
+                        const avgScore = completedMonths.length > 0
+                            ? Math.round(completedMonths.reduce((sum, m) => sum + (m.review.supervisor_total_score || 0), 0) / completedMonths.length)
+                            : 0
+                        return (
+                            <div className="myscore-summary-strip">
+                                <div className="myscore-summary-item">
+                                    <span className="myscore-summary-value" style={{ color: '#3b82f6' }}>{completedMonths.length}</span>
+                                    <span className="myscore-summary-label">Đã chấm</span>
+                                </div>
+                                <div className="myscore-summary-divider"></div>
+                                <div className="myscore-summary-item">
+                                    <span className="myscore-summary-value" style={{ color: '#22c55e' }}>{avgScore || '-'}</span>
+                                    <span className="myscore-summary-label">TB điểm QL</span>
+                                </div>
+                                <div className="myscore-summary-divider"></div>
+                                <div className="myscore-summary-item">
+                                    <span className="myscore-summary-value" style={{ color: '#f59e0b' }}>{months.filter(m => m.review?.self_total_score && !m.review?.supervisor_total_score).length}</span>
+                                    <span className="myscore-summary-label">Chờ duyệt</span>
+                                </div>
+                            </div>
+                        )
+                    })()}
+
+                    {/* Month Cards */}
+                    <div className="myscore-months-grid">
+                        {months.map(item => {
+                            const { review, monthNum } = item
+                            const statusInfo = getStatusInfo(review)
+                            const isCurrentMonth = item.month === new Date().toISOString().slice(0, 7)
+
+                            return (
+                                <div
+                                    key={item.month}
+                                    className={`myscore-month-card ${isCurrentMonth ? 'current' : ''} ${review ? 'has-data' : ''}`}
+                                    onClick={() => {
+                                        setMonth(item.month)
+                                        setMyScoreViewMode('DETAIL')
+                                    }}
+                                >
+                                    <div className="myscore-card-left">
+                                        <div className="myscore-card-month-badge" style={{ background: isCurrentMonth ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : '#f1f5f9', color: isCurrentMonth ? '#fff' : '#475569' }}>
+                                            T{monthNum}
+                                        </div>
+                                        <div className="myscore-card-info">
+                                            <p className="myscore-card-month-name">{monthNames[monthNum - 1]}</p>
+                                            <div className="myscore-card-status">
+                                                <i className={`fas ${statusInfo.icon}`} style={{ color: statusInfo.color, fontSize: '10px' }}></i>
+                                                <span style={{ color: statusInfo.color }}>{statusInfo.status}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="myscore-card-right">
+                                        {review ? (
+                                            <div className="myscore-card-scores">
+                                                <div className="myscore-card-score-item">
+                                                    <span className="score-label">Tự chấm</span>
+                                                    <span className="score-value self">{review.self_total_score || '-'}</span>
+                                                </div>
+                                                <div className="myscore-card-score-item">
+                                                    <span className="score-label">QL chấm</span>
+                                                    <span className="score-value supervisor">{review.supervisor_total_score || '-'}</span>
+                                                </div>
+                                                {review.supervisor_grade && (
+                                                    <div className="myscore-card-grade">
+                                                        {review.supervisor_grade}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="myscore-card-empty">
+                                                <i className="fas fa-chevron-right" style={{ color: '#cbd5e1' }}></i>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )
+        }
+
+        // Desktop Table Layout (original)
         return (
             <>
                 <div className="section-header-modern">
@@ -4096,22 +4222,7 @@ const EmployeeDetail = ({
                         <tbody>
                             {months.map(item => {
                                 const { review } = item
-                                const isMonthPassed = new Date(item.month) < new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-                                let status = 'Chưa đánh giá'
-                                let badge = 'secondary'
-
-                                if (review) {
-                                    if (review.supervisor_total_score) {
-                                        status = 'Hoàn thành'
-                                        badge = 'success'
-                                    } else if (review.self_total_score) {
-                                        status = 'Đang chờ duyệt'
-                                        badge = 'warning'
-                                    } else {
-                                        status = 'Đã lưu nháp'
-                                        badge = 'info'
-                                    }
-                                }
+                                const statusInfo = getStatusInfo(review)
 
                                 return (
                                     <tr key={item.month} style={{ cursor: 'pointer' }} onClick={() => {
@@ -4124,7 +4235,7 @@ const EmployeeDetail = ({
                                         <td data-label="Xếp loại" className="text-center">
                                             {review && review.supervisor_grade ? <span className="badge badge-primary">{review.supervisor_grade}</span> : '-'}
                                         </td>
-                                        <td data-label="Trạng thái" className="text-center"><span className={`badge badge-${badge}`}>{status}</span></td>
+                                        <td data-label="Trạng thái" className="text-center"><span className={`badge badge-${statusInfo.badge}`}>{statusInfo.status}</span></td>
                                         <td data-label="Hành động" className="text-right">
                                             <button className="btn btn-sm btn-outline-primary" onClick={(e) => {
                                                 e.stopPropagation()
@@ -4159,6 +4270,134 @@ const EmployeeDetail = ({
             return matchName && matchStatus
         })
 
+        const handleEmpClick = (emp) => {
+            if (onSelectEmployee) {
+                onSelectEmployee({ ...emp, employeeId: emp.employee_code })
+                setActiveGradingTab('grading')
+            }
+        }
+
+        // Mobile Card Layout
+        if (isMobile) {
+            const pendingCount = filteredApprovalList.filter(e => e.reviewStatus === 'Cần duyệt').length
+            const completedCount = filteredApprovalList.filter(e => e.reviewStatus === 'Đã hoàn thành').length
+            const notStartedCount = filteredApprovalList.filter(e => e.reviewStatus === 'Chưa đánh giá').length
+
+            return (
+                <div className="approval-mobile-container">
+                    {/* Header */}
+                    <div className="approval-mobile-header">
+                        <h3 className="approval-mobile-title">
+                            <i className="fas fa-check-double"></i> Cần duyệt
+                        </h3>
+                        <div className="approval-mobile-month">
+                            <input
+                                type="month"
+                                value={month}
+                                onChange={(e) => setMonth(e.target.value)}
+                                className="approval-month-input"
+                            />
+                            <button className="myscore-refresh-btn" onClick={() => loadApprovalList()}>
+                                <i className="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Summary Strip */}
+                    <div className="myscore-summary-strip">
+                        <div className="myscore-summary-item" onClick={() => setApprovalFilterStatus('PENDING')} style={{ cursor: 'pointer' }}>
+                            <span className="myscore-summary-value" style={{ color: '#f59e0b' }}>{pendingCount}</span>
+                            <span className="myscore-summary-label">Cần duyệt</span>
+                        </div>
+                        <div className="myscore-summary-divider"></div>
+                        <div className="myscore-summary-item" onClick={() => setApprovalFilterStatus('COMPLETED')} style={{ cursor: 'pointer' }}>
+                            <span className="myscore-summary-value" style={{ color: '#22c55e' }}>{completedCount}</span>
+                            <span className="myscore-summary-label">Hoàn thành</span>
+                        </div>
+                        <div className="myscore-summary-divider"></div>
+                        <div className="myscore-summary-item" onClick={() => setApprovalFilterStatus('ALL')} style={{ cursor: 'pointer' }}>
+                            <span className="myscore-summary-value" style={{ color: '#3b82f6' }}>{filteredApprovalList.length}</span>
+                            <span className="myscore-summary-label">Tổng cộng</span>
+                        </div>
+                    </div>
+
+                    {/* Search & Filter */}
+                    <div className="approval-mobile-filters">
+                        <div className="approval-search-box">
+                            <i className="fas fa-search"></i>
+                            <input
+                                type="text"
+                                placeholder="Tìm tên hoặc mã NV..."
+                                value={approvalSearchTerm}
+                                onChange={(e) => setApprovalSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="approval-filter-chips">
+                            {[
+                                { key: 'ALL', label: 'Tất cả' },
+                                { key: 'PENDING', label: 'Cần duyệt' },
+                                { key: 'COMPLETED', label: 'Đã xong' },
+                                { key: 'NOT_STARTED', label: 'Chưa chấm' },
+                            ].map(f => (
+                                <button
+                                    key={f.key}
+                                    className={`approval-chip ${approvalFilterStatus === f.key ? 'active' : ''}`}
+                                    onClick={() => setApprovalFilterStatus(f.key)}
+                                >
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Employee Cards */}
+                    <div className="approval-cards-list">
+                        {filteredApprovalList.length > 0 ? filteredApprovalList.map(emp => (
+                            <div
+                                key={emp.employee_code}
+                                className="approval-emp-card"
+                                onClick={() => handleEmpClick(emp)}
+                            >
+                                <div className="approval-card-top">
+                                    <div className="approval-card-avatar">
+                                        {emp.avatar_url ? (
+                                            <img src={emp.avatar_url} alt="" />
+                                        ) : (
+                                            <div className="approval-card-avatar-placeholder">
+                                                {(emp.first_name || '?')[0]}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="approval-card-info">
+                                        <p className="approval-card-name">{emp.last_name} {emp.first_name}</p>
+                                        <p className="approval-card-dept">{emp.employee_code} · {emp.department}</p>
+                                    </div>
+                                    <span className={`approval-card-badge badge-${emp.badgeClass}`}>{emp.reviewStatus}</span>
+                                </div>
+                                <div className="approval-card-bottom">
+                                    <div className="approval-card-score-col">
+                                        <span className="score-label">Tự chấm</span>
+                                        <span className="score-value self">{emp.reviewStatus !== 'Chưa đánh giá' ? emp.selfGrade : '-'}</span>
+                                    </div>
+                                    <div className="approval-card-score-col">
+                                        <span className="score-label">QL chấm</span>
+                                        <span className="score-value supervisor">{emp.supervisorGrade || '-'}</span>
+                                    </div>
+                                    <i className="fas fa-chevron-right" style={{ color: '#cbd5e1', fontSize: '12px' }}></i>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="approval-empty">
+                                <i className="fas fa-clipboard-check" style={{ fontSize: '2rem', color: '#cbd5e1', marginBottom: '8px' }}></i>
+                                <p>Không tìm thấy kết quả phù hợp</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        // Desktop Table Layout (original)
         return (
             <>
                 <div className="section-header-modern">
@@ -4214,14 +4453,7 @@ const EmployeeDetail = ({
                         </thead>
                         <tbody>
                             {filteredApprovalList.length > 0 ? filteredApprovalList.map(emp => (
-                                <tr key={emp.employee_code} style={{ cursor: 'pointer' }} onClick={() => {
-                                    if (onSelectEmployee) {
-                                        onSelectEmployee({ ...emp, employeeId: emp.employee_code })
-                                        setActiveGradingTab('grading')
-                                    } else {
-                                        alert("Chức năng chọn nhân viên chưa được cấu hình đúng.")
-                                    }
-                                }}>
+                                <tr key={emp.employee_code} style={{ cursor: 'pointer' }} onClick={() => handleEmpClick(emp)}>
                                     <td data-label="Mã NV">{emp.employee_code}</td>
                                     <td data-label="Họ Tên">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -4273,18 +4505,25 @@ const EmployeeDetail = ({
         )
 
         if (activeGradingTab === 'approval') {
+            if (isMobile) {
+                return renderGradingApproval()
+            }
             return (
                 <div className="section-content">
-                    {!isMobile && renderTabs()}
+                    {renderTabs()}
                     {renderGradingApproval()}
                 </div>
             )
         }
 
         if (activeGradingTab === 'my_score' && myScoreViewMode === 'LIST') {
+            // On mobile, render without section-content padding for full-bleed layout
+            if (isMobile) {
+                return renderMyScoreHistory()
+            }
             return (
                 <div className="section-content">
-                    {!isMobile && renderTabs()}
+                    {renderTabs()}
                     {renderMyScoreHistory()}
                 </div>
             )
