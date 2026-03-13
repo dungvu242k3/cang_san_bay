@@ -24,7 +24,8 @@ const DEFAULT_FORM = {
     status: 'Published',
     category: '',
     tags: [],
-    file: null,
+    files: [],
+    attachments: [],
 }
 
 function Library() {
@@ -41,6 +42,7 @@ function Library() {
     const [activeFilter, setActiveFilter] = useState('Tất cả')
     const [searchQuery, setSearchQuery] = useState('')
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+    const [previewFile, setPreviewFile] = useState(null) // New state for preview
 
     const canEdit = checkAction('edit', { module: 'library' })
     const canDelete = checkAction('delete', { module: 'library' })
@@ -100,6 +102,7 @@ function Library() {
     }
 
     const handleOpenEdit = (doc) => {
+        console.log('📝 Editing document:', doc)
         setEditingDoc(doc)
         setFormData({
             title: doc.title || '',
@@ -108,7 +111,8 @@ function Library() {
             status: doc.status || 'Published',
             category: doc.category || '',
             tags: doc.tags || [],
-            file: null,
+            files: [], 
+            attachments: Array.isArray(doc.attachments) ? doc.attachments : [], // Move existing here
         })
         setShowFormModal(true)
     }
@@ -150,14 +154,14 @@ function Library() {
         try {
             setSaving(true)
 
-            // Handle file upload → store in attachments jsonb
-            let attachments = editingDoc?.attachments || null
-            if (formData.file) {
+            // Handle multiple file uploads
+            let finalAttachments = [...(formData.attachments || [])]
+            if (formData.files && formData.files.length > 0) {
                 setUploading(true)
-                const uploaded = await handleUploadFile(formData.file)
-                // Append to existing attachments or create new array
-                const existing = Array.isArray(attachments) ? attachments : []
-                attachments = [...existing, { url: uploaded.url, name: uploaded.name, path: uploaded.path }]
+                console.log('📤 Uploading new files:', formData.files.length)
+                const uploadPromises = Array.from(formData.files).map(file => handleUploadFile(file))
+                const uploadedResults = await Promise.all(uploadPromises)
+                finalAttachments = [...finalAttachments, ...uploadedResults]
                 setUploading(false)
             }
 
@@ -168,28 +172,43 @@ function Library() {
                 status: formData.status,
                 category: formData.category || null,
                 tags: formData.tags.length > 0 ? formData.tags : null,
-                attachments: attachments,
+                attachments: finalAttachments,
+                updated_at: new Date().toISOString(),
             }
 
+            console.log('💾 Saving payload:', payload)
+            console.log('💾 editingDoc:', editingDoc)
+
             if (editingDoc) {
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('documents')
                     .update(payload)
                     .eq('id', editingDoc.id)
+                    .select()
+
                 if (error) throw error
+                console.log('✅ Update result:', data)
+
+                if (!data || data.length === 0) {
+                    console.warn('⚠️ Update returned no rows - document may not exist or RLS blocked')
+                    alert('Cảnh báo: Không có bản ghi nào được cập nhật. Vui lòng kiểm tra quyền hoặc làm mới trang.')
+                }
             } else {
                 payload.author_code = user?.employee_code || null
                 payload.published_at = formData.status === 'Published' ? new Date().toISOString() : null
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('documents')
                     .insert([payload])
+                    .select()
+
                 if (error) throw error
+                console.log('✅ Insert result:', data)
             }
 
             handleCloseForm()
             await loadDocuments()
         } catch (err) {
-            console.error('Error saving document:', err)
+            console.error('❌ Error saving document:', err)
             alert('Lỗi khi lưu: ' + err.message)
         } finally {
             setSaving(false)
@@ -248,10 +267,9 @@ function Library() {
     }
 
     const handleRemoveAttachment = (index) => {
-        if (!editingDoc) return
-        const updated = [...(editingDoc.attachments || [])]
+        const updated = [...formData.attachments]
         updated.splice(index, 1)
-        setEditingDoc({ ...editingDoc, attachments: updated })
+        setFormData({ ...formData, attachments: updated })
     }
 
     const getFileIcon = (fileName) => {
@@ -447,13 +465,40 @@ function Library() {
                             {selectedDoc.attachments && Array.isArray(selectedDoc.attachments) && selectedDoc.attachments.length > 0 && (
                                 <div className="doc-attachments-list">
                                     <h4><i className="fas fa-paperclip"></i> File đính kèm</h4>
-                                    {selectedDoc.attachments.map((att, i) => (
-                                        <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="download-btn">
-                                            <i className={getFileIcon(att.name)}></i>
-                                            <span>{att.name || 'Tải file'}</span>
-                                            <i className="fas fa-download"></i>
-                                        </a>
-                                    ))}
+                                    <div className="attachments-grid">
+                                        {selectedDoc.attachments.map((att, i) => {
+                                            const isPreviewable = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(att.name?.split('.').pop()?.toLowerCase())
+                                            return (
+                                                <div key={i} className="attachment-item-actions">
+                                                    <div className="attachment-info">
+                                                        <i className={getFileIcon(att.name)}></i>
+                                                        <span title={att.name}>{att.name || 'Tải file'}</span>
+                                                    </div>
+                                                    <div className="attachment-btns">
+                                                        {isPreviewable && (
+                                                            <button 
+                                                                className="btn-action-view" 
+                                                                onClick={() => setPreviewFile(att)}
+                                                                title="Xem trực tiếp"
+                                                            >
+                                                                <i className="fas fa-eye"></i> Xem
+                                                            </button>
+                                                        )}
+                                                        <a 
+                                                            href={att.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="btn-action-download"
+                                                            download={att.name}
+                                                            title="Tải về máy"
+                                                        >
+                                                            <i className="fas fa-download"></i> Tải về
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
                             )}
                             <div className="doc-content" dangerouslySetInnerHTML={{ __html: selectedDoc.content }} />
@@ -530,18 +575,46 @@ function Library() {
                                     <input
                                         type="file"
                                         id="file-upload"
-                                        onChange={(e) => setFormData({ ...formData, file: e.target.files[0] || null })}
+                                        multiple // Enable multiple files
+                                        onChange={(e) => {
+                                            const newFiles = Array.from(e.target.files || [])
+                                            setFormData({ ...formData, files: [...formData.files, ...newFiles] })
+                                        }}
                                     />
                                     <label htmlFor="file-upload" className="file-upload-label">
                                         <i className="fas fa-cloud-upload-alt"></i>
-                                        <span>{formData.file ? formData.file.name : 'Chọn file hoặc kéo thả vào đây'}</span>
+                                        <span>{formData.files.length > 0 ? `${formData.files.length} file đã chọn` : 'Chọn file hoặc kéo thả vào đây'}</span>
                                     </label>
                                 </div>
+                                {/* Selected files to upload */}
+                                {formData.files.length > 0 && (
+                                    <div className="selected-files-list">
+                                        <small>Sắp tải lên:</small>
+                                        {formData.files.map((f, i) => (
+                                            <div key={i} className="current-file select-file">
+                                                <i className={getFileIcon(f.name)}></i>
+                                                <span>{f.name}</span>
+                                                <button 
+                                                    className="remove-att-btn" 
+                                                    onClick={() => {
+                                                        const updated = [...formData.files]
+                                                        updated.splice(i, 1)
+                                                        setFormData({ ...formData, files: updated })
+                                                    }} 
+                                                    title="Bỏ chọn"
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 {/* Existing attachments (edit mode) */}
-                                {editingDoc?.attachments && Array.isArray(editingDoc.attachments) && editingDoc.attachments.length > 0 && (
+                                {formData.attachments && formData.attachments.length > 0 && (
                                     <div className="existing-attachments">
                                         <small>File hiện tại:</small>
-                                        {editingDoc.attachments.map((att, i) => (
+                                        {formData.attachments.map((att, i) => (
                                             <div key={i} className="current-file">
                                                 <i className={getFileIcon(att.name)}></i>
                                                 <span>{att.name}</span>
@@ -565,6 +638,42 @@ function Library() {
                                     )}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Modal Overlay */}
+            {previewFile && (
+                <div className="preview-overlay" onClick={() => setPreviewFile(null)}>
+                    <div className="preview-container" onClick={(e) => e.stopPropagation()}>
+                        <div className="preview-header">
+                            <div className="preview-title">
+                                <i className={getFileIcon(previewFile.name)}></i>
+                                <span>{previewFile.name}</span>
+                            </div>
+                            <div className="preview-actions">
+                                <a href={previewFile.url} download={previewFile.name} className="preview-action-btn">
+                                    <i className="fas fa-download"></i>
+                                </a>
+                                <button className="preview-close-btn" onClick={() => setPreviewFile(null)}>
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="preview-body">
+                            {previewFile.name.toLowerCase().endsWith('.pdf') ? (
+                                <iframe 
+                                    src={`${previewFile.url}#toolbar=0&navpanes=0`} 
+                                    title="PDF Preview"
+                                    width="100%"
+                                    height="100%"
+                                />
+                            ) : (
+                                <div className="image-preview-wrapper">
+                                    <img src={previewFile.url} alt={previewFile.name} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
