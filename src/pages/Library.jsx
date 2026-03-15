@@ -375,7 +375,7 @@ function Library() {
                                         <i className={DOC_TYPE_ICONS[doc.document_type] || 'fas fa-file-alt'}></i>
                                     </div>
                                     <div className="doc-info">
-                                        <h3>{doc.title}</h3>
+                                        {/* <h3>{doc.title}</h3> */}
                                         <div className="doc-meta-row">
                                             <span className="doc-type" style={{ color: DOC_TYPE_COLORS[doc.document_type], background: `${DOC_TYPE_COLORS[doc.document_type]}22` }}>
                                                 {doc.document_type}
