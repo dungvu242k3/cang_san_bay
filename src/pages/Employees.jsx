@@ -73,7 +73,8 @@ function Employees() {
         status: 'Trạng thái',
         card_number: 'Số thẻ nhân viên',
         bank_account_number: 'Số tài khoản ngân hàng',
-        bank_name: 'Tên ngân hàng'
+        bank_name: 'Tên ngân hàng',
+        current_residence: 'Nơi ở hiện nay'
     }
 
     const VALUE_MAP = {
@@ -139,6 +140,7 @@ function Employees() {
         'training_form': 'training_form',
         'academic_level_code': 'academic_level_code',
         'marital_status_code': 'marital_status_code',
+        'number_of_children': 'number_of_children',
         'card_number': 'card_number',
         'tax_code': 'tax_code',
         'social_insurance_number': 'social_insurance_number',
@@ -166,7 +168,8 @@ function Employees() {
         'youth_union_activity_location': 'youth_union_activity_location',
         'is_trade_union_member': 'is_trade_union_member',
         'trade_union_base': 'trade_union_activity_location',
-        'trade_union_activity_location': 'trade_union_activity_location'
+        'trade_union_activity_location': 'trade_union_activity_location',
+        'current_residence': 'temporary_address'
     }
 
     const [searchTerm, setSearchTerm] = useState('')
@@ -806,7 +809,7 @@ function Employees() {
                 marital_status_code: () => formData.marital_status_code,
                 card_number: () => formData.card_number,
                 permanent_address: () => formData.permanent_address || formData.dia_chi_thuong_tru,
-                temporary_address: () => formData.temporary_address,
+                temporary_address: () => formData.current_residence || formData.temporary_address,
                 hometown: () => formData.hometown || formData.que_quan,
                 phone: () => formData.phone || formData.sđt,
                 email_acv: () => formData.email_acv,
@@ -863,6 +866,7 @@ function Employees() {
                 trade_union_position: () => formData.trade_union_position,
                 trade_union_activity_location: () => formData.trade_union_base || formData.trade_union_activity_location,
                 trade_union_notes: () => formData.trade_union_notes,
+                number_of_children: () => formData.number_of_children || 0,
             }
 
             let result
@@ -928,9 +932,10 @@ function Employees() {
                     training_form: formData.training_form || 'Phổ Thông',
                     academic_level_code: formData.academic_level_code || 'DH',
                     marital_status_code: formData.marital_status_code || 1,
+                    number_of_children: formData.number_of_children || 0,
                     card_number: formData.card_number || null,
                     permanent_address: formData.permanent_address || formData.dia_chi_thuong_tru || null,
-                    temporary_address: formData.temporary_address || null,
+                    temporary_address: formData.current_residence || formData.temporary_address || null,
                     hometown: formData.hometown || formData.que_quan || null,
                     phone: formData.phone || formData.sđt || null,
                     email_acv: formData.email_acv || null,

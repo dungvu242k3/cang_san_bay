@@ -169,7 +169,9 @@ const DEFAULT_FORM_DATA = {
     social_insurance_number: '',
     social_insurance_issue_date: '',
     unemployment_insurance_number: '',
-    unemployment_insurance_issue_date: ''
+    unemployment_insurance_issue_date: '',
+    current_residence: '', // Nơi ở hiện nay
+    number_of_children: 0,
 }
 
 const EmployeeDetail = ({
@@ -354,6 +356,10 @@ const EmployeeDetail = ({
                 gender: member.gender,
                 is_dependent: member.is_dependent || false,
                 dependent_from_month: member.is_dependent && member.dependent_from_month ? (member.dependent_from_month.includes('/') ? `${member.dependent_from_month.split('/')[1]}-${member.dependent_from_month.split('/')[0]}-01` : member.dependent_from_month) : null,
+                phone: member.phone || null,
+                identity_card_number: member.identity_card_number || null,
+                occupation: member.occupation || null,
+                current_residence: member.current_residence || null,
                 note: member.note
             }
             let res
@@ -1801,6 +1807,7 @@ const EmployeeDetail = ({
             trade_union_position: emp.trade_union_position || '',
             trade_union_activity_location: emp.trade_union_activity_location || '',
             trade_union_notes: emp.trade_union_notes || '',
+            number_of_children: emp.number_of_children || 0,
             // Legal items
             identity_card_number: emp.identity_card_number || emp.cccd || '',
             identity_card_issue_date: emp.identity_card_issue_date || emp.ngay_cap || '',
@@ -1812,7 +1819,11 @@ const EmployeeDetail = ({
             social_insurance_number: emp.social_insurance_number || '',
             social_insurance_issue_date: emp.social_insurance_issue_date || '',
             unemployment_insurance_number: emp.unemployment_insurance_number || '',
-            unemployment_insurance_issue_date: emp.unemployment_insurance_issue_date || ''
+            unemployment_insurance_issue_date: emp.unemployment_insurance_issue_date || '',
+            current_residence: emp.temporary_address || emp.current_residence || emp.dia_chi_hien_nay || '',
+            education_qualification: emp.education_qualification || '',
+            foreign_language: emp.foreign_language || '',
+            computer_skill: emp.computer_skill || '',
         }))
 
         const empCode = emp.employeeId || emp.employee_code
@@ -1932,6 +1943,7 @@ const EmployeeDetail = ({
             rows.push(['Email cá nhân', v(formData.email_personal)])
             rows.push(['Địa chỉ thường trú', v(formData.permanent_address || formData.dia_chi_thuong_tru)])
             rows.push(['Địa chỉ tạm trú', v(formData.temporary_address)])
+            rows.push(['Nơi ở hiện nay', v(formData.current_residence || formData.temporary_address)])
             rows.push(['Quê quán', v(formData.hometown || formData.que_quan)])
             rows.push(['SĐT người thân', v(formData.relative_phone), '', 'Quan hệ', v(formData.relative_relation)])
             rows.push([])
@@ -1950,14 +1962,18 @@ const EmployeeDetail = ({
             // 1.4 Thân nhân
             rows.push(['4. THÂN NHÂN'])
             if (familyMembers.length > 0) {
-                rows.push(['Quan hệ', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Giảm trừ'])
+                rows.push(['Quan hệ', 'Họ tên', 'Ngày sinh', 'Giới tính', 'Giảm trừ', 'CCCD/Số định danh', 'Số điện thoại', 'Nghề nghiệp', 'Nơi ở hiện nay'])
                 familyMembers.forEach(m => {
                     rows.push([
                         v(m.relationship),
                         v(`${m.last_name || ''} ${m.first_name || ''}`.trim()),
                         v(m.date_of_birth),
                         v(m.gender),
-                        m.is_dependent ? 'Có' : 'Không'
+                        m.is_dependent ? 'Có' : 'Không',
+                        v(m.identity_card_number),
+                        v(m.phone),
+                        v(m.occupation),
+                        v(m.current_residence)
                     ])
                 })
             } else {
@@ -2137,9 +2153,9 @@ const EmployeeDetail = ({
             // 5.2 Chứng chỉ
             rows.push(['19. CHỨNG CHỈ'])
             if (certificates.length > 0) {
-                rows.push(['Tên chứng chỉ', 'Số chứng chỉ', 'Nơi đào tạo', 'Ngày cấp'])
+                rows.push(['Tên chứng chỉ', 'Trình độ', 'Số hiệu', 'Nơi đào tạo', 'Ngày cấp'])
                 certificates.forEach(c => {
-                    rows.push([v(c.certificate_name), v(c.certificate_number), v(c.training_place), v(c.issue_date)])
+                    rows.push([v(c.certificate_name), v(c.level), v(c.certificate_number), v(c.training_place), v(c.issue_date)])
                 })
             } else {
                 rows.push(['(Chưa có dữ liệu)'])
@@ -2302,6 +2318,8 @@ const EmployeeDetail = ({
                     'Số thẻ CĐ': 'trade_union_card_number',
                     'Chức vụ CĐ': 'trade_union_position',
                     'Ngày gia nhập': 'trade_union_join_date',
+                    'Nơi ở hiện nay': 'current_residence',
+                    'Địa chỉ hiện nay': 'current_residence',
                 }
 
                 // --- Section header detection ---
@@ -2347,7 +2365,7 @@ const EmployeeDetail = ({
                     appointment: { headers: ['Số QĐ', 'Ngày áp dụng', 'Chức danh', 'Chức vụ', 'Bộ phận', 'Nơi làm việc', 'Ghi chú'], keys: ['decision_number', 'applied_date', 'job_title', 'position', 'department', 'workplace', 'note'] },
                     workJournal: { headers: ['Ngày', 'Nội dung', 'Địa điểm', 'Ghi chú'], keys: ['journal_date', 'content', 'location', 'note'] },
                     training: { headers: ['Chuyên ngành', 'Trường/Cơ sở', 'Bằng cấp', 'Năm tốt nghiệp', 'Xếp loại'], keys: ['specialization', 'institution', 'degree', 'graduation_year', 'classification'] },
-                    certificate: { headers: ['Tên chứng chỉ', 'Số chứng chỉ', 'Nơi đào tạo', 'Ngày cấp'], keys: ['certificate_name', 'certificate_number', 'training_place', 'issue_date'] },
+                    certificate: { headers: ['Tên chứng chỉ', 'Trình độ', 'Số chứng chỉ', 'Số hiệu', 'Nơi đào tạo', 'Ngày cấp'], keys: ['certificate_name', 'level', 'certificate_number', 'certificate_number', 'training_place', 'issue_date'] },
                     internalTraining: { headers: ['Khóa đào tạo', 'Nội dung', 'Từ ngày', 'Đến ngày', 'Kết quả', 'Ghi chú'], keys: ['training_name', 'content', 'from_date', 'to_date', 'result', 'note'] },
                     reward: { headers: ['Số QĐ', 'Hình thức', 'Nội dung', 'Ngày ký', 'Số tiền', 'Ngày KT', 'Năm', 'Ghi chú'], keys: ['decision_number', 'reward_type', 'reward_content', 'signed_date', 'amount', 'reward_date', 'applied_year', 'note'] },
                     discipline: { headers: ['Số QĐ', 'Ngày ký', 'Hình thức', 'Từ ngày', 'Đến ngày', 'Ghi chú'], keys: ['decision_number', 'signed_date', 'discipline_type', 'from_date', 'to_date', 'note'] },
@@ -2815,16 +2833,10 @@ const EmployeeDetail = ({
     )
 
     const renderThanNhan = () => (
-        <div className="section-content" style={{ background: '#fff' }}>
+        <div className="section-content family-section" style={{ background: '#fff' }}>
             <div className="section-header-modern">
                 <h3><i className="fas fa-users"></i> Thân nhân</h3>
-                {renderActions(
-                    checkAction('edit', { module: 'profiles', ...employee }) && (
-                        <button className="btn-premium btn-premium-sm" onClick={() => setEditingFamilyMember({})}>
-                            <i className="fas fa-plus"></i> Thêm mới
-                        </button>
-                    )
-                )}
+                {renderActions()}
             </div>
             <p className="subtitle">{formData.employeeId} - {formData.ho_va_ten}</p>
 
@@ -2835,20 +2847,43 @@ const EmployeeDetail = ({
                             <th>Quan hệ</th>
                             <th>Họ và tên</th>
                             <th>Ngày sinh</th>
-                            <th>Giới tính</th>
+                            <th>Nghề nghiệp/Nơi ở</th>
                             <th>Giảm trừ gia cảnh</th>
-                            <th className="text-center">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {familyMembers.length > 0 ? (
                             familyMembers.map((mem, idx) => (
                                 <tr key={mem.id || idx}>
-                                    <td>{mem.relationship}</td>
-                                    <td>{`${mem.last_name || ''} ${mem.first_name || ''}`.trim()}</td>
-                                    <td>{formatDateDisplay(mem.date_of_birth)}</td>
-                                    <td>{mem.gender}</td>
-                                    <td>
+                                    <td data-label="Quan hệ"><div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{mem.relationship}</div></td>
+                                    <td data-label="Họ và tên"><div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{`${mem.last_name || ''} ${mem.first_name || ''}`.trim()}</div></td>
+                                    <td data-label="Ngày sinh"><div style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{formatDateDisplay(mem.date_of_birth)}</div></td>
+                                    <td data-label="Nghề nghiệp/Nơi ở">
+                                        <div style={{ 
+                                            fontSize: '0.85rem', 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            gap: '6px', 
+                                            width: '100%',
+                                            overflowWrap: 'anywhere',
+                                            wordBreak: 'break-word'
+                                        }}>
+                                            {mem.occupation && (
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%', minWidth: 0 }}>
+                                                    <i className="fas fa-briefcase" style={{ color: '#999', width: '14px', marginTop: '3px', flexShrink: 0 }}></i> 
+                                                    <span style={{ flex: 1, wordBreak: 'break-word', minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{mem.occupation}</span>
+                                                </div>
+                                            )}
+                                            {mem.current_residence && (
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', width: '100%', minWidth: 0 }}>
+                                                    <i className="fas fa-map-marker-alt" style={{ color: '#999', width: '14px', marginTop: '3px', flexShrink: 0 }}></i> 
+                                                    <span style={{ flex: 1, wordBreak: 'break-word', minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{mem.current_residence}</span>
+                                                </div>
+                                            )}
+                                            {!mem.occupation && !mem.current_residence && <span style={{ color: '#ccc' }}>-</span>}
+                                        </div>
+                                    </td>
+                                    <td data-label="Giảm trừ gia cảnh">
                                         {mem.is_dependent ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
                                                 <span style={{
@@ -2874,23 +2909,11 @@ const EmployeeDetail = ({
                                             <span style={{ color: '#ccc' }}>-</span>
                                         )}
                                     </td>
-                                    <td className="text-center">
-                                        {checkAction('edit', { module: 'profiles', ...employee }) && (
-                                            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                                <button className="btn-table-action" onClick={() => setEditingFamilyMember(mem)}>
-                                                    <i className="fas fa-pencil-alt"></i>
-                                                </button>
-                                                <button className="btn-table-action text-danger" onClick={() => handleDeleteFamilyMember(mem.id)}>
-                                                    <i className="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="6" className="text-center">Chưa có thông tin thân nhân</td>
+                                <td colSpan="5" className="text-center">Chưa có thông tin thân nhân</td>
                             </tr>
                         )}
                     </tbody>
@@ -2899,7 +2922,7 @@ const EmployeeDetail = ({
 
             {editingFamilyMember && (
                 <div className="modal-overlay">
-                    <div className="modal-content" style={{ width: '650px', maxWidth: '95%', padding: '0', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div className="modal-content" style={{ width: '650px', maxWidth: '95%', maxHeight: '90vh', padding: '0', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <div className="modal-header" style={{ background: 'var(--primary)', color: '#fff', padding: '15px 25px' }}>
                             <h4 style={{ margin: 0, color: '#fff' }}>
                                 <i className={`fas ${editingFamilyMember.id ? 'fa-user-edit' : 'fa-user-plus'}`} style={{ marginRight: '10px' }}></i>
@@ -2908,7 +2931,7 @@ const EmployeeDetail = ({
                             <button onClick={() => setEditingFamilyMember(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>&times;</button>
                         </div>
 
-                        <div className="modal-body" style={{ padding: '25px' }}>
+                        <div className="modal-body" style={{ padding: '25px', flex: '1', overflowY: 'auto' }}>
                             <div className="form-section-title">
                                 <i className="fas fa-info-circle"></i> Thông tin cơ bản
                             </div>
@@ -2937,6 +2960,8 @@ const EmployeeDetail = ({
                                         <option value="Anh vợ">Anh vợ</option>
                                         <option value="Chị vợ">Chị vợ</option>
                                         <option value="Em vợ">Em vợ</option>
+                                        <option value="Bố vợ/chồng">Bố vợ/chồng</option>
+                                        <option value="Mẹ vợ/chồng">Mẹ vợ/chồng</option>
                                         <option value="Khác">Khác</option>
                                     </select>
                                 </div>
@@ -2952,6 +2977,22 @@ const EmployeeDetail = ({
                                 <div className="form-group">
                                     <label>Ngày sinh</label>
                                     <input type="date" value={editingFamilyMember.date_of_birth || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, date_of_birth: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>CCCD/Số định danh</label>
+                                    <input type="text" placeholder="Vd: 012345678901" value={editingFamilyMember.identity_card_number || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, identity_card_number: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Số điện thoại</label>
+                                    <input type="text" placeholder="Vd: 0901234567" value={editingFamilyMember.phone || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, phone: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Nghề nghiệp</label>
+                                    <input type="text" placeholder="Vd: Tự do" value={editingFamilyMember.occupation || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, occupation: e.target.value })} />
+                                </div>
+                                <div className="form-group full-width">
+                                    <label>Nơi ở hiện nay</label>
+                                    <input type="text" placeholder="Số nhà, đường, quận/huyện, tỉnh/thành" value={editingFamilyMember.current_residence || ''} onChange={e => setEditingFamilyMember({ ...editingFamilyMember, current_residence: e.target.value })} />
                                 </div>
                             </div>
 
@@ -3352,11 +3393,45 @@ const EmployeeDetail = ({
                     </select>
                 </div>
                 <div className="form-group">
+                    <label>Số con đẻ</label>
+                    <input type="number" name="number_of_children" value={formData.number_of_children} onChange={handleChange} disabled={!isEditing} min="0" />
+                </div>
+                <div className="form-group">
                     <label>Trình độ học vấn</label>
                     <select name="academic_level_code" value={formData.academic_level_code} onChange={handleChange} disabled={!isEditing}>
                         <option value="DH">Đại học</option>
                         <option value="CD">Cao đẳng</option>
                     </select>
+                </div>
+                <div className="form-group">
+                    <label>Trình độ chuyên môn</label>
+                    <input 
+                        type="text" 
+                        value={formData.education_qualification || (certificates && certificates.find(c => c.certificate_name?.toLowerCase().includes('chuyên môn'))?.certificate_name) || ''} 
+                        readOnly 
+                        className="bg-light"
+                        placeholder="(Xem trong tab Chứng chỉ)"
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Trình độ ngoại ngữ</label>
+                    <input 
+                        type="text" 
+                        value={formData.foreign_language || (certificates && certificates.find(c => c.certificate_name?.toLowerCase().includes('ngoại ngữ'))?.certificate_name) || ''} 
+                        readOnly 
+                        className="bg-light"
+                        placeholder="(Xem trong tab Chứng chỉ)"
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Trình độ tin học</label>
+                    <input 
+                        type="text" 
+                        value={formData.computer_skill || (certificates && certificates.find(c => c.certificate_name?.toLowerCase().includes('tin học'))?.certificate_name) || ''} 
+                        readOnly 
+                        className="bg-light"
+                        placeholder="(Xem trong tab Chứng chỉ)"
+                    />
                 </div>
             </div>
         </div>
@@ -3397,6 +3472,10 @@ const EmployeeDetail = ({
                 <div className="form-group full-width">
                     <label>Quê quán</label>
                     <input type="text" name="que_quan" value={formData.que_quan} onChange={handleChange} disabled={!isEditing} />
+                </div>
+                <div className="form-group full-width">
+                    <label>Nơi ở hiện nay</label>
+                    <input type="text" name="current_residence" value={formData.current_residence} onChange={handleChange} disabled={!isEditing} />
                 </div>
             </div>
         </div>

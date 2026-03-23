@@ -48,6 +48,57 @@ function EmployeeImport() {
         return null
     }
 
+    // Helper: Parse family member info from structured text block
+    const parseFamilyInfo = (textValue) => {
+        if (!textValue || typeof textValue !== 'string') return null
+        const text = textValue.trim()
+        if (!text || text === 'Không' || text === 'Không có' || text.length < 5) return null
+
+        const result = { 
+            first_name: '', 
+            last_name: '', 
+            date_of_birth: null, 
+            is_dependent: false, 
+            occupation: '', 
+            current_residence: '', 
+            phone: '', 
+            identity_card_number: '', 
+            note: '' 
+        }
+        const notes = []
+
+        const nameMatch = text.match(/Họ\s*(?:và|&)*\s*tên[:\s]+([^\n\r–\-]+)/i)
+        if (nameMatch) {
+            const fullName = nameMatch[1].trim()
+            const parts = fullName.split(' ')
+            result.first_name = parts.pop() || ''
+            result.last_name = parts.join(' ') || ''
+        }
+ 
+        const dobMatch = text.match(/(?:Ngày[\/.\s]*tháng[\/.\s]*năm\s*sinh|Ngày\s*sinh)[:\s]+(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i)
+        if (dobMatch) {
+            result.date_of_birth = processExcelDate(dobMatch[1].trim())
+        }
+ 
+        const jobMatch = text.match(/Nghề\s*nghiệp[^:]*[:\s]+([^\n\r]+)/i)
+        if (jobMatch) result.occupation = jobMatch[1].trim().replace(/^–\s*|–\s*$/, '')
+ 
+        const addressMatch = text.match(/Nơi\s*ở[:\s]+([^\n\r]+)/i)
+        if (addressMatch) result.current_residence = addressMatch[1].trim()
+ 
+        const phoneMatch = text.match(/(?:Số điện thoại|SĐT|Điện thoại)[:\s]+([\d\s.]{9,15})/i)
+        if (phoneMatch) result.phone = phoneMatch[1].trim().replace(/[\s.]/g, '')
+ 
+        const cccdMatch = text.match(/(?:CCCD|Số CCCD|CMND|Số CMND|Định danh|Số định danh)[:\s]+(\d{9,12})/i)
+        if (cccdMatch) result.identity_card_number = cccdMatch[1].trim()
+ 
+        const nptMatch = text.match(/(?:NPT|Người phụ thuộc)[^?]*\?\s*(Có|Không)/i) || text.match(/(?:NPT|Người phụ thuộc)[:\s]+(Có|Không)/i)
+        if (nptMatch) result.is_dependent = nptMatch[1].trim().toLowerCase() === 'có'
+
+        // Keep rest in note if any extra info? For now, we manually handle these 4 main fields.
+        return (result.first_name || result.last_name) ? result : null
+    }
+
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0]
         if (!selectedFile) return
@@ -111,61 +162,79 @@ function EmployeeImport() {
 
             // Extended Header Map for Real Data
             const headerMap = {
-                // Identity
+                'dấu thời gian': '_timestamp',
                 'mã nhân viên': 'employee_code',
                 'mã nv': 'employee_code',
-                'employee_code': 'employee_code',
-                'họ tên': 'full_name',
-                'họ và tên': 'full_name',
-                'họ': 'last_name',
-                'tên': 'first_name',
-                'ngày tháng năm sinh': 'date_of_birth',
-                'ngày sinh': 'date_of_birth',
-                'giới tính': 'gender',
-                'dân tộc': 'ethnicity',
-                'tôn giáo': 'religion',
-                'số cccd': 'identity_card_number',
-                'cmnd/cccd': 'identity_card_number',
-                'ngày cấp cccd': 'identity_card_issue_date',
-                'ngày cấp': 'identity_card_issue_date',
-                'nơi cấp cccd': 'identity_card_issue_place',
-                'nơi cấp': 'identity_card_issue_place',
-                'nơi sinh': 'place_of_birth',
-                'quê quán': 'hometown',
-
-                // Contact
+                'mail acv ( nếu có)': 'email_acv',
+                'mail acv': 'email_acv',
                 'email acv': 'email_acv',
-                'email doanh nghiệp': 'email_acv',
-                'email': 'email_personal', // If "Email ACV" exists, "Email" is personal
+                'địa chỉ email': 'email_personal',
+                'họ, chữ đệm ( viết hoa, in đậm)': 'last_name',
+                'họ, chữ đệm (viết hoa, in đậm)': 'last_name',
+                'họ, chữ đệm': 'last_name',
+                'tên ( viết hoa, in đậm)': 'first_name',
+                'tên (viết hoa, in đậm)': 'first_name',
+                'tên': 'first_name',
+                'họ và tên': 'full_name',
+                'tên gọi khác (nếu có)': '_other_name',
+                'tên gọi khác': '_other_name',
+                'ngày/tháng/năm sinh': 'date_of_birth',
+                'ngày sinh': 'date_of_birth',
+                'nơi sinh': 'place_of_birth',
+                'giới tính': 'gender',
+                'quốc tịch': 'nationality',
+                'dân tộc': 'ethnicity',
+                'số định danh cá nhân': 'identity_card_number',
+                'số cccd': 'identity_card_number',
+                'ngày cấp cccd': 'identity_card_issue_date',
+                'nơi cấp cccd': 'identity_card_issue_place',
+                'quê quán': 'hometown',
+                'nơi đăng ký thường trú': 'permanent_address',
                 'số điện thoại': 'phone',
                 'sđt': 'phone',
-                'hộ khẩu': 'permanent_address',
-                'hộ khẩu thường trú': 'permanent_address',
-                'địa chỉ': 'temporary_address',
                 'địa chỉ liên hệ': 'temporary_address',
-
-                // Job & System
+                'nơi ở hiện nay': 'current_address',
+                'địa chỉ hiện nay': 'current_address',
+                'nơi đăng ký tạm trú ( nếu có )': '_temporary_address_reg',
+                'nơi đăng ký tạm trú ( nếu có)': '_temporary_address_reg',
+                'nơi đăng ký tạm trú': '_temporary_address_reg',
+                'trình độ học vấn': '_academic_level',
+                'trình độ văn hóa': 'education_level',
+                'trình độ văn hoá': 'education_level',
+                'học vấn/văn hóa': '_academic_level',
                 'phòng ban': 'department',
                 'phòng/ban': 'department',
+                'đơn vị công tác': 'department',
                 'đội': 'team',
                 'tổ/đội': 'team',
+                'bộ phận': 'team',
                 'chức danh đầy đủ': 'job_title',
                 'chức danh': 'job_title',
                 'chức vụ/chức danh chính quyền': 'current_position',
+                'chức vụ': 'current_position',
                 'vị trí': 'job_position',
                 'vị trí công việc': 'job_position',
                 'ngày vào làm việc tại tct': 'join_date',
                 'ngày vào làm': 'join_date',
+                'ngày qđ tiếp nhận vào acv': 'join_date',
                 'ngày chính thức': 'official_date',
 
                 // Insurance & Party
                 'mã số bhxh': 'social_insurance_number',
+                'số sổ bhxh': 'social_insurance_number',
+                'số bhxh': 'social_insurance_number',
                 'mã số thẻ bhyt': 'health_insurance_number',
                 'chức vụ đảng': 'party_position',
                 'số thẻ đảng': 'party_card_number',
+                'ngày kết nạp đảng': 'party_join_date',
                 'ngày kết nạp': 'party_join_date',
-                'ngày chính thức đảng': 'party_official_date', // Ngày chính thức trong Đảng
+                'ngày chính thức đảng': 'party_official_date',
+                'ngày chuyển đảng chính thức': 'party_official_date',
                 'lý luận chính trị': 'political_education_level',
+                'trình độ lý luận chính trị': 'political_education_level',
+                'chức vụ đoàn': 'youth_union_position',
+                'chức vụ đoàn thanh niên': 'youth_union_position',
+                'chức vụ đoàn thể': 'youth_union_position',
 
                 // Salary (Basic) & Contracts
                 'ngạch lương cdcb': 'salary_scale',
@@ -173,7 +242,6 @@ function EmployeeImport() {
                 'hệ số cdcb': 'salary_coefficient',
                 'mức lương': 'basic_salary',
                 'tổng lương đóng bhxh': 'social_insurance_salary',
-                // Contracts
                 'số hđlđ': 'contract_number',
                 'số hợp đồng': 'contract_number',
                 'loại hđlđ': 'contract_type',
@@ -187,42 +255,41 @@ function EmployeeImport() {
                 'số tk ngân hàng': 'bank_account_number',
                 'số tài khoản': 'bank_account_number',
                 'stk': 'bank_account_number',
+                'chi nhánh ngân hàng': 'bank_name',
                 'mở tại': 'bank_name',
                 'ngân hàng': 'bank_name',
 
-                // Advanced Job & Allowances (Mapped to 'note' or specific tables later if available)
-                'phụ cấp lương': 'allowance_salary',
-                'phụ cấp pccc + atvslđ': 'allowance_pccc_atvsld',
-                'thời gian tính nâng bậc lương kế tiếp': 'next_salary_raise_date',
-                'thời gian xét thâm niên vượt khung': 'seniority_review_date',
-                'ngạch lương hqcv': 'hqcv_scale',
-                'hệ số hqcv': 'hqcv_coefficient',
-                'mức lương hqcv': 'hqcv_salary',
-                'thời gian áp dụng hqcv': 'hqcv_effective_date',
+                // Misc
                 'số người phụ thuộc': 'number_of_dependents',
-                'phụ cấp atvsv (% lương ttv)': 'allowance_atvsv_percent',
-                'phụ cấp pccc\n(% lương ttv)': 'allowance_pccc_percent',
-                'pc chức vụ': 'allowance_position',
-                'thâm niên vk (% lương cdcb)': 'allowance_seniority_vk_percent',
-                'phụ cấp lương cấp tổ/ca ((% lương cdcb)': 'allowance_team_percent',
-                'các khoản bổ sung': 'additional_income',
-                'ngày bắt đầu độc hại': 'toxic_date_start',
-                'điều kiện lao động': 'labor_condition',
-                'mức hưởng độc hại': 'toxic_level',
-                'số tiền/công độc hại': 'toxic_amount_per_shift',
-                'thời điểm đơn vị bắt đầu đóng bhxh': 'social_insurance_start_date',
-                'thời điểm đơn vị kết thúc đóng bhxh': 'social_insurance_end_date',
-
-                // Education & Skills (Map to Note)
+                'npt': 'number_of_dependents',
                 'trình độ chuyên môn': 'education_qualification',
+                'bằng cấp chuyên môn ( nếu có )': 'certificates',
+                'bằng cấp chuyên môn': 'certificates',
                 'bằng cấp chứng chỉ': 'certificates',
                 'ngoại ngữ': 'foreign_language',
+                'trình độ tiếng anh': 'foreign_language',
+                'tiếng anh': 'foreign_language',
+                'trình độ ngoại ngữ': 'foreign_language',
                 'tin học': 'computer_skill',
-
-                // Config & Misc
+                'trình độ tin học': 'computer_skill',
                 'trạng thái': 'status',
                 'mã template điểm': 'score_template_code',
-                'ghi chú': 'note'
+                'ghi chú': 'note',
+
+                // Marital status & Family
+                'tình trạng hôn nhân': '_marital_status',
+                'số con đẻ': '_number_of_children',
+                'thông tin bố đẻ': '_family_father',
+                'thông tin mẹ đẻ': '_family_mother',
+                'thông tin chồng/vợ': '_family_spouse',
+                'thông tin bố chồng/vợ': '_family_father_in_law',
+                'thông tin mẹ chồng/vợ': '_family_mother_in_law',
+                'thông tin con số 1': '_family_child_1',
+                'thông tin con số 2': '_family_child_2',
+                'thông tin con số 3': '_family_child_3',
+                'thông tin con số 4': '_family_child_4',
+                'thông tin con số 5': '_family_child_5',
+                'thông tin con số 6': '_family_child_6'
             }
 
             const validatedData = []
@@ -265,7 +332,7 @@ function EmployeeImport() {
                     const dbField = headerMap[header]
                     if (dbField) {
                         let val = row[colIndex]
-                        // Handle Date conversions - Add contract dates & toxic dates
+                        // Handle Date conversions
                         if (['date_of_birth', 'join_date', 'official_date', 'identity_card_issue_date',
                             'party_join_date', 'party_official_date', 'contract_signed_date',
                             'contract_expiration_date', 'toxic_date_start', 'social_insurance_start_date',
@@ -273,9 +340,40 @@ function EmployeeImport() {
                             'hqcv_effective_date'].includes(dbField)) {
                             val = processExcelDate(val)
                         }
-                        rowData[dbField] = val !== undefined ? val : ''
+                        
+                        // Prevent empty column from overwriting existing data for the same dbField
+                        if (val !== undefined && val !== null && val.toString().trim() !== '') {
+                            rowData[dbField] = val
+                        } else if (rowData[dbField] === undefined) {
+                            rowData[dbField] = ''
+                        }
                     }
                 })
+
+                // Logic: Address processing (Direct mapping as requested)
+                rowData._current_residence = rowData.current_address || ''
+
+                // Smart Email Detection & Correction
+                let email1 = (rowData.email_personal || '').toString().toLowerCase().trim()
+                let email2 = (rowData.email_acv || '').toString().toLowerCase().trim()
+
+                // Case 1: email_acv contains a personal domain (gmail, yahoo, etc.) and email_personal is empty
+                if (email2 && (email2.endsWith('@gmail.com') || email2.endsWith('@yahoo.com') || email2.endsWith('@outlook.com') || email2.endsWith('@hotmail.com'))) {
+                    if (!email1) {
+                        rowData.email_personal = rowData.email_acv
+                        rowData.email_acv = ''
+                    } else if (email1.endsWith('@acv.vn')) {
+                        // Swap if they are reversed
+                        const tmp = rowData.email_acv
+                        rowData.email_acv = rowData.email_personal
+                        rowData.email_personal = tmp
+                    }
+                }
+                // Case 2: email_personal contains @acv.vn and email_acv is empty
+                else if (email1 && email1.endsWith('@acv.vn') && !email2) {
+                    rowData.email_acv = rowData.email_personal
+                    rowData.email_personal = ''
+                }
 
                 // Logic: Name Splitting
                 if (rowData.full_name && (!rowData.last_name || !rowData.first_name)) {
@@ -300,21 +398,28 @@ function EmployeeImport() {
                     }
 
                     if (!hasValue) {
+                        const fieldName = {
+                            employee_code: 'Mã NV',
+                            department: 'Phòng ban/Đơn vị',
+                            last_name: 'Họ',
+                            first_name: 'Tên'
+                        }[field] || field
+
                         rowErrors.push({
                             row: rowNum,
                             field: field,
-                            message: `Thiếu ${field} (hoặc lấy từ họ tên)`
+                            message: `Thiếu ${fieldName}${(field === 'last_name' || field === 'first_name') ? ' (hoặc lấy từ họ tên)' : ''}`
                         })
                     }
                 })
 
                 // Validate Employee Code - Không kiểm tra gì, chấp nhận mọi format
 
+                // Store everything in previewData to show the table
+                validatedData.push({ ...rowData, _rowNum: rowNum, _hasError: rowErrors.length > 0 })
+                
                 if (rowErrors.length > 0) {
-                    // Treat warnings carefully. For now, push all errors.
                     validationErrors.push(...rowErrors)
-                } else {
-                    validatedData.push({ ...rowData, _rowNum: rowNum })
                 }
             })
 
@@ -357,9 +462,36 @@ function EmployeeImport() {
             for (const row of previewData) {
                 try {
                     // Prepare data
+                    const maritalMap = { 'độc thân': 1, 'đã kết hôn': 2, 'ly hôn': 3, 'ly thân': 4, 'góa': 5 }
+                    const maritalCode = maritalMap[(row._marital_status || '').toString().trim().toLowerCase()] || null
+
                     const nameParts = (row.first_name || '').trim().split(' ')
                     const firstName = nameParts.pop() || ''
                     const lastName = (row.last_name || '').trim() + (nameParts.length > 0 ? ' ' + nameParts.join(' ') : '')
+
+                    // Education Level Mapping (Academic Level Code)
+                    // DB CHECK constraint: ('DH', 'CD', 'TS', 'TC', '12', 'Khác')
+                    const academicMap = {
+                        'đại học': 'DH',
+                        'thạc sĩ': 'TS',
+                        'thạc sỹ': 'TS',
+                        'tiến sĩ': 'Khác',
+                        'tiến sỹ': 'Khác',
+                        'cao đẳng': 'CD',
+                        'trung cấp': 'TC',
+                        'sơ cấp': 'Khác',
+                        'phổ thông': '12',
+                        '12/12': '12',
+                        '12': '12'
+                    }
+                    const academicValue = (row._academic_level || row.academic_level_code || '').toString().trim().toLowerCase()
+                    const academicCode = academicMap[academicValue] || null
+
+                    // Education Level (Cultural - e.g. 12/12)
+                    // DB CHECK constraint: ('10/12', '11/12', '12/12', '8/10', '9/10', '10/10', 'Khác')
+                    const validEducationLevels = ['10/12', '11/12', '12/12', '8/10', '9/10', '10/10', 'Khác']
+                    const rawCultural = row.education_level?.toString().trim() || null
+                    const culturalLevel = rawCultural && validEducationLevels.includes(rawCultural) ? rawCultural : null
 
                     // Keep original current_position exact value
                     const normalizedPosition = row.current_position?.toString().trim() || null
@@ -384,7 +516,7 @@ function EmployeeImport() {
                         place_of_birth: row.place_of_birth || null,
                         hometown: row.hometown || null,
                         permanent_address: row.permanent_address || null,
-                        temporary_address: row.temporary_address || null,
+                        temporary_address: row.current_address || row._temporary_address_reg || row.temporary_address || null,
 
                         // ID & Insurance
                         identity_card_number: row.identity_card_number || null,
@@ -394,9 +526,8 @@ function EmployeeImport() {
                         health_insurance_number: row.health_insurance_number || null,
 
                         // Job & Political
+                        current_position: row.current_position || row.job_title || null,
                         job_title: row.job_title || null,
-                        current_position: normalizedPosition,
-                        job_position: row.job_position || null,
                         join_date: row.join_date || null,
                         official_date: row.official_date || null, // Job official date
 
@@ -406,12 +537,21 @@ function EmployeeImport() {
                         party_position: row.party_position || null,
                         party_card_number: row.party_card_number || null,
                         party_join_date: row.party_join_date || null,
-                        party_official_date: row.party_official_date || null,
+                        nationality: row.nationality || 'Việt Nam',
+                        marital_status_code: maritalCode,
+                        academic_level_code: academicCode,
+                        education_level: culturalLevel,
+                        youth_union_position: row.youth_union_position || null,
+                        trade_union_position: row.trade_union_position || null,
+                        number_of_children: parseInt(row._number_of_children) || 0,
                         note: row.note || null
                     }
 
                     // Append extended info to note if columns don't exist in DB yet
                     const extendedInfo = [
+                        row.education_qualification ? `Chuyên môn: ${row.education_qualification}` : null,
+                        row.foreign_language ? `Ngoại ngữ: ${row.foreign_language}` : null,
+                        row.computer_skill ? `Tin học: ${row.computer_skill}` : null,
                         row.allowance_salary ? `Phụ cấp lương: ${row.allowance_salary}` : null,
                         row.allowance_pccc_atvsld ? `PC PCCC+ATVSLĐ: ${row.allowance_pccc_atvsld}` : null,
                         row.next_salary_raise_date ? `Nâng bậc lương tiếp: ${row.next_salary_raise_date}` : null,
@@ -423,18 +563,26 @@ function EmployeeImport() {
                         employeeData.note = (employeeData.note ? employeeData.note + '. ' : '') + extendedInfo
                     }
 
-                    // Insert employee (ignore if already exists)
-                    const { error: insertError } = await supabase
+                    // Upsert employee (Update if exists)
+                    const { error: upsertError } = await supabase
                         .from('employee_profiles')
-                        .insert([employeeData], { onConflict: 'ignore' })
+                        .upsert([employeeData], { onConflict: 'employee_code' })
 
-                    if (insertError) {
-                        // If duplicate key error, skip to related tables
-                        if (insertError.code === '23505') {
-                            console.log(`Employee ${employeeData.employee_code} already exists, skipping...`)
-                        } else {
-                            throw insertError
-                        }
+                    if (upsertError) {
+                        throw upsertError
+                    }
+
+                    // For sub-tables, we often want to refresh the data based on Excel
+                    // Delete existing records for these specific sub-tables before re-inserting
+                    const subTableDeletes = [
+                        'family_members',
+                        'employee_bank_accounts',
+                        'labor_contracts',
+                        'employee_certificates'
+                    ]
+
+                    for (const table of subTableDeletes) {
+                        await supabase.from(table).delete().eq('employee_code', employeeData.employee_code)
                     }
 
                     // Insert Salary (If data exists) - ignore errors
@@ -539,9 +687,68 @@ function EmployeeImport() {
                             note: 'Import từ Excel'
                         })
                     }
+                    if (row._specialization) {
+                        certsToInsert.push({
+                            employee_code: employeeData.employee_code,
+                            certificate_name: 'Chuyên ngành',
+                            level: row._specialization,
+                            note: 'Import từ Excel'
+                        })
+                    }
 
                     if (certsToInsert.length > 0) {
                         await supabase.from('employee_certificates').insert(certsToInsert)
+                    }
+
+                    // Insert Family Members from parsed text blocks
+                    // DB CHECK: ('Cha ruột', 'Mẹ ruột', 'Vợ', 'Chồng', 'Con ruột', 'Anh ruột', 'Em ruột', 'Chị ruột', 'Anh vợ', 'Chị vợ', 'Em vợ', 'Khác')
+                    const spouseRelationship = (row.gender || '').toString().trim().toLowerCase() === 'nam' ? 'Vợ' : (row.gender || '').toString().trim().toLowerCase() === 'nữ' ? 'Chồng' : 'Khác'
+                    const familyConfig = [
+                        { field: '_family_father', relationship: 'Cha ruột' },
+                        { field: '_family_mother', relationship: 'Mẹ ruột' },
+                        { field: '_family_spouse', relationship: spouseRelationship },
+                        { field: '_family_father_in_law', relationship: 'Bố vợ/chồng' },
+                        { field: '_family_mother_in_law', relationship: 'Mẹ vợ/chồng' },
+                        { field: '_family_child_1', relationship: 'Con ruột' },
+                        { field: '_family_child_2', relationship: 'Con ruột' },
+                        { field: '_family_child_3', relationship: 'Con ruột' },
+                        { field: '_family_child_4', relationship: 'Con ruột' },
+                        { field: '_family_child_5', relationship: 'Con ruột' },
+                        { field: '_family_child_6', relationship: 'Con ruột' },
+                    ]
+
+                    const familyToInsert = []
+                    for (const { field, relationship } of familyConfig) {
+                        const textValue = row[field]
+                        if (!textValue) continue
+                        const parsed = parseFamilyInfo(textValue.toString())
+                        if (parsed) {
+                            familyToInsert.push({
+                                employee_code: employeeData.employee_code,
+                                relationship,
+                                first_name: parsed.first_name,
+                                last_name: parsed.last_name,
+                                date_of_birth: parsed.date_of_birth,
+                                gender: parsed.gender || null,
+                                is_dependent: parsed.is_dependent || false,
+                                occupation: parsed.occupation,
+                                current_residence: parsed.current_residence,
+                                phone: parsed.phone,
+                                identity_card_number: parsed.identity_card_number
+                            })
+                        }
+                    }
+
+                    if (familyToInsert.length > 0) {
+                        const { error: familyError } = await supabase.from('family_members').insert(familyToInsert)
+                        if (familyError) {
+                            console.warn('Family insert error:', familyError, 'Data:', JSON.stringify(familyToInsert))
+                            warningDetails.push({
+                                row: row._rowNum,
+                                employee_code: row.employee_code,
+                                message: `Lỗi Family: ${familyError.message}`
+                            })
+                        }
                     }
 
                     successCount++
@@ -556,17 +763,16 @@ function EmployeeImport() {
             }
 
             // Log import audit
-            try {
-                await supabase.from('import_audit').insert([{
-                    import_type: 'EMPLOYEES',
-                    imported_by: user?.employee_code || 'SYSTEM',
-                    total_records: previewData.length,
-                    success_count: successCount,
-                    fail_count: failCount,
-                    details: JSON.stringify([...failDetails, ...warningDetails])
-                }])
-            } catch (auditError) {
-                console.warn('Could not log audit:', auditError)
+            const { error: auditError } = await supabase.from('import_audit').insert([{
+                import_type: 'EMPLOYEES',
+                imported_by: user?.employee_code || 'SYSTEM',
+                total_records: previewData.length,
+                success_count: successCount,
+                fail_count: failCount,
+                details: JSON.stringify([...failDetails, ...warningDetails])
+            }])
+            if (auditError) {
+                console.warn('Could not log audit:', auditError.message)
             }
 
             setImportResult({
@@ -685,36 +891,198 @@ function EmployeeImport() {
                             <table className="preview-table">
                                 <thead>
                                     <tr>
-                                        <th>Dòng</th>
-                                        <th>Mã NV</th>
-                                        <th>Họ tên</th>
-                                        <th>Chức vụ hiện tại</th>
-                                        <th>Email</th>
-                                        <th>Phòng ban</th>
-                                        <th>Trạng thái</th>
-                                        <th>Template</th>
+                                        <th style={{ minWidth: '50px' }}>Dòng</th>
+                                        <th style={{ minWidth: '100px' }}>Mã NV</th>
+                                        <th style={{ minWidth: '180px' }}>Họ tên</th>
+                                        <th style={{ minWidth: '150px' }}>Chức danh</th>
+                                        <th style={{ minWidth: '150px' }}>Chức vụ</th>
+                                        <th style={{ minWidth: '120px' }}>CCCD</th>
+                                        <th style={{ minWidth: '100px' }}>Ngày cấp</th>
+                                        <th style={{ minWidth: '150px' }}>Nơi cấp</th>
+                                        <th style={{ minWidth: '160px' }}>Email ACV</th>
+                                        <th style={{ minWidth: '160px' }}>Email Cá nhân</th>
+                                        <th style={{ minWidth: '120px' }}>SĐT</th>
+                                        <th style={{ minWidth: '60px' }}>GT</th>
+                                        <th style={{ minWidth: '100px' }}>Dân tộc</th>
+                                        <th style={{ minWidth: '100px' }}>Tôn giáo</th>
+                                        <th style={{ minWidth: '100px' }}>Ngày sinh</th>
+                                        <th style={{ minWidth: '150px' }}>Nơi sinh</th>
+                                        <th style={{ minWidth: '150px' }}>Quê quán</th>
+                                        <th style={{ minWidth: '300px' }}>Thường trú</th>
+                                        <th style={{ minWidth: '300px' }}>Tạm trú (Excel)</th>
+                                        <th style={{ minWidth: '300px' }}>Nơi ở hiện nay</th>
+                                        <th style={{ minWidth: '100px' }}>Văn hóa</th>
+                                        <th style={{ minWidth: '100px' }}>Học vấn</th>
+                                        <th style={{ minWidth: '150px' }}>Đơn vị</th>
+                                        <th style={{ minWidth: '150px' }}>Bộ phận</th>
+                                        <th style={{ minWidth: '120px' }}>Ngày vào ACV</th>
+                                        <th style={{ minWidth: '120px' }}>Ngày chính thức</th>
+                                        <th style={{ minWidth: '120px' }}>Ngạch lương</th>
+                                        <th style={{ minWidth: '100px' }}>Bậc lương</th>
+                                        <th style={{ minWidth: '100px' }}>Hệ số</th>
+                                        <th style={{ minWidth: '120px' }}>Lương CB</th>
+                                        <th style={{ minWidth: '120px' }}>Lương BHXH</th>
+                                        <th style={{ minWidth: '120px' }}>Số HĐLĐ</th>
+                                        <th style={{ minWidth: '150px' }}>Loại HĐ</th>
+                                        <th style={{ minWidth: '120px' }}>Ngày ký HĐ</th>
+                                        <th style={{ minWidth: '120px' }}>Hết hạn HĐ</th>
+                                        <th style={{ minWidth: '150px' }}>Ngân hàng</th>
+                                        <th style={{ minWidth: '150px' }}>Số tài khoản</th>
+                                        <th style={{ minWidth: '120px' }}>Số BHXH</th>
+                                        <th style={{ minWidth: '120px' }}>Số BHYT</th>
+                                        <th style={{ minWidth: '200px' }}>Bằng cấp</th>
+                                        <th style={{ minWidth: '150px' }}>Ngoại ngữ</th>
+                                        <th style={{ minWidth: '150px' }}>Tin học</th>
+                                        <th style={{ minWidth: '100px' }}>Đảng viên</th>
+                                        <th style={{ minWidth: '150px' }}>Chức vụ Đảng</th>
+                                        <th style={{ minWidth: '150px' }}>Ngày vào Đảng</th>
+                                        <th style={{ minWidth: '150px' }}>Ngày chính thức Đảng</th>
+                                        <th style={{ minWidth: '150px' }}>LL chính trị</th>
+                                        <th style={{ minWidth: '150px' }}>Chức vụ Đoàn</th>
+                                        <th style={{ minWidth: '100px' }}>Số NPT</th>
+                                    <th style={{ minWidth: '120px' }}>Kết hôn</th>
+                                    <th style={{ minWidth: '220px' }}>Thông tin Bố</th>
+                                    <th style={{ minWidth: '220px' }}>Thông tin Mẹ</th>
+                                    <th style={{ minWidth: '220px' }}>Vợ/Chồng</th>
+                                    <th style={{ minWidth: '220px' }}>Bố chồng/vợ</th>
+                                    <th style={{ minWidth: '220px' }}>Mẹ chồng/vợ</th>
+                                    <th style={{ minWidth: '220px' }}>Con 1</th>
+                                    <th style={{ minWidth: '220px' }}>Con 2</th>
+                                    <th style={{ minWidth: '220px' }}>Con 3</th>
+                                    <th style={{ minWidth: '220px' }}>Con 4</th>
+                                    <th style={{ minWidth: '220px' }}>Con 5</th>
+                                    <th style={{ minWidth: '220px' }}>Con 6</th>
+                                    <th style={{ minWidth: '100px' }}>Số con</th>
+                                        <th style={{ minWidth: '200px' }}>Ghi chú</th>
+                                        <th style={{ minWidth: '100px' }}>Trạng thái</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {previewData.slice(0, 500).map((row, index) => (
-                                        <tr key={index}>
-                                            <td>{row._rowNum}</td>
-                                            <td>{row.employee_code}</td>
-                                            <td>{row.last_name} {row.first_name}</td>
-                                            <td>{row.current_position || ''}</td>
-                                            <td>{row.email_acv}</td>
-                                            <td>{row.department}</td>
-                                            <td>{row.status}</td>
-                                            <td>{row.score_template_code}</td>
-                                        </tr>
-                                    ))}
+                                    {previewData.map((row, index) => {
+                                        const fatherInfo = parseFamilyInfo(row._family_father?.toString())
+                                        const motherInfo = parseFamilyInfo(row._family_mother?.toString())
+                                        const spouseInfo = parseFamilyInfo(row._family_spouse?.toString())
+                                        const fatherInLawInfo = parseFamilyInfo(row._family_father_in_law?.toString())
+                                        const motherInLawInfo = parseFamilyInfo(row._family_mother_in_law?.toString())
+                                        const child1Info = parseFamilyInfo(row._family_child_1?.toString())
+                                        const child2Info = parseFamilyInfo(row._family_child_2?.toString())
+                                        const child3Info = parseFamilyInfo(row._family_child_3?.toString())
+                                        const child4Info = parseFamilyInfo(row._family_child_4?.toString())
+                                        const child5Info = parseFamilyInfo(row._family_child_5?.toString())
+                                        const child6Info = parseFamilyInfo(row._family_child_6?.toString())
+                                        const isPartyMember = row.party_join_date || row.party_position || row.party_card_number
+
+                                        // Render family cell helper
+                                        const renderFamilyCell = (parsed, rawText) => {
+                                            if (!parsed) return <td className="text-gray-400 text-center">-</td>
+                                            return (
+                                                <td title={rawText || ''} style={{ minWidth: '220px', padding: '8px' }}>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="font-bold text-slate-800 leading-tight">
+                                                            {parsed.last_name} {parsed.first_name}
+                                                            {parsed.date_of_birth && <span className="text-slate-500 font-normal ml-1">({parsed.date_of_birth.split('-')[0]})</span>}
+                                                        </div>
+                                                        {parsed.is_dependent && (
+                                                            <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 w-fit mt-0.5">
+                                                                <i className="fas fa-child mr-1"></i> NPT
+                                                            </div>
+                                                        )}
+                                                        {parsed.note && (
+                                                            <div className="text-gray-500 text-[10px] italic leading-snug wrap-break-word max-w-[200px]">
+                                                                {parsed.note}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            )
+                                        }
+
+                                        return (
+                                            <tr key={index} className={row._hasError ? 'row-error' : ''}>
+                                                <td style={{ backgroundColor: row._hasError ? '#fff5f5' : 'inherit' }}>{row._rowNum}</td>
+                                                <td className="font-bold">{row.employee_code}</td>
+                                                <td className="font-bold">{row.last_name} {row.first_name}</td>
+                                                <td>{row.job_title || ''}</td>
+                                                <td>{row.current_position || row.job_title || ''}</td>
+                                                <td>{row.identity_card_number || ''}</td>
+                                                <td>{row.identity_card_issue_date || ''}</td>
+                                                <td>{row.identity_card_issue_place || ''}</td>
+                                                <td className="text-blue-600 font-medium">{row.email_acv || ''}</td>
+                                                <td>{row.email_personal || ''}</td>
+                                                <td>{row.phone || ''}</td>
+                                                <td>{row.gender || ''}</td>
+                                                <td>{row.ethnicity || ''}</td>
+                                                <td>{row.religion || ''}</td>
+                                                <td>{row.date_of_birth || ''}</td>
+                                                <td>{row.place_of_birth || ''}</td>
+                                                <td>{row.hometown || ''}</td>
+                                                <td title={row.permanent_address} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {row.permanent_address || ''}
+                                                </td>
+                                                <td title={row._temporary_address_reg} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {row._temporary_address_reg || ''}
+                                                </td>
+                                                <td title={row._current_residence} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {row._current_residence || ''}
+                                                </td>
+                                                <td>{row.education_level || ''}</td>
+                                                <td className="font-medium text-purple-700">{row._academic_level || row.academic_level_code || ''}</td>
+                                                <td>{row.department || ''}</td>
+                                                <td>{row.team || ''}</td>
+                                                <td>{row.join_date || ''}</td>
+                                                <td>{row.official_date || ''}</td>
+                                                <td>{row.salary_scale || ''}</td>
+                                                <td>{row.salary_level || ''}</td>
+                                                <td>{row.salary_coefficient || ''}</td>
+                                                <td>{row.basic_salary ? Number(row.basic_salary).toLocaleString() : ''}</td>
+                                                <td>{row.social_insurance_salary ? Number(row.social_insurance_salary).toLocaleString() : ''}</td>
+                                                <td>{row.contract_number || ''}</td>
+                                                <td>{row.contract_type || ''}</td>
+                                                <td>{row.contract_signed_date || ''}</td>
+                                                <td>{row.contract_expiration_date || ''}</td>
+                                                <td>{row.bank_name || ''}</td>
+                                                <td>{row.bank_account_number || ''}</td>
+                                                <td>{row.social_insurance_number || ''}</td>
+                                                <td>{row.health_insurance_number || ''}</td>
+                                                <td title={`${row.education_qualification || ''} ${row.certificates || ''}`}>
+                                                    {row.education_qualification || ''} {row.certificates ? ` | ${row.certificates}` : ''}
+                                                </td>
+                                                <td className="text-orange-600 italic">{row.foreign_language || ''}</td>
+                                                <td className="text-blue-600 italic">{row.computer_skill || ''}</td>
+                                                <td>{isPartyMember ? 'Đảng viên' : 'Không'}</td>
+                                                <td>{row.party_position || ''}</td>
+                                                <td>{row.party_join_date || ''}</td>
+                                                <td>{row.party_official_date || ''}</td>
+                                                <td className="text-purple-600 font-medium">{row.political_education_level || ''}</td>
+                                                <td>{row.youth_union_position || ''}</td>
+                                                <td className="text-center">{row.number_of_dependents || ''}</td>
+                                                <td>{row._marital_status || ''}</td>
+                                                {renderFamilyCell(fatherInfo, row._family_father)}
+                                                {renderFamilyCell(motherInfo, row._family_mother)}
+                                                {renderFamilyCell(spouseInfo, row._family_spouse)}
+                                                {renderFamilyCell(fatherInLawInfo, row._family_father_in_law)}
+                                                {renderFamilyCell(motherInLawInfo, row._family_mother_in_law)}
+                                                {renderFamilyCell(child1Info, row._family_child_1)}
+                                                {renderFamilyCell(child2Info, row._family_child_2)}
+                                                {renderFamilyCell(child3Info, row._family_child_3)}
+                                                {renderFamilyCell(child4Info, row._family_child_4)}
+                                                {renderFamilyCell(child5Info, row._family_child_5)}
+                                                {renderFamilyCell(child6Info, row._family_child_6)}
+                                                <td>{row._number_of_children || ''}</td>
+                                                <td>{row.note || ''}</td>
+                                                <td>
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs ${row.status === 'Đang làm việc' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                        {row.status || ''}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
-                            {previewData.length > 500 && (
-                                <p className="preview-note">
-                                    Hiển thị 500 dòng đầu tiên. Tổng cộng {previewData.length} dòng hợp lệ.
-                                </p>
-                            )}
+                            <p className="preview-note">
+                                Tổng cộng {previewData.length} dòng hợp lệ sẵn sàng import.
+                            </p>
                         </div>
                     </div>
                 )}
