@@ -928,3 +928,20 @@ tr:hover {
   padding-top: 15px;
   border-top: 1px solid #f0f4f8;
 }
+
+/* Footer Styles */
+.footer {
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 15px 30px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+
+.footer-content strong {
+  color: var(--primary);
+}

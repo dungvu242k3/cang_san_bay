@@ -1,0 +1,209 @@
+/* HelpModal.css */
+.help-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+}
+
+.help-modal-content {
+  background: var(--card);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.help-modal-header {
+  padding: 15px 25px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+  border-radius: 8px 8px 0 0;
+}
+
+.help-modal-header h3 {
+  margin: 0;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.25rem;
+}
+
+.help-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 5px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+}
+
+.help-modal-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--danger);
+}
+
+.help-modal-body {
+  padding: 25px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Markdown Styles within Modal */
+.markdown-body {
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  color: var(--primary);
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-body h1 {
+  font-size: 1.5rem;
+  border-bottom: 2px solid var(--secondary);
+  padding-bottom: 0.3em;
+  margin-top: 0;
+}
+
+.markdown-body h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2em;
+}
+
+.markdown-body h3 {
+  font-size: 1.1rem;
+}
+
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 2em;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-body hr {
+  height: 1px;
+  border: none;
+  background-color: var(--border);
+  margin: 35px 0;
+}
+
+.markdown-body blockquote {
+  padding: 0 1em;
+  color: var(--text-light);
+  border-left: 0.25em solid #dfe2e5;
+  margin: 0;
+  margin-bottom: 16px;
+  background-color: var(--bg);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 15px;
+}
+
+.markdown-body blockquote strong {
+  color: var(--title);
+}
+
+/* Contact Box */
+.help-contact-box {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 160, 233, 0.08) 100%);
+  border-left: 4px solid var(--secondary);
+  border-radius: 0 8px 8px 0;
+  margin-top: 25px;
+}
+
+.help-contact-box > i {
+  font-size: 1.8rem;
+  color: var(--secondary);
+}
+
+.help-contact-box p {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+}
+
+/* Login Note Box */
+.login-note-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 15px;
+  background-color: #fff9c4; /* Nhẹ nhàng cho warning/note */
+  border-radius: 6px;
+  border-left: 4px solid #fbc02d;
+  margin: 15px 0;
+}
+
+.login-note-box i {
+  color: #f57f17;
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.login-note-box strong {
+  display: block;
+  color: #827717;
+  margin-bottom: 4px;
+}
+
+.login-note-box p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #333;
+}
+
+

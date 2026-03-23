@@ -275,10 +275,40 @@ function Employees() {
                 'STAFF': 5
             }
 
+            const getPositionRank = (pos) => {
+                if (!pos) return 99
+                const p = pos.toLowerCase()
+                if (p.includes('giám đốc') && !p.includes('phó')) return 1
+                if (p.includes('tổng giám đốc') && !p.includes('phó')) return 1
+                if (p === 'admin') return 1
+                if (p.includes('phó giám đốc') || p.includes('phó tổng giám đốc')) return 2
+                if (p.includes('trưởng phòng') || p.includes('trưởng ban') || p.includes('kế toán trưởng')) return 3
+                if (p.includes('phó trưởng phòng') || p.includes('phó trưởng ban') || p.includes('phó ban') || p.includes('phó phòng')) return 4
+                if (p.includes('đội trưởng') || p.includes('tổ trưởng')) return 5
+                if (p.includes('đội phó') || p.includes('tổ phó')) return 6
+                return 10
+            }
+
             const sortedData = (data || []).sort((a, b) => {
+                // Primary sort: System Role Level
                 const levelA = a.user_roles?.[0]?.role_level || 'STAFF'
                 const levelB = b.user_roles?.[0]?.role_level || 'STAFF'
-                return (roleOrder[levelA] || 99) - (roleOrder[levelB] || 99)
+                const roleDiff = (roleOrder[levelA] || 99) - (roleOrder[levelB] || 99)
+                
+                if (roleDiff !== 0) return roleDiff
+
+                // Secondary sort: Job Position Hierarchy
+                const posA = a.job_position || a.current_position || ''
+                const posB = b.job_position || b.current_position || ''
+                const rankA = getPositionRank(posA)
+                const rankB = getPositionRank(posB)
+                
+                if (rankA !== rankB) return rankA - rankB
+
+                // Tertiary sort: Name
+                const nameA = (a.last_name || '') + ' ' + (a.first_name || '')
+                const nameB = (b.last_name || '') + ' ' + (b.first_name || '')
+                return nameA.localeCompare(nameB)
             })
 
             const mappedData = sortedData.map(profile => ({

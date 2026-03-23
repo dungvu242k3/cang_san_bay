@@ -4,10 +4,13 @@ import { useAuth } from '../contexts/AuthContext'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import TopNavBar from './TopNavBar'
+import Footer from './Footer'
+import HelpModal from './HelpModal'
 
 function Layout({ children }) {
   const { user, loading, initialized } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
@@ -46,7 +49,7 @@ function Layout({ children }) {
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         isMenuOpen={isMobileMenuOpen}
       />
-      <TopNavBar isMenuOpen={isMobileMenuOpen} />
+      <TopNavBar onOpenHelp={() => setIsHelpOpen(true)} isMenuOpen={isMobileMenuOpen} />
       <div className="container">
         <Sidebar
           className={isMobileMenuOpen ? 'mobile-open' : ''}
@@ -62,6 +65,10 @@ function Layout({ children }) {
           {children}
         </main>
       </div>
+      <Footer />
+      
+      {/* Help Modal at Root Level to avoid Z-index issues */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   )
 }

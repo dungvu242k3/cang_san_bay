@@ -18,7 +18,7 @@ const navItems = [
     { path: '/cai-dat', icon: 'fas fa-cog', label: 'Cài đặt', pKey: PERMISSIONS.SETTINGS },
 ]
 
-function TopNavBar({ isMenuOpen = false }) {
+function TopNavBar({ onOpenHelp, isMenuOpen = false }) {
     const location = useLocation()
     const { checkPermission, loading } = useAuth()
 
@@ -44,6 +44,16 @@ function TopNavBar({ isMenuOpen = false }) {
                         </NavLink>
                     )
                 })}
+                
+                {/* Nút Trợ giúp ở góc phải */}
+                <button 
+                    className="top-nav-item help-btn" 
+                    onClick={onOpenHelp}
+                    title="Hướng dẫn sử dụng"
+                >
+                    <i className="fas fa-question-circle"></i>
+                    <span>Trợ giúp</span>
+                </button>
             </div>
         </nav>
     )
