@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../services/supabase'
-import { inferRoleFromPosition } from '../utils/rbac'
+import { inferRoleFromPosition, ROLE_LEVELS } from '../utils/rbac'
 import './DutySchedule.css'
 
 export default function DutySchedule() {
@@ -33,17 +33,40 @@ export default function DutySchedule() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, ho_va_ten, first_name, last_name, department, current_position, user_roles(role_level)')
+                .select('employee_code, first_name, last_name, department, current_position, user_roles(role_level)')
                 .order('department')
-                .order('ho_va_ten')
 
             if (error) throw error
 
             // Flatten role_level from the join, fallback to inferred role
-            const enriched = (data || []).map(emp => ({
-                ...emp,
-                role_level: emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
-            }))
+            const enriched = (data || []).map(emp => {
+                const rawRole = emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
+                const fullName = emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()
+                return {
+                    ...emp,
+                    ho_va_ten: fullName,
+                    role_level_num: typeof rawRole === 'number' ? rawRole : (ROLE_LEVELS[rawRole] || 10),
+                    role_level_str: typeof rawRole === 'string' ? rawRole : null
+                }
+            }).sort((a, b) => {
+                // Sort by rank: High -> Low
+                const rankA = Number(a.role_level_num) || 10
+                const rankB = Number(b.role_level_num) || 10
+                
+                if (rankB !== rankA) {
+                    return rankB - rankA
+                }
+                
+                // Then by department ASC
+                const deptA = (a.department || '').toLowerCase()
+                const deptB = (b.department || '').toLowerCase()
+                if (deptA !== deptB) {
+                    return deptA.localeCompare(deptB, 'vi')
+                }
+
+                // Then by name ASC
+                return (a.ho_va_ten || '').localeCompare(b.ho_va_ten || '', 'vi')
+            })
             setEmployees(enriched)
         } catch (error) {
             console.error('Error loading employees:', error)
@@ -53,32 +76,36 @@ export default function DutySchedule() {
     const getEligibleEmployees = (field) => {
         return employees.filter(emp => {
             const dept = (emp.department || '').toLowerCase()
-            const role = emp.role_level || 'STAFF'
+            const role = emp.role_level_str || emp.role_level_num // can be string name or level
 
             if (field === 'director_on_duty') {
                 // Ban Giám đốc: chỉ lấy BOARD_DIRECTOR
                 return role === 'BOARD_DIRECTOR' || role === 'SUPER_ADMIN'
             }
             else if (field === 'office_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && dept.includes('văn phòng')
+                return (dept.includes('văn phòng') || dept.includes('hành chính') || dept.includes('nhân sự') || dept.includes('hc-ns') || dept.includes('tổ chức'))
             }
             else if (field === 'finance_planning_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh'))
+                return (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh') || dept.includes('kế toán') || dept.includes('tài vụ') || dept.includes('tc-kt'))
             }
             else if (field === 'operations_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('phục vụ mặt đất') || dept.includes('pvmd'))
+                return (dept.includes('phục vụ mặt đất') || dept.includes('pvmd') || dept.includes('vận tải') || dept.includes('khai thác'))
             }
             else if (field === 'technical_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht'))
+                return (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht') || dept.includes('bảo trì'))
             }
             else if (field === 'atc_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('điều hành') || dept.includes('đhsb'))
+                return (dept.includes('điều hành') || dept.includes('đhsb') || dept.includes('không lưu') || dept.includes('atc'))
             }
             else if (field === 'port_duty_officer') {
-                // Trực ban cảng: lãnh đạo các phòng vận hành hoặc ban giám đốc
-                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc']
-                const hasRelevantDept = relevantDepts.some(d => dept.includes(d))
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && hasRelevantDept
+                // Trực ban cảng: Lấy tất cả trừ khi thuộc các ca trực đặc thù khác hoặc cho phép toàn bộ nếu là lãnh đạo
+                // Tuy nhiên theo yêu cầu "hiện đầy đủ", tôi sẽ mở cho tất cả các phòng ban chính
+                const relevantDepts = [
+                    'điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc',
+                    'văn phòng', 'tài chính', 'kế hoạch', 'tc-kh', 'tc-kt', 'kế toán',
+                    'hành chính', 'nhân sự', 'đhsb', 'pvmd', 'ktht', 'an toàn'
+                ]
+                return relevantDepts.some(d => dept.includes(d)) || role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR'
             }
 
             return false
@@ -370,7 +397,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('director_on_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>
@@ -386,7 +413,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('port_duty_officer').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>
@@ -402,7 +429,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('office_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>
@@ -418,7 +445,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('finance_planning_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>
@@ -434,7 +461,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('operations_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>
@@ -450,7 +477,7 @@ export default function DutySchedule() {
                                     <option value="">-- Chọn --</option>
                                     {getEligibleEmployees('technical_duty').map(emp => (
                                         <option key={emp.employee_code} value={emp.employee_code}>
-                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
+                                            {emp.ho_va_ten || `${emp.last_name || ''} ${emp.first_name || ''}`.trim()} ({emp.current_position || 'Nhân viên'})
                                         </option>
                                     ))}
                                 </select>

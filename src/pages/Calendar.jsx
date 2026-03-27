@@ -4,7 +4,7 @@ import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
-import { inferRoleFromPosition } from '../utils/rbac';
+import { inferRoleFromPosition, ROLE_LEVELS } from '../utils/rbac';
 import './Calendar.css';
 
 import 'moment/locale/vi';
@@ -998,37 +998,40 @@ export default function CalendarPage() {
         try {
             const { data, error } = await supabase
                 .from('employee_profiles')
-                .select('employee_code, first_name, last_name, avatar_url, department, current_position')
+                .select('employee_code, first_name, last_name, avatar_url, department, current_position, user_roles(role_level)')
 
             if (error) throw error
 
-            // Prioritize managers ("cán bộ")
-            const isManager = (pos) => {
-                if (!pos) return false;
-                const p = pos.toLowerCase();
-                return p.includes('giám đốc') || p.includes('trưởng phòng') ||
-                    p.includes('đội trưởng') || p.includes('chủ đội') ||
-                    p.includes('tổ trưởng') || p.includes('chủ tổ');
-            };
+            const enriched = (data || []).map(emp => {
+                const role = emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
+                return {
+                    ...emp,
+                    role_level: role,
+                    role_level_num: typeof role === 'number' ? role : (ROLE_LEVELS[role] || 10)
+                }
+            }).sort((a, b) => {
+                // Sort by rank: High -> Low
+                const rankA = Number(a.role_level_num) || 10
+                const rankB = Number(b.role_level_num) || 10
+                
+                if (rankB !== rankA) {
+                    return rankB - rankA
+                }
 
-            const sortedData = (data || []).sort((a, b) => {
-                const aManager = isManager(a.current_position);
-                const bManager = isManager(b.current_position);
+                // Then by department ASC
+                const deptA = (a.department || '').toLowerCase()
+                const deptB = (b.department || '').toLowerCase()
+                if (deptA !== deptB) {
+                    return deptA.localeCompare(deptB, 'vi')
+                }
 
-                if (aManager && !bManager) return -1;
-                if (!aManager && bManager) return 1;
+                // Then by name ASC
+                const nameA = `${a.last_name || ''} ${a.first_name || ''}`.trim()
+                const nameB = `${b.last_name || ''} ${b.first_name || ''}`.trim()
+                return nameA.localeCompare(nameB, 'vi')
+            })
 
-                // Then sort by department
-                const deptCompare = (a.department || '').localeCompare(b.department || '');
-                if (deptCompare !== 0) return deptCompare;
-
-                // Then sort by name
-                const nameA = `${a.first_name || ''} ${a.last_name || ''}`;
-                const nameB = `${b.first_name || ''} ${b.last_name || ''}`;
-                return nameA.localeCompare(nameB);
-            });
-
-            setEventEmployees(sortedData)
+            setEventEmployees(enriched)
         } catch (error) {
             console.error('Error loading employees:', error)
         }
@@ -1045,11 +1048,34 @@ export default function CalendarPage() {
                 .order('first_name')
 
             if (error) throw error
-            // Flatten role_level from the join, fallback to inferred role
-            const enriched = (data || []).map(emp => ({
-                ...emp,
-                role_level: emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
-            }))
+            const enriched = (data || []).map(emp => {
+                const role = emp.user_roles?.[0]?.role_level || inferRoleFromPosition(emp.current_position)
+                return {
+                    ...emp,
+                    role_level: role,
+                    role_level_num: typeof role === 'number' ? role : (ROLE_LEVELS[role] || 10)
+                }
+            }).sort((a, b) => {
+                // Sort by rank: High -> Low
+                const rankA = Number(a.role_level_num) || 10
+                const rankB = Number(b.role_level_num) || 10
+                
+                if (rankB !== rankA) {
+                    return rankB - rankA
+                }
+
+                // Then by department ASC
+                const deptA = (a.department || '').toLowerCase()
+                const deptB = (b.department || '').toLowerCase()
+                if (deptA !== deptB) {
+                    return deptA.localeCompare(deptB, 'vi')
+                }
+
+                // Then by name ASC
+                const nameA = `${a.last_name || ''} ${a.first_name || ''}`.trim()
+                const nameB = `${b.last_name || ''} ${b.first_name || ''}`.trim()
+                return nameA.localeCompare(nameB, 'vi')
+            })
             setDutyEmployees(enriched)
         } catch (error) {
             console.error('Error loading employees:', error)
@@ -1337,29 +1363,31 @@ export default function CalendarPage() {
             const role = emp.role_level || 'STAFF'
 
             if (field === 'director_on_duty') {
-                // Ban Giám đốc: chỉ lấy BOARD_DIRECTOR
                 return role === 'BOARD_DIRECTOR' || role === 'SUPER_ADMIN'
             }
             else if (field === 'office_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && dept.includes('văn phòng')
+                return (dept.includes('văn phòng') || dept.includes('hành chính') || dept.includes('nhân sự') || dept.includes('hc-ns') || dept.includes('tổ chức'))
             }
             else if (field === 'finance_planning_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh'))
+                return (dept.includes('tài chính') || dept.includes('kế hoạch') || dept.includes('tc-kh') || dept.includes('kế toán') || dept.includes('tài vụ') || dept.includes('tc-kt'))
             }
             else if (field === 'operations_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('phục vụ mặt đất') || dept.includes('pvmd'))
+                return (dept.includes('phục vụ mặt đất') || dept.includes('pvmd') || dept.includes('vận tải') || dept.includes('khai thác'))
             }
             else if (field === 'technical_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht'))
+                return (dept.includes('kỹ thuật') || dept.includes('hạ tầng') || dept.includes('ktht') || dept.includes('bảo trì'))
             }
             else if (field === 'atc_duty') {
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && (dept.includes('điều hành') || dept.includes('đhsb'))
+                return (dept.includes('điều hành') || dept.includes('đhsb') || dept.includes('không lưu') || dept.includes('atc'))
             }
             else if (field === 'port_duty_officer') {
-                // Trực ban cảng: lãnh đạo các phòng vận hành hoặc ban giám đốc
-                const relevantDepts = ['điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc']
+                const relevantDepts = [
+                    'điều hành', 'an ninh', 'phục vụ mặt đất', 'kỹ thuật', 'ban giám đốc',
+                    'văn phòng', 'tài chính', 'kế hoạch', 'tc-kh', 'tc-kt', 'kế toán',
+                    'hành chính', 'nhân sự', 'đhsb', 'pvmd', 'ktht', 'an toàn'
+                ]
                 const hasRelevantDept = relevantDepts.some(d => dept.includes(d))
-                return (role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR') && hasRelevantDept
+                return hasRelevantDept || role === 'DEPT_HEAD' || role === 'BOARD_DIRECTOR'
             }
 
             return false
@@ -1639,7 +1667,7 @@ export default function CalendarPage() {
                                                         {`${emp.last_name || ''} ${emp.first_name || ''}`.trim()}
                                                     </div>
                                                     <div style={{ fontSize: '13px', color: '#718096' }}>
-                                                        {emp.employee_code} {emp.department ? ` • ${emp.department}` : ''}
+                                                        {emp.current_position || 'Nhân viên'} {emp.department ? ` • ${emp.department}` : ''}
                                                     </div>
                                                 </div>
                                                 {selectedCode === emp.employee_code && <i className="fas fa-check-circle text-primary" style={{ fontSize: '18px' }}></i>}

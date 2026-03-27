@@ -31,15 +31,19 @@ export const inferRoleFromPosition = (position) => {
     // Assuming 'Phó giám đốc' is also Board Level or high level
     if (pos.includes('phó giám đốc')) return 'BOARD_DIRECTOR'
 
-    // Dept Head
-    if (pos.includes('trưởng phòng') || pos.includes('phó trưởng phòng') || pos.includes('phó phòng') ||
-        pos.includes('quyền trưởng phòng') || pos.includes('phụ trách phòng') || pos.includes('chánh văn phòng') || pos.includes('phó chánh văn phòng')) {
+    // Dept Vice BEFORE Head (because "trưởng phòng" is a substring of "phó trưởng phòng")
+    if (pos.includes('phó trưởng phòng') || pos.includes('phó phòng') || pos.includes('phó chánh văn phòng')) {
+        return 'DEPT_VICE'
+    }
+    if (pos.includes('trưởng phòng') || pos.includes('quyền trưởng phòng') || pos.includes('phụ trách phòng') || pos.includes('chánh văn phòng')) {
         return 'DEPT_HEAD'
     }
 
-    // Team Leader
-    if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ') ||
-        pos.includes('đội phó') || pos.includes('tổ phó')) {
+    // Team Vice BEFORE Leader
+    if (pos.includes('đội phó') || pos.includes('tổ phó') || pos.includes('phó đội') || pos.includes('phó tổ')) {
+        return 'TEAM_VICE'
+    }
+    if (pos.includes('đội trưởng') || pos.includes('tổ trưởng') || pos.includes('chủ đội') || pos.includes('chủ tổ')) {
         return 'TEAM_LEADER'
     }
 
@@ -134,8 +138,10 @@ export const canPerformAction = (user, action, targetData) => {
 export const ROLE_LEVELS = {
     'SUPER_ADMIN': 100,
     'BOARD_DIRECTOR': 90,
-    'DEPT_HEAD': 50,
-    'TEAM_LEADER': 30,
+    'DEPT_HEAD': 80,
+    'DEPT_VICE': 75,
+    'TEAM_LEADER': 70,
+    'TEAM_VICE': 65,
     'STAFF': 10
 }
 
@@ -143,7 +149,9 @@ export const ROLE_LABELS = {
     'SUPER_ADMIN': 'Siêu quản trị',
     'BOARD_DIRECTOR': 'Giám đốc',
     'DEPT_HEAD': 'Trưởng phòng',
-    'TEAM_LEADER': 'Đội trưởng',
+    'DEPT_VICE': 'Phó trưởng phòng',
+    'TEAM_LEADER': 'Đội trưởng / Tổ trưởng',
+    'TEAM_VICE': 'Đội phó / Tổ phó',
     'STAFF': 'Nhân viên'
 }
 

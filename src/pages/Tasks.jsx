@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import KanbanBoard from '../components/KanbanBoard';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { inferRoleFromPosition, ROLE_LEVELS } from '../utils/rbac';
 import './Tasks.css';
 
 const renderAssignee = (code, type) => {
@@ -194,14 +195,34 @@ function Tasks() {
     }
 
     const loadDictionaries = async () => {
-        const { data } = await supabase.from('employee_profiles').select('employee_code, first_name, last_name, department, team')
+        const { data } = await supabase.from('employee_profiles')
+            .select('employee_code, first_name, last_name, department, team, current_position, user_roles(role_level)')
+        
         if (data) {
-            const emps = data.map(e => ({
-                code: e.employee_code,
-                name: `${e.last_name} ${e.first_name}`.trim(),
-                dept: e.department,
-                team: e.team
-            }))
+            const emps = data.map(e => {
+                const rawRole = e.user_roles?.[0]?.role_level || inferRoleFromPosition(e.current_position)
+                return {
+                    code: e.employee_code,
+                    name: `${e.last_name || ''} ${e.first_name || ''}`.trim(),
+                    fullName: `${e.last_name || ''} ${e.first_name || ''}`.trim(),
+                    dept: e.department,
+                    team: e.team,
+                    position: e.current_position || 'Nhân viên',
+                    role_level_num: typeof rawRole === 'number' ? rawRole : (ROLE_LEVELS[rawRole] || 10)
+                }
+            }).sort((a, b) => {
+                // Sort by rank: High -> Low
+                const rankA = Number(a.role_level_num) || 10
+                const rankB = Number(b.role_level_num) || 10
+                if (rankB !== rankA) return rankB - rankA
+
+                // Then by department ASC
+                if ((a.dept || '') !== (b.dept || '')) return (a.dept || '').localeCompare(b.dept || '', 'vi')
+
+                // Then by name ASC
+                return a.name.localeCompare(b.name, 'vi')
+            })
+            
             setEmployees(emps)
             const depts = [...new Set(data.map(e => e.department).filter(Boolean))].sort()
             setDepartments(depts)
@@ -1299,7 +1320,7 @@ function Tasks() {
                                                         <select className="form-control-premium" value={formData.primary_assignee_code} onChange={e => setFormData({ ...formData, primary_assignee_code: e.target.value })}>
                                                             <option value="">-- Chọn người/đơn vị --</option>
                                                             {formData.primary_assignee_type === 'PERSON'
-                                                                ? getVisibleEmployees().map(e => <option key={e.code} value={e.code}>{e.name} ({e.dept})</option>)
+                                                                ? getVisibleEmployees().map(e => <option key={e.code} value={e.code}>{e.name} ({e.position})</option>)
                                                                 : getVisibleDepartments().map(d => <option key={d} value={d}>{d}</option>)
                                                             }
                                                         </select>
@@ -1334,7 +1355,7 @@ function Tasks() {
                                                                             setFormData({ ...formData, collab_assignees: newCollabs })
                                                                         }}
                                                                     />
-                                                                    <label htmlFor={'chk-emp-' + e.code} style={{ marginBottom: 0, cursor: 'pointer' }}>{e.name}</label>
+                                                                    <label htmlFor={'chk-emp-' + e.code} style={{ marginBottom: 0, cursor: 'pointer' }}>{e.name} ({e.position})</label>
                                                                 </div>
                                                             ))}
                                                         </div>

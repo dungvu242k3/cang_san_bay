@@ -35,6 +35,7 @@ function Settings() {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [saving, setSaving] = useState(null)
+    const [pendingChanges, setPendingChanges] = useState({}) // { empCode: { role_level, dept_scope, team_scope } }
     const [departments, setDepartments] = useState([])
     const [teams, setTeams] = useState([])
     const [leaveSettings, setLeaveSettings] = useState([])
@@ -67,35 +68,26 @@ function Settings() {
 
 
 
-            // Build Roles Map: Infer from position, override with SUPER_ADMIN only
-            const superAdminSet = new Set()
+            // Build Roles Map: user_roles DB overrides inferred roles
+            const dbRoleMap = {}
             if (roleData) {
                 roleData.forEach(r => {
-                    if (r.role_level === 'SUPER_ADMIN') {
-                        superAdminSet.add(r.employee_code)
-                    }
+                    dbRoleMap[r.employee_code] = r
                 })
             }
 
-            // Build role map based on current_position with SUPER_ADMIN override
+            // Priority: user_roles DB > inferred from current_position
             const rMap = {}
             if (empData) {
                 empData.forEach(emp => {
-                    let inferredRole = inferRoleFromPosition(emp.current_position)
-
-                    // Override with SUPER_ADMIN if set in user_roles
-                    if (superAdminSet.has(emp.employee_code)) {
-                        inferredRole = 'SUPER_ADMIN'
-                    }
-
-                    // Find existing user_roles entry for scope data
-                    const existingRole = roleData?.find(r => r.employee_code === emp.employee_code)
+                    const dbEntry = dbRoleMap[emp.employee_code]
+                    const role = dbEntry?.role_level || inferRoleFromPosition(emp.current_position)
 
                     rMap[emp.employee_code] = {
                         employee_code: emp.employee_code,
-                        role_level: inferredRole,
-                        dept_scope: existingRole?.dept_scope || emp.department,
-                        team_scope: existingRole?.team_scope || emp.team
+                        role_level: role,
+                        dept_scope: dbEntry?.dept_scope || emp.department,
+                        team_scope: dbEntry?.team_scope || emp.team
                     }
                 })
             }
@@ -146,24 +138,49 @@ function Settings() {
         }
     }
 
-    const handleUpdateUserRole = async (empCode, updates) => {
+    const handleLocalRoleChange = (empCode, updates) => {
+        setPendingChanges(prev => ({
+            ...prev,
+            [empCode]: { ...(prev[empCode] || rolesMap[empCode] || {}), ...updates }
+        }))
+        // Also update rolesMap for immediate UI feedback
+        setRolesMap(prev => ({ ...prev, [empCode]: { ...(prev[empCode] || {}), ...updates } }))
+    }
+
+    const handleSaveRole = async (empCode) => {
         if (!checkAction('edit', { module: 'settings' })) {
             alert('Bạn không có quyền sửa cài đặt!')
             return
         }
         try {
             setSaving(empCode)
-            const existing = rolesMap[empCode]
-            const payload = { employee_code: empCode, ...updates, updated_at: new Date().toISOString() }
+            const current = rolesMap[empCode]
+            const payload = {
+                employee_code: empCode,
+                role_level: current?.role_level || 'STAFF',
+                dept_scope: current?.dept_scope || null,
+                team_scope: current?.team_scope || null,
+                updated_at: new Date().toISOString()
+            }
 
-            const { error } = existing
-                ? await supabase.from('user_roles').update(payload).eq('employee_code', empCode)
-                : await supabase.from('user_roles').insert([payload])
+            const { error } = await supabase
+                .from('user_roles')
+                .upsert(payload, { onConflict: 'employee_code' })
 
             if (error) throw error
-            setRolesMap(prev => ({ ...prev, [empCode]: { ...(prev[empCode] || {}), ...payload } }))
+
+            // Remove from pending changes
+            setPendingChanges(prev => {
+                const next = { ...prev }
+                delete next[empCode]
+                return next
+            })
             setSaving(null)
-        } catch (err) { alert(err.message); setSaving(null); }
+            alert('Đã lưu thành công!')
+        } catch (err) {
+            alert('Lỗi: ' + err.message)
+            setSaving(null)
+        }
     }
 
     const handleUpdateMatrix = async (roleLevel, moduleKey, field, value) => {
@@ -425,7 +442,7 @@ function Settings() {
                                                     <select
                                                         className={`level-sel ${r?.role_level}`}
                                                         value={r?.role_level || 'STAFF'}
-                                                        onChange={(e) => handleUpdateUserRole(emp.employee_code, { role_level: e.target.value })}
+                                                        onChange={(e) => handleLocalRoleChange(emp.employee_code, { role_level: e.target.value })}
                                                     >
                                                         {ROLE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                                     </select>
@@ -435,7 +452,7 @@ function Settings() {
                                                         <select
                                                             className="scope-sel"
                                                             value={r?.dept_scope || ''}
-                                                            onChange={(e) => handleUpdateUserRole(emp.employee_code, { dept_scope: e.target.value })}
+                                                            onChange={(e) => handleLocalRoleChange(emp.employee_code, { dept_scope: e.target.value })}
                                                         >
                                                             <option value="">-- Chọn Phòng --</option>
                                                             {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -447,7 +464,7 @@ function Settings() {
                                                         <select
                                                             className="scope-sel"
                                                             value={r?.team_scope || ''}
-                                                            onChange={(e) => handleUpdateUserRole(emp.employee_code, { team_scope: e.target.value })}
+                                                            onChange={(e) => handleLocalRoleChange(emp.employee_code, { team_scope: e.target.value })}
                                                         >
                                                             <option value="">-- Chọn Đội --</option>
                                                             {teams.map(t => <option key={t} value={t}>{t}</option>)}
@@ -455,7 +472,18 @@ function Settings() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    {saving === emp.employee_code ? <i className="fas fa-spinner fa-spin"></i> : r ? <i className="fas fa-check text-success"></i> : null}
+                                                    {saving === emp.employee_code ? (
+                                                        <i className="fas fa-spinner fa-spin"></i>
+                                                    ) : (
+                                                        <button
+                                                            className="btn btn-sm btn-primary"
+                                                            onClick={() => handleSaveRole(emp.employee_code)}
+                                                            title="Lưu vai trò"
+                                                            style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                                        >
+                                                            <i className="fas fa-save"></i> Lưu
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         )

@@ -306,16 +306,21 @@
 
 .doc-info h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     color: var(--lib-text-main);
     font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.5;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
-    line-clamp: 2;
+    line-clamp: 3;
     overflow: hidden;
     transition: color 0.2s;
+    word-break: break-word;
+    min-height: 5.175rem; /* Exactly 3 lines (3 * 1.5 * 1.15) */
+    padding-top: 4px;
+    padding-bottom: 6px;
+    margin-top: -4px;
 }
 
 .document-card:hover .doc-info h3 {
