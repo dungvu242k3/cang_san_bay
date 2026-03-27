@@ -165,15 +165,6 @@
     padding-left: 20px;
 }
 
-.section-item {
-    padding: 8px 15px 8px 20px;
-    font-size: 0.85rem;
-    color: #546e7a;
-    cursor: pointer;
-    border-left: 2px solid transparent;
-    transition: all 0.2s;
-}
-
 .section-item:hover {
     background: rgba(25, 118, 210, 0.05);
     color: #1976d2;
@@ -184,6 +175,165 @@
     color: #1976d2;
     border-left-color: #1976d2;
     font-weight: 500;
+}
+
+/* ============================================
+   ADMIN EDIT MODE — Premium Visibility Toggle
+   ============================================ */
+
+/* Edit Mode Toggle Button */
+.action-btn.edit-active {
+    color: #fff !important;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    border-color: transparent !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px);
+}
+
+.action-btn.edit-active:hover {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+}
+
+/* Edit Mode Banner */
+.edit-mode-banner {
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    border-bottom: 1px solid #c7d2fe;
+    font-size: 0.72rem;
+    color: #4338ca;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    animation: bannerSlideIn 0.25s ease-out;
+}
+
+@keyframes bannerSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.edit-mode-banner i {
+    font-size: 0.8rem;
+}
+
+.edit-mode-banner .saving-indicator {
+    color: #6366f1;
+    margin-left: auto;
+}
+
+/* Section Header Row — flex container for header + toggle */
+.section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.2s;
+}
+
+.section-header-row:hover .visibility-toggle {
+    opacity: 1;
+}
+
+.section-header-row .section-header {
+    flex: 1;
+}
+
+/* Section Item — flex for label + toggle */
+.section-item {
+    padding: 8px 15px 8px 20px;
+    font-size: 0.85rem;
+    color: #546e7a;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ---- Visibility Toggle Switch ---- */
+.visibility-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 6px;
+    cursor: pointer;
+    color: #6366f1;
+    font-size: 0.7rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    opacity: 0.7;
+    margin-right: 6px;
+}
+
+.visibility-toggle:hover {
+    opacity: 1;
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.visibility-toggle:active {
+    transform: scale(0.92);
+}
+
+/* Hidden state — red tint */
+.visibility-toggle.is-hidden {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+    opacity: 0.85;
+}
+
+.visibility-toggle.is-hidden:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+    opacity: 1;
+}
+
+/* Item-level toggle — slightly smaller */
+.visibility-toggle.item-toggle {
+    width: 22px;
+    height: 22px;
+    font-size: 0.65rem;
+    border-radius: 5px;
+}
+
+/* ---- Hidden Preview Styles (edit mode only) ---- */
+.section-hidden-preview {
+    position: relative;
+}
+
+.section-hidden-preview .section-header span {
+    text-decoration: line-through;
+    opacity: 0.35;
+    color: #94a3b8;
+}
+
+.section-hidden-preview .section-header .section-arrow {
+    opacity: 0.3;
+}
+
+.item-hidden-preview {
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 8px,
+        rgba(148, 163, 184, 0.04) 8px,
+        rgba(148, 163, 184, 0.04) 16px
+    );
+}
+
+.item-hidden-preview span {
+    text-decoration: line-through;
+    opacity: 0.35;
+    color: #94a3b8;
 }
 
 /* Mobile Responsiveness for ProfileMenu */

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabase';
 import './ProfileMenu.css';
 
 const menuSections = [
@@ -105,13 +107,71 @@ const reverseMap = {
     'kham_suc_khoe': 'kham-suc-khoe'
 };
 
+const SETTINGS_KEY = 'hidden_profile_sections';
+
 function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onImport, onDownloadTemplate }) {
+    const { user } = useAuth();
     const [expandedSections, setExpandedSections] = useState(['so-yeu-ly-lich']);
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [hiddenIds, setHiddenIds] = useState([]); // array of hidden section/item IDs
+    const [savingVisibility, setSavingVisibility] = useState(false);
+
+    const isAdmin = user?.role_level === 'SUPER_ADMIN';
 
     // Convert EmployeeDetail section ID to ProfileMenu item ID for highlighting
     const activeItemId = reverseMap[activeSection] || activeSection;
+
+    // Load hidden sections from DB on mount
+    useEffect(() => {
+        loadHiddenSections();
+    }, []);
+
+    const loadHiddenSections = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', SETTINGS_KEY)
+                .maybeSingle();
+
+            if (!error && data?.value) {
+                setHiddenIds(data.value);
+            }
+        } catch (err) {
+            console.warn('Could not load profile section settings:', err);
+        }
+    };
+
+    const saveHiddenSections = async (newHiddenIds) => {
+        try {
+            setSavingVisibility(true);
+            const { error } = await supabase
+                .from('app_settings')
+                .upsert({
+                    key: SETTINGS_KEY,
+                    value: newHiddenIds,
+                    updated_at: new Date().toISOString(),
+                    updated_by: user?.employee_code
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+        } catch (err) {
+            console.error('Error saving visibility settings:', err);
+            alert('Lỗi lưu cài đặt: ' + err.message);
+        } finally {
+            setSavingVisibility(false);
+        }
+    };
+
+    const toggleVisibility = (id) => {
+        const newHidden = hiddenIds.includes(id)
+            ? hiddenIds.filter(h => h !== id)
+            : [...hiddenIds, id];
+        setHiddenIds(newHidden);
+        saveHiddenSections(newHidden);
+    };
 
     const toggleSection = (sectionId) => {
         setExpandedSections(prev =>
@@ -122,10 +182,10 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onI
     };
 
     const handleItemClick = (itemId) => {
+        if (editMode) return; // Don't navigate in edit mode
         if (onSectionChange) {
             onSectionChange(itemId);
         }
-        // Auto-close menu on mobile after selection
         setIsMobileMenuOpen(false);
     };
 
@@ -140,6 +200,16 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onI
             <div className="profile-menu-header">
                 <span className="profile-menu-title">MỤC LỤC</span>
                 <div className="profile-menu-actions">
+                    {isAdmin && (
+                        <button
+                            className={`action-btn ${editMode ? 'edit-active' : ''}`}
+                            onClick={() => setEditMode(!editMode)}
+                            title={editMode ? 'Thoát chỉnh sửa' : 'Ẩn/hiện mục'}
+                        >
+                            <i className={`fas ${editMode ? 'fa-check' : 'fa-eye-slash'}`}></i>
+                            {editMode ? ' Xong' : ''}
+                        </button>
+                    )}
                     <button className="action-btn export" onClick={onExport}>
                         <i className="fas fa-download"></i> Export
                     </button>
@@ -151,6 +221,14 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onI
                     </button>
                 </div>
             </div>
+
+            {/* Edit mode banner */}
+            {editMode && (
+                <div className="edit-mode-banner">
+                    <i className="fas fa-info-circle"></i> Nhấn <i className="fas fa-eye"></i> / <i className="fas fa-eye-slash"></i> để ẩn/hiện mục
+                    {savingVisibility && <span className="saving-indicator"> <i className="fas fa-spinner fa-spin"></i></span>}
+                </div>
+            )}
 
             {/* Search */}
             <div className="profile-menu-search">
@@ -165,38 +243,73 @@ function ProfileMenu({ activeSection = 'ly_lich', onSectionChange, onExport, onI
             {/* Menu Sections */}
             <nav className="profile-menu-nav">
                 {menuSections.map(section => {
-                    const filteredItems = section.items.filter(item =>
-                        item.label.toLowerCase().includes(searchTerm.toLowerCase())
-                    );
+                    const isSectionHidden = hiddenIds.includes(section.id);
+
+                    // In normal mode, skip hidden sections entirely
+                    if (!editMode && isSectionHidden) return null;
+
+                    const filteredItems = section.items.filter(item => {
+                        const matchesSearch = item.label.toLowerCase().includes(searchTerm.toLowerCase());
+                        const isItemHidden = hiddenIds.includes(item.id);
+                        // In edit mode, show all items. In normal mode, hide hidden items.
+                        return matchesSearch && (editMode || !isItemHidden);
+                    });
 
                     const isSectionVisible = section.title.toLowerCase().includes(searchTerm.toLowerCase()) || filteredItems.length > 0;
 
-                    if (!isSectionVisible) return null;
+                    if (!isSectionVisible && !editMode) return null;
 
                     // Auto-expand if searching and matches found
                     const isExpanded = searchTerm ? true : expandedSections.includes(section.id);
 
                     return (
-                        <div key={section.id} className="menu-section">
-                            <div
-                                className="section-header"
-                                onClick={() => toggleSection(section.id)}
-                            >
-                                <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} section-arrow`}></i>
-                                <span>{section.title}</span>
+                        <div key={section.id} className={`menu-section ${isSectionHidden && editMode ? 'section-hidden-preview' : ''}`}>
+                            <div className="section-header-row">
+                                <div
+                                    className="section-header"
+                                    onClick={() => toggleSection(section.id)}
+                                >
+                                    <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} section-arrow`}></i>
+                                    <span>{section.title}</span>
+                                </div>
+                                {editMode && (
+                                    <button
+                                        className={`visibility-toggle ${isSectionHidden ? 'is-hidden' : ''}`}
+                                        onClick={(e) => { e.stopPropagation(); toggleVisibility(section.id); }}
+                                        title={isSectionHidden ? 'Hiện nhóm này' : 'Ẩn nhóm này'}
+                                    >
+                                        <i className={`fas ${isSectionHidden ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
+                                )}
                             </div>
 
-                            {isExpanded && filteredItems.length > 0 && (
+                            {isExpanded && (
                                 <div className="section-items">
-                                    {filteredItems.map(item => (
-                                        <div
-                                            key={item.id}
-                                            className={`section-item ${activeItemId === item.id ? 'active' : ''}`}
-                                            onClick={() => handleItemClick(item.id)}
-                                        >
-                                            {item.label}
-                                        </div>
-                                    ))}
+                                    {(editMode ? section.items.filter(item =>
+                                        item.label.toLowerCase().includes(searchTerm.toLowerCase())
+                                    ) : filteredItems).map(item => {
+                                        const isItemHidden = hiddenIds.includes(item.id);
+                                        if (!editMode && isItemHidden) return null;
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className={`section-item ${activeItemId === item.id ? 'active' : ''} ${isItemHidden && editMode ? 'item-hidden-preview' : ''}`}
+                                                onClick={() => handleItemClick(item.id)}
+                                            >
+                                                <span>{item.label}</span>
+                                                {editMode && (
+                                                    <button
+                                                        className={`visibility-toggle item-toggle ${isItemHidden ? 'is-hidden' : ''}`}
+                                                        onClick={(e) => { e.stopPropagation(); toggleVisibility(item.id); }}
+                                                        title={isItemHidden ? 'Hiện mục này' : 'Ẩn mục này'}
+                                                    >
+                                                        <i className={`fas ${isItemHidden ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
